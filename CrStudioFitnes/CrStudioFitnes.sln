@@ -1,0 +1,33 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36603.0 d17.14
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CrStudioFitnes", "CrStudioFitnes\CrStudioFitnes.csproj", "{57F03D9D-A361-4709-BE39-C7AC9F9FD0E1}"
+EndProject
+Project("{00D1A9C2-B5F0-4AF3-8072-F6C62B433612}") = "DB", "DB\DB.sqlproj", "{AB8CFE83-FCAA-42C7-A89A-9CAD1BE432CB}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{57F03D9D-A361-4709-BE39-C7AC9F9FD0E1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{57F03D9D-A361-4709-BE39-C7AC9F9FD0E1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{57F03D9D-A361-4709-BE39-C7AC9F9FD0E1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{57F03D9D-A361-4709-BE39-C7AC9F9FD0E1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AB8CFE83-FCAA-42C7-A89A-9CAD1BE432CB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AB8CFE83-FCAA-42C7-A89A-9CAD1BE432CB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AB8CFE83-FCAA-42C7-A89A-9CAD1BE432CB}.Debug|Any CPU.Deploy.0 = Debug|Any CPU
+		{AB8CFE83-FCAA-42C7-A89A-9CAD1BE432CB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AB8CFE83-FCAA-42C7-A89A-9CAD1BE432CB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AB8CFE83-FCAA-42C7-A89A-9CAD1BE432CB}.Release|Any CPU.Deploy.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {C5047755-5EAD-4076-A831-897D0E4C1D39}
+	EndGlobalSection
+EndGlobal
