@@ -1,0 +1,59 @@
+﻿@model IEnumerable<CrStudioFitnes.Models.PagoPaqueteDetalle>
+
+@{
+    ViewData["Title"] = "Index";
+}
+
+<h1>Index</h1>
+
+<p>
+    <a asp-action="Create">Create New</a>
+</p>
+<table class="table">
+    <thead>
+        <tr>
+            <th>
+                @Html.DisplayNameFor(model => model.CantDias)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.CantLecciones)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.Pago)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.Detalle)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.PagoPaquete)
+            </th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+@foreach (var item in Model) {
+        <tr>
+            <td>
+                @Html.DisplayFor(modelItem => item.CantDias)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.CantLecciones)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.Pago)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.Detalle)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.PagoPaquete.IdUsuario)
+            </td>
+            <td>
+                <a asp-action="Edit" asp-route-id="@item.IdPagoPaqueteDetalle">Edit</a> |
+                <a asp-action="Details" asp-route-id="@item.IdPagoPaqueteDetalle">Details</a> |
+                <a asp-action="Delete" asp-route-id="@item.IdPagoPaqueteDetalle">Delete</a>
+            </td>
+        </tr>
+}
+    </tbody>
+</table>
