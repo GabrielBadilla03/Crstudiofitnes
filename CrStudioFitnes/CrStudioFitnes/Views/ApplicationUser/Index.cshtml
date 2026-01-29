@@ -1,0 +1,224 @@
+﻿@using SIGE.Helpers
+@model PaginatedList<CrStudioFitnes.Models.ApplicationUser>
+
+@{
+    ViewData["Title"] = "Usuarios";
+
+    var currentBuscar = ViewData["CurrentBuscar"] as string;
+    bool? currentSoloActivos = ViewData["CurrentSoloActivos"] as bool?;
+
+    var now = DateTimeOffset.UtcNow;
+}
+
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="card shadow-sm cr-card">
+                <div class="card-body p-4 p-md-5">
+
+                    <!-- Encabezado -->
+                    <div class="d-flex flex-wrap align-items-center mb-3">
+                        <div class="text-center flex-grow-1 w-100">
+                            <h1 class="h3 mb-1">@ViewData["Title"]</h1>
+                            <p class="text-muted mb-0">Listado de usuarios registrados.</p>
+                        </div>
+
+                        <!-- Si luego agregás Create, dejás este botón -->
+                        @* <div class="mt-3 mt-md-0 text-center text-md-end w-100 w-md-auto ms-md-auto">
+                            <a asp-action="Create" class="btn btn-primary">Crear nuevo</a>
+                        </div> *@
+                    </div>
+
+                    <!-- Filtros -->
+                    <form method="get" class="row g-2 mb-3">
+                        <div class="col-12 col-md-6">
+                            <input name="buscar"
+                                   id="buscar"
+                                   value="@(currentBuscar)"
+                                   class="form-control"
+                                   placeholder="Buscar por nombre, cédula o correo..." />
+                        </div>
+
+                        <div class="col-6 col-md-4 d-flex align-items-center">
+                            <div class="form-check ms-2">
+                                <input class="form-check-input check-activos-lg"
+                                       type="checkbox"
+                                       id="soloActivos"
+                                       name="soloActivos"
+                                       value="true"
+                                       @(currentSoloActivos == true ? "checked" : "") />
+                                <label class="form-check-label" for="soloActivos">
+                                    Activos
+                                </label>
+                            </div>
+                        </div>
+
+                        <style>
+                            .check-activos-lg {
+                                transform: scale(1.5);
+                                transform-origin: center;
+                                cursor: pointer;
+                            }
+
+                                .check-activos-lg + .form-check-label {
+                                    font-size: 0.95rem;
+                                }
+                        </style>
+
+                        <div class="col-6 col-md-2 d-flex gap-2 align-items-end justify-content-end justify-content-md-start">
+                            <button type="submit" class="btn btn-outline-primary w-100">Filtrar</button>
+                            <a asp-action="Index" class="btn btn-outline-secondary w-100">Limpiar</a>
+                        </div>
+                    </form>
+
+                    @if (Model == null || !Model.Any())
+                    {
+                        <div class="alert alert-info mb-0">
+                            No hay usuarios registrados con los criterios seleccionados.
+                        </div>
+                    }
+                    else
+                    {
+                        <!-- GRID DE CARDS: 2 por fila en móvil, 4 por fila en PC -->
+                        <div class="row g-3 mt-2">
+                            @foreach (var u in Model)
+                            {
+                                var nombreCompleto = $"{u.Nombre} {u.Apellidos}".Trim();
+                                if (string.IsNullOrWhiteSpace(nombreCompleto)) { nombreCompleto = "Usuario"; }
+
+                                bool activo = (u.LockoutEnd == null || u.LockoutEnd <= now);
+
+                                <div class="col-6 col-lg-3">
+                                    <div class="cr-card-paquete h-100 cr-card-usuario"
+                                         data-id="@u.Id"
+                                         data-nombre="@nombreCompleto">
+                                        <div class="cr-card-paquete-body">
+                                            <div class="cr-card-title">
+                                                @nombreCompleto
+                                            </div>
+
+                                            <div class="cr-card-subtitle">
+                                                @u.Cedula<br />
+                                                @u.Email
+                                            </div>
+
+                                            <div class="mt-2" style="font-size:.85rem;">
+                                                <div class="text-muted">@u.TelefonoPersonal</div>
+                                                <div class="text-muted">@u.TelefonoEmergencia</div>
+                                            </div>
+
+                                            <div class="mt-2">
+                                                @if (activo)
+                                                {
+                                                    <span class="badge bg-success">Activo</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge bg-secondary">Inactivo</span>
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+
+                        <nav aria-label="Paginación" class="mt-3">
+                            <ul class="pagination justify-content-center mb-0">
+                                <li class="page-item @(Model.HasPreviousPage ? "" : "disabled")">
+                                    <a class="page-link"
+                                       asp-action="Index"
+                                       asp-route-pageNumber="@(Model.PageIndex - 1)"
+                                       asp-route-buscar="@currentBuscar"
+                                       asp-route-soloActivos="@(currentSoloActivos)">
+                                        Anterior
+                                    </a>
+                                </li>
+
+                                @for (int i = 1; i <= Model.TotalPages; i++)
+                                {
+                                    <li class="page-item @(i == Model.PageIndex ? "active" : "")">
+                                        <a class="page-link"
+                                           asp-action="Index"
+                                           asp-route-pageNumber="@i"
+                                           asp-route-buscar="@currentBuscar"
+                                           asp-route-soloActivos="@(currentSoloActivos)">
+                                            @i
+                                        </a>
+                                    </li>
+                                }
+
+                                <li class="page-item @(Model.HasNextPage ? "" : "disabled")">
+                                    <a class="page-link"
+                                       asp-action="Index"
+                                       asp-route-pageNumber="@(Model.PageIndex + 1)"
+                                       asp-route-buscar="@currentBuscar"
+                                       asp-route-soloActivos="@(currentSoloActivos)">
+                                        Siguiente
+                                    </a>
+                                </li>
+                            </ul>
+                        </nav>
+                    }
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL DE ACCIONES -->
+<div class="modal fade" id="usuarioModal" tabindex="-1" aria-labelledby="usuarioModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered cr-modal-narrow">
+        <div class="modal-content cr-card">
+            <div class="modal-header">
+                <h5 class="modal-title" id="usuarioModalLabel">Acciones del usuario</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-2 text-center">
+                    <strong id="modalUsuarioNombre"></strong>
+                </p>
+            </div>
+            <div class="modal-footer d-flex flex-column flex-sm-row gap-2">
+                <a id="modalEditLink" class="btn btn-primary w-100">Editar</a>
+                <a id="modalDetailsLink" class="btn btn-outline-light w-100">Detalles</a>
+                <a id="modalDeleteLink" class="btn btn-outline-danger w-100">Borrar</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const cards = document.querySelectorAll('.cr-card-usuario');
+            const modalElement = document.getElementById('usuarioModal');
+            const modalNombre = document.getElementById('modalUsuarioNombre');
+            const editLink = document.getElementById('modalEditLink');
+            const detailsLink = document.getElementById('modalDetailsLink');
+            const deleteLink = document.getElementById('modalDeleteLink');
+
+            const editBaseUrl = '@Url.Action("Edit", "ApplicationUser")';
+            const detailsBaseUrl = '@Url.Action("Details", "ApplicationUser")';
+            const deleteBaseUrl = '@Url.Action("Delete", "ApplicationUser")';
+
+            const bsModal = new bootstrap.Modal(modalElement);
+
+            cards.forEach(function (card) {
+                card.addEventListener('click', function () {
+                    const id = card.getAttribute('data-id');
+                    const nombre = card.getAttribute('data-nombre') || 'Usuario';
+
+                    modalNombre.textContent = nombre;
+
+                    editLink.href = editBaseUrl + '/' + id;
+                    detailsLink.href = detailsBaseUrl + '/' + id;
+                    deleteLink.href = deleteBaseUrl + '/' + id;
+
+                    bsModal.show();
+                });
+            });
+        });
+    </script>
+}

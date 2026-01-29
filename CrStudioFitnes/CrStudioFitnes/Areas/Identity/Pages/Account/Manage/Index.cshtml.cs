@@ -10,7 +10,6 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using CrStudioFitnes.Models;
-using CrStudioFitnes.Models;
 
 namespace CrStudioFitnes.Areas.Identity.Pages.Account.Manage
 {

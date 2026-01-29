@@ -1,0 +1,137 @@
+﻿@model IEnumerable<PaginaSolicitudDescuentos.Models.XXORA_DISCOUNT_LIST>
+
+@{
+    ViewData["Title"] = "Index";
+}
+
+<h1>Index</h1>
+
+<p>
+    <a asp-action="Create">Create New</a>
+</p>
+<table class="table">
+    <thead>
+        <tr>
+            <th>
+                @Html.DisplayNameFor(model => model.DISCOUNT_LIST_ID)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.DISCOUNT_LIST_NAME)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.BU_NAME)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.CURRENCY_CODE)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.DISCOUNT_LIST_ITEM_ID)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.PRICING_UOM_CODE)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.RULE_DISCOUNT_NAME)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.PRICING_RULE_TYPE_CODE)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.PARTY_NUMBER)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.DISCOUNT_TYPE)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.DISCOUNT_PRICE)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.START_DATE)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.END_DATE)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.STATUS)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.CREATION_DATE)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.CREATED_BY)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.LAST_UPDATE_DATE)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.LAST_UPDATED_BY)
+            </th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+@foreach (var item in Model) {
+        <tr>
+            <td>
+                @Html.DisplayFor(modelItem => item.DISCOUNT_LIST_ID)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.DISCOUNT_LIST_NAME)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.BU_NAME)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.CURRENCY_CODE)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.DISCOUNT_LIST_ITEM_ID)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.PRICING_UOM_CODE)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.RULE_DISCOUNT_NAME)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.PRICING_RULE_TYPE_CODE)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.PARTY_NUMBER)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.DISCOUNT_TYPE)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.DISCOUNT_PRICE)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.START_DATE)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.END_DATE)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.STATUS)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.CREATION_DATE)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.CREATED_BY)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.LAST_UPDATE_DATE)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.LAST_UPDATED_BY)
+            </td>
+            <td>
+                <a asp-action="Edit" asp-route-id="@item.ITEM_NUMBER">Edit</a> |
+                <a asp-action="Details" asp-route-id="@item.ITEM_NUMBER">Details</a> |
+                <a asp-action="Delete" asp-route-id="@item.ITEM_NUMBER">Delete</a>
+            </td>
+        </tr>
+}
+    </tbody>
+</table>

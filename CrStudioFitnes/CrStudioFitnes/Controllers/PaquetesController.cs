@@ -1,12 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+﻿using CrStudioFitnes.Data;
+using CrStudioFitnes.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
-using CrStudioFitnes.Data;
-using CrStudioFitnes.Models;
+using SIGE.Helpers;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace CrStudioFitnes.Controllers
 {
@@ -19,39 +20,59 @@ namespace CrStudioFitnes.Controllers
             _context = context;
         }
 
-        // GET: Paquetes
-        public async Task<IActionResult> Index()
+        // =======================
+        // Helper para el enum
+        // =======================
+        private void PopulateCantDiasDropDownList(TipoPlanDias? selectedValue = null)
         {
-            return View(await _context.Paquetes.ToListAsync());
+            var items = Enum.GetValues(typeof(TipoPlanDias))
+                            .Cast<TipoPlanDias>()
+                            .Select(d => new SelectListItem
+                            {
+                                Value = d.ToString(),   // también podría ser ((int)d).ToString()
+                                Text = d.ToString(),
+                                Selected = selectedValue.HasValue && d == selectedValue.Value
+                            })
+                            .ToList();
+
+            ViewBag.CantDiasList = items;
         }
 
-        // GET: Paquetes/Details/5
-        public async Task<IActionResult> Details(int? id)
+        // GET: Paquetes
+        public async Task<IActionResult> Index(int? pageNumber, string? buscar, bool? soloActivos)
         {
-            if (id == null)
-            {
-                return NotFound();
-            }
+            const int pageSize = 8;
+            int page = pageNumber.GetValueOrDefault(1);
+            if (page < 1) page = 1;
 
-            var paquete = await _context.Paquetes
-                .FirstOrDefaultAsync(m => m.IdPaquete == id);
-            if (paquete == null)
-            {
-                return NotFound();
-            }
+            var query = _context.Paquetes.AsNoTracking();
 
-            return View(paquete);
+            // ---- Filtros opcionales ----
+            if (!string.IsNullOrWhiteSpace(buscar))
+                query = query.Where(p => p.Detalle.Contains(buscar));
+
+            if (soloActivos == true)
+                query = query.Where(p => p.Activo);
+
+            // Orden
+            query = query.OrderBy(p => p.Detalle).ThenBy(p => p.IdPaquete);
+
+            // Preservar valores para la vista
+            ViewData["CurrentBuscar"] = buscar;
+            ViewData["CurrentSoloActivos"] = soloActivos;
+
+            var model = await PaginatedList<Paquete>.CreateAsync(query, page, pageSize);
+            return View(model);
         }
 
         // GET: Paquetes/Create
         public IActionResult Create()
         {
+            PopulateCantDiasDropDownList();   // llenar combo de enum
             return View();
         }
 
         // POST: Paquetes/Create
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create([Bind("IdPaquete,CantDias,CantLecciones,Pago,Detalle,Activo")] Paquete paquete)
@@ -62,6 +83,9 @@ namespace CrStudioFitnes.Controllers
                 await _context.SaveChangesAsync();
                 return RedirectToAction(nameof(Index));
             }
+
+            // Si hay error, volver a llenar el combo
+            PopulateCantDiasDropDownList(paquete.CantDias);
             return View(paquete);
         }
 
@@ -78,12 +102,12 @@ namespace CrStudioFitnes.Controllers
             {
                 return NotFound();
             }
+
+            PopulateCantDiasDropDownList(paquete.CantDias);
             return View(paquete);
         }
 
         // POST: Paquetes/Edit/5
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(int id, [Bind("IdPaquete,CantDias,CantLecciones,Pago,Detalle,Activo")] Paquete paquete)
@@ -113,6 +137,9 @@ namespace CrStudioFitnes.Controllers
                 }
                 return RedirectToAction(nameof(Index));
             }
+
+            // Si falla la validación, volver a llenar el combo con el valor seleccionado
+            PopulateCantDiasDropDownList(paquete.CantDias);
             return View(paquete);
         }
 

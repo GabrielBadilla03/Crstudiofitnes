@@ -54,7 +54,11 @@ namespace CrStudioFitnes.Data
                 .OnDelete(DeleteBehavior.Cascade);
 
             modelBuilder.Entity<PaqueteUsuario>()
-                .Property(pu => pu.Fecha)
+                .Property(pu => pu.FechaInicio)
+                .HasColumnType("date"); // corrige anotación
+
+            modelBuilder.Entity<PaqueteUsuario>()
+                .Property(pu => pu.FechaFin)
                 .HasColumnType("date"); // corrige anotación
 
             // -------- PagoPaquete / Detalle

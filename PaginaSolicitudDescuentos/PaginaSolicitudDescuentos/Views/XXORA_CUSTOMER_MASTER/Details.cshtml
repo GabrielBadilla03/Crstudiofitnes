@@ -1,0 +1,288 @@
+﻿@model PaginaSolicitudDescuentos.Models.XXORA_CUSTOMER_MASTER
+
+@{
+    ViewData["Title"] = "Details";
+}
+
+<h1>Details</h1>
+
+<div>
+    <h4>XXORA_CUSTOMER_MASTER</h4>
+    <hr />
+    <dl class="row">
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.BU_NOMBRE)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.BU_NOMBRE)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.PARTY_NAME)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.PARTY_NAME)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.PARTY_ID)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.PARTY_ID)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.IDCLIENTE)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.IDCLIENTE)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.NOMBRE_CLIENTE)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.NOMBRE_CLIENTE)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.NOMBRE_CLASECLIENTE)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.NOMBRE_CLASECLIENTE)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.ACCOUNT_ID)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.ACCOUNT_ID)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.CLIENTE_ESTATUS)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.CLIENTE_ESTATUS)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.SITIO)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.SITIO)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.PARTY_SITE_NUMBER)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.PARTY_SITE_NUMBER)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.NOMBRE_SITIO)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.NOMBRE_SITIO)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.SITIO_ESTATUS)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.SITIO_ESTATUS)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.PAIS)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.PAIS)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.SITIO_DIR1)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.SITIO_DIR1)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.SITIO_DIR2)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.SITIO_DIR2)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.SITIO_DIR3)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.SITIO_DIR3)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.SITIO_CIUDAD)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.SITIO_CIUDAD)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.SITIO_ESTADO)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.SITIO_ESTADO)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.SITIO_POSTALCODE)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.SITIO_POSTALCODE)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.SITIO_PROVINCIA)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.SITIO_PROVINCIA)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.SITIO_CANTON)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.SITIO_CANTON)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.SITIO_DISTRITO)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.SITIO_DISTRITO)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.EMAIL_CLIENTE)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.EMAIL_CLIENTE)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.TELEFONO1_CLIENTE)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.TELEFONO1_CLIENTE)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.LATITUD_MUNICIPIO)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.LATITUD_MUNICIPIO)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.LONGITUD_MUNICIPIO)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.LONGITUD_MUNICIPIO)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.VENDEDOR)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.VENDEDOR)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.GRUPO_CLIENTE)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.GRUPO_CLIENTE)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.RUTA)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.RUTA)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.AR_NUMERO)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.AR_NUMERO)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.CATEGORIA)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.CATEGORIA)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.CUST_ACCT_SITE_ID)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.CUST_ACCT_SITE_ID)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.SITE_USE_ID)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.SITE_USE_ID)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.BILL_TO_SITE_USE_ID)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.BILL_TO_SITE_USE_ID)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.ORGANIZATION_ID)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.ORGANIZATION_ID)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.LIMITECREDITO)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.LIMITECREDITO)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.LIMITECREDITO_MONEDA)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.LIMITECREDITO_MONEDA)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.TERMINO_PAGO)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.TERMINO_PAGO)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.PARTY_SITE_PRIMARY_FLAG)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.PARTY_SITE_PRIMARY_FLAG)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.CEDULA)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.CEDULA)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.IDVENDEDOR)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.IDVENDEDOR)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.PARTY_SITE_ID)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.PARTY_SITE_ID)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.ACCT_LAST_UPDATE_DATE)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.ACCT_LAST_UPDATE_DATE)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.SITE_LAST_UPDATE_DATE)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.SITE_LAST_UPDATE_DATE)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.BILL_TO_SITE)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.BILL_TO_SITE)
+        </dd>
+    </dl>
+</div>
+<div>
+    <a asp-action="Edit" asp-route-id="@Model?.REGISTRY_ID">Edit</a> |
+    <a asp-action="Index">Back to List</a>
+</div>

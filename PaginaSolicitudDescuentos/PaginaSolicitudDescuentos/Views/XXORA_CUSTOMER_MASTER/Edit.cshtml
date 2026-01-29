@@ -1,0 +1,254 @@
+﻿@model PaginaSolicitudDescuentos.Models.XXORA_CUSTOMER_MASTER
+
+@{
+    ViewData["Title"] = "Edit";
+}
+
+<h1>Edit</h1>
+
+<h4>XXORA_CUSTOMER_MASTER</h4>
+<hr />
+<div class="row">
+    <div class="col-md-4">
+        <form asp-action="Edit">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            <div class="form-group">
+                <label asp-for="BU_NOMBRE" class="control-label"></label>
+                <input asp-for="BU_NOMBRE" class="form-control" />
+                <span asp-validation-for="BU_NOMBRE" class="text-danger"></span>
+            </div>
+            <input type="hidden" asp-for="REGISTRY_ID" />
+            <div class="form-group">
+                <label asp-for="PARTY_NAME" class="control-label"></label>
+                <input asp-for="PARTY_NAME" class="form-control" />
+                <span asp-validation-for="PARTY_NAME" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="PARTY_ID" class="control-label"></label>
+                <input asp-for="PARTY_ID" class="form-control" />
+                <span asp-validation-for="PARTY_ID" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="IDCLIENTE" class="control-label"></label>
+                <input asp-for="IDCLIENTE" class="form-control" />
+                <span asp-validation-for="IDCLIENTE" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="NOMBRE_CLIENTE" class="control-label"></label>
+                <input asp-for="NOMBRE_CLIENTE" class="form-control" />
+                <span asp-validation-for="NOMBRE_CLIENTE" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="NOMBRE_CLASECLIENTE" class="control-label"></label>
+                <input asp-for="NOMBRE_CLASECLIENTE" class="form-control" />
+                <span asp-validation-for="NOMBRE_CLASECLIENTE" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="ACCOUNT_ID" class="control-label"></label>
+                <input asp-for="ACCOUNT_ID" class="form-control" />
+                <span asp-validation-for="ACCOUNT_ID" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="CLIENTE_ESTATUS" class="control-label"></label>
+                <input asp-for="CLIENTE_ESTATUS" class="form-control" />
+                <span asp-validation-for="CLIENTE_ESTATUS" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="SITIO" class="control-label"></label>
+                <input asp-for="SITIO" class="form-control" />
+                <span asp-validation-for="SITIO" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="PARTY_SITE_NUMBER" class="control-label"></label>
+                <input asp-for="PARTY_SITE_NUMBER" class="form-control" />
+                <span asp-validation-for="PARTY_SITE_NUMBER" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="NOMBRE_SITIO" class="control-label"></label>
+                <input asp-for="NOMBRE_SITIO" class="form-control" />
+                <span asp-validation-for="NOMBRE_SITIO" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="SITIO_ESTATUS" class="control-label"></label>
+                <input asp-for="SITIO_ESTATUS" class="form-control" />
+                <span asp-validation-for="SITIO_ESTATUS" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="PAIS" class="control-label"></label>
+                <input asp-for="PAIS" class="form-control" />
+                <span asp-validation-for="PAIS" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="SITIO_DIR1" class="control-label"></label>
+                <input asp-for="SITIO_DIR1" class="form-control" />
+                <span asp-validation-for="SITIO_DIR1" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="SITIO_DIR2" class="control-label"></label>
+                <input asp-for="SITIO_DIR2" class="form-control" />
+                <span asp-validation-for="SITIO_DIR2" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="SITIO_DIR3" class="control-label"></label>
+                <input asp-for="SITIO_DIR3" class="form-control" />
+                <span asp-validation-for="SITIO_DIR3" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="SITIO_CIUDAD" class="control-label"></label>
+                <input asp-for="SITIO_CIUDAD" class="form-control" />
+                <span asp-validation-for="SITIO_CIUDAD" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="SITIO_ESTADO" class="control-label"></label>
+                <input asp-for="SITIO_ESTADO" class="form-control" />
+                <span asp-validation-for="SITIO_ESTADO" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="SITIO_POSTALCODE" class="control-label"></label>
+                <input asp-for="SITIO_POSTALCODE" class="form-control" />
+                <span asp-validation-for="SITIO_POSTALCODE" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="SITIO_PROVINCIA" class="control-label"></label>
+                <input asp-for="SITIO_PROVINCIA" class="form-control" />
+                <span asp-validation-for="SITIO_PROVINCIA" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="SITIO_CANTON" class="control-label"></label>
+                <input asp-for="SITIO_CANTON" class="form-control" />
+                <span asp-validation-for="SITIO_CANTON" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="SITIO_DISTRITO" class="control-label"></label>
+                <input asp-for="SITIO_DISTRITO" class="form-control" />
+                <span asp-validation-for="SITIO_DISTRITO" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="EMAIL_CLIENTE" class="control-label"></label>
+                <input asp-for="EMAIL_CLIENTE" class="form-control" />
+                <span asp-validation-for="EMAIL_CLIENTE" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="TELEFONO1_CLIENTE" class="control-label"></label>
+                <input asp-for="TELEFONO1_CLIENTE" class="form-control" />
+                <span asp-validation-for="TELEFONO1_CLIENTE" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="LATITUD_MUNICIPIO" class="control-label"></label>
+                <input asp-for="LATITUD_MUNICIPIO" class="form-control" />
+                <span asp-validation-for="LATITUD_MUNICIPIO" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="LONGITUD_MUNICIPIO" class="control-label"></label>
+                <input asp-for="LONGITUD_MUNICIPIO" class="form-control" />
+                <span asp-validation-for="LONGITUD_MUNICIPIO" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="VENDEDOR" class="control-label"></label>
+                <input asp-for="VENDEDOR" class="form-control" />
+                <span asp-validation-for="VENDEDOR" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="GRUPO_CLIENTE" class="control-label"></label>
+                <input asp-for="GRUPO_CLIENTE" class="form-control" />
+                <span asp-validation-for="GRUPO_CLIENTE" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="RUTA" class="control-label"></label>
+                <input asp-for="RUTA" class="form-control" />
+                <span asp-validation-for="RUTA" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="AR_NUMERO" class="control-label"></label>
+                <input asp-for="AR_NUMERO" class="form-control" />
+                <span asp-validation-for="AR_NUMERO" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="CATEGORIA" class="control-label"></label>
+                <input asp-for="CATEGORIA" class="form-control" />
+                <span asp-validation-for="CATEGORIA" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="CUST_ACCT_SITE_ID" class="control-label"></label>
+                <input asp-for="CUST_ACCT_SITE_ID" class="form-control" />
+                <span asp-validation-for="CUST_ACCT_SITE_ID" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="SITE_USE_ID" class="control-label"></label>
+                <input asp-for="SITE_USE_ID" class="form-control" />
+                <span asp-validation-for="SITE_USE_ID" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="BILL_TO_SITE_USE_ID" class="control-label"></label>
+                <input asp-for="BILL_TO_SITE_USE_ID" class="form-control" />
+                <span asp-validation-for="BILL_TO_SITE_USE_ID" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="ORGANIZATION_ID" class="control-label"></label>
+                <input asp-for="ORGANIZATION_ID" class="form-control" />
+                <span asp-validation-for="ORGANIZATION_ID" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="LIMITECREDITO" class="control-label"></label>
+                <input asp-for="LIMITECREDITO" class="form-control" />
+                <span asp-validation-for="LIMITECREDITO" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="LIMITECREDITO_MONEDA" class="control-label"></label>
+                <input asp-for="LIMITECREDITO_MONEDA" class="form-control" />
+                <span asp-validation-for="LIMITECREDITO_MONEDA" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="TERMINO_PAGO" class="control-label"></label>
+                <input asp-for="TERMINO_PAGO" class="form-control" />
+                <span asp-validation-for="TERMINO_PAGO" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="PARTY_SITE_PRIMARY_FLAG" class="control-label"></label>
+                <input asp-for="PARTY_SITE_PRIMARY_FLAG" class="form-control" />
+                <span asp-validation-for="PARTY_SITE_PRIMARY_FLAG" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="CEDULA" class="control-label"></label>
+                <input asp-for="CEDULA" class="form-control" />
+                <span asp-validation-for="CEDULA" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="IDVENDEDOR" class="control-label"></label>
+                <input asp-for="IDVENDEDOR" class="form-control" />
+                <span asp-validation-for="IDVENDEDOR" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="PARTY_SITE_ID" class="control-label"></label>
+                <input asp-for="PARTY_SITE_ID" class="form-control" />
+                <span asp-validation-for="PARTY_SITE_ID" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="ACCT_LAST_UPDATE_DATE" class="control-label"></label>
+                <input asp-for="ACCT_LAST_UPDATE_DATE" class="form-control" />
+                <span asp-validation-for="ACCT_LAST_UPDATE_DATE" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="SITE_LAST_UPDATE_DATE" class="control-label"></label>
+                <input asp-for="SITE_LAST_UPDATE_DATE" class="form-control" />
+                <span asp-validation-for="SITE_LAST_UPDATE_DATE" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="BILL_TO_SITE" class="control-label"></label>
+                <input asp-for="BILL_TO_SITE" class="form-control" />
+                <span asp-validation-for="BILL_TO_SITE" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <input type="submit" value="Save" class="btn btn-primary" />
+            </div>
+        </form>
+    </div>
+</div>
+
+<div>
+    <a asp-action="Index">Back to List</a>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

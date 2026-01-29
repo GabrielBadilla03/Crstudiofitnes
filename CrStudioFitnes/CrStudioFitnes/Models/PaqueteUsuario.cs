@@ -19,7 +19,11 @@ namespace CrStudioFitnes.Models
 
         [Required, DataType(DataType.Date)]
         [DisplayFormat(ApplyFormatInEditMode = true, DataFormatString = "{0:dd/MM/yyyy}")]
-        public DateTime Fecha { get; set; }
+        public DateTime FechaInicio { get; set; }
+
+        [Required, DataType(DataType.Date)]
+        [DisplayFormat(ApplyFormatInEditMode = true, DataFormatString = "{0:dd/MM/yyyy}")]
+        public DateTime FechaFin { get; set; }
 
         // Nav
         public Paquete Paquete { get; set; } = null!;

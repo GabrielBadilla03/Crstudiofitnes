@@ -1,0 +1,368 @@
+﻿@model CrStudioFitnes.Models.ApplicationUser
+@using CrStudioFitnes.Models
+
+@{
+    ViewData["Title"] = "Detalles de usuario";
+
+    var nombreCompleto = $"{Model.Nombre} {Model.Apellidos}".Trim();
+    if (string.IsNullOrWhiteSpace(nombreCompleto)) { nombreCompleto = "Usuario"; }
+
+    var nowUtc = DateTimeOffset.UtcNow;
+    bool activo = (Model.LockoutEnd == null || Model.LockoutEnd <= nowUtc);
+
+    var hoy = DateTime.Today;
+
+    var paqueteActual = (Model.PaquetesUsuario ?? new List<PaqueteUsuario>())
+        .Where(pu => pu.FechaInicio.Date <= hoy && pu.FechaFin.Date >= hoy)
+        .OrderByDescending(pu => pu.FechaFin)
+        .FirstOrDefault();
+
+    paqueteActual ??= (Model.PaquetesUsuario ?? new List<PaqueteUsuario>())
+        .OrderByDescending(pu => pu.FechaFin)
+        .FirstOrDefault();
+
+    var paquetesDisponibles = ViewBag.PaquetesDisponibles as List<Paquete>;
+}
+@if (TempData["OkEstado"] != null)
+{
+    <div class="alert alert-success">@TempData["OkEstado"]</div>
+}
+@if (TempData["ErrorEstado"] != null)
+{
+    <div class="alert alert-danger">@TempData["ErrorEstado"]</div>
+}
+
+
+
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+
+            <div class="card shadow-sm cr-card">
+                <div class="card-body p-4 p-md-5">
+
+                    <div class="text-center mb-3">
+                        <h1 class="h3 mb-1">@ViewData["Title"]</h1>
+                        <p class="text-muted mb-0">Datos del cliente y su paquete.</p>
+                    </div>
+
+                    @if (TempData["OkPaquete"] != null)
+                    {
+                        <div class="alert alert-success">@TempData["OkPaquete"]</div>
+                    }
+                    @if (TempData["ErrorPaquete"] != null)
+                    {
+                        <div class="alert alert-danger">@TempData["ErrorPaquete"]</div>
+                    }
+
+                    <div class="row g-4">
+                        <!-- Datos del cliente -->
+                        <div class="col-md-6">
+                            <h5 class="mb-3">Datos del cliente</h5>
+
+                            <div class="mb-2">
+                                <div class="text-muted" style="font-size:.9rem;">Nombre</div>
+                                <div class="fw-semibold">@nombreCompleto</div>
+                            </div>
+
+                            <div class="mb-2">
+                                <div class="text-muted" style="font-size:.9rem;">Cédula</div>
+                                <div class="fw-semibold">@Model.Cedula</div>
+                            </div>
+
+                            <div class="mb-2">
+                                <div class="text-muted" style="font-size:.9rem;">Email</div>
+                                <div class="fw-semibold">@Model.Email</div>
+                            </div>
+
+                            <div class="mb-2">
+                                <div class="text-muted" style="font-size:.9rem;">Teléfono personal</div>
+                                <div class="fw-semibold">@(!string.IsNullOrWhiteSpace(Model.TelefonoPersonal) ? Model.TelefonoPersonal : "—")</div>
+                            </div>
+
+                            <div class="mb-2">
+                                <div class="text-muted" style="font-size:.9rem;">Teléfono emergencia</div>
+                                <div class="fw-semibold">@(!string.IsNullOrWhiteSpace(Model.TelefonoEmergencia) ? Model.TelefonoEmergencia : "—")</div>
+                            </div>
+
+                            <div class="d-flex align-items-center justify-content-between mt-3 gap-2 flex-wrap">
+                                <div class="cr-status @(activo ? "cr-status--ok" : "cr-status--off")">
+                                    <span class="cr-dot"></span>
+                                    <span class="cr-status-text">@(activo ? "Activo" : "Inactivo")</span>
+                                </div>
+
+                                @if (activo)
+                                {
+                                    <form asp-action="Desactivar" method="post" class="m-0">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="idUsuario" value="@Model.Id" />
+                                        <button type="submit" class="btn btn-outline-danger cr-btn-mini">
+                                            Desactivar
+                                        </button>
+                                    </form>
+                                }
+                                else
+                                {
+                                    <form asp-action="Activar" method="post" class="m-0">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="idUsuario" value="@Model.Id" />
+                                        <button type="submit" class="btn btn-outline-success cr-btn-mini">
+                                            Activar
+                                        </button>
+                                    </form>
+                                }
+                            </div>
+                        </div>
+
+                        <!-- Paquete -->
+                        <div class="col-md-6">
+                            <div class="d-flex align-items-center justify-content-between mb-3">
+                                <h5 class="mb-0">Paquete</h5>
+                                <span class="text-muted" style="font-size:.9rem;">Hoy: @hoy.ToString("dd/MM/yyyy")</span>
+                            </div>
+
+                            @if (paqueteActual == null)
+                            {
+                                <div class="alert alert-info">
+                                    Este usuario no tiene un paquete asignado actualmente.
+                                </div>
+
+                                <button type="button" class="btn btn-primary w-100"
+                                        data-bs-toggle="modal" data-bs-target="#modalPaquete">
+                                    Agregar paquete
+                                </button>
+                            }
+                            else
+                            {
+                                var vigente = (paqueteActual.FechaInicio.Date <= hoy && paqueteActual.FechaFin.Date >= hoy);
+
+                                <div class="cr-card-paquete mb-3">
+                                    <div class="cr-card-paquete-body">
+                                        <div class="cr-card-title">Paquete #@paqueteActual.IdPaquete</div>
+
+                                        <div class="cr-card-subtitle">
+                                            <div>Plan: @paqueteActual.Paquete?.CantDias</div>
+                                            <div>Pago: @((paqueteActual.Paquete?.Pago ?? 0).ToString("N2"))</div>
+                                            <div>
+                                                <span class="text-muted">Lecciones del paquete:</span>
+                                                <span class="fw-semibold">@paqueteActual.Paquete?.CantLecciones</span>
+                                            </div>
+                                            @if (!string.IsNullOrWhiteSpace(paqueteActual.Paquete?.Detalle))
+                                            {
+                                                <div class="text-muted mt-1">@paqueteActual.Paquete.Detalle</div>
+                                            }
+                                        </div>
+
+                                        <div class="mt-3" style="font-size:.95rem;">
+                                            <div>
+                                                <span class="text-muted">Lecciones del usuario:</span>
+                                                <span class="fw-semibold">@paqueteActual.CantLecciones</span>
+                                            </div>
+                                            <div>
+                                                <span class="text-muted">Inicio:</span>
+                                                <span class="fw-semibold">@paqueteActual.FechaInicio.ToString("dd/MM/yyyy")</span>
+                                            </div>
+                                            <div>
+                                                <span class="text-muted">Fin:</span>
+                                                <span class="fw-semibold">@paqueteActual.FechaFin.ToString("dd/MM/yyyy")</span>
+                                            </div>
+                                        </div>
+
+                                        <div class="mt-3">
+                                            @if (vigente)
+                                            {
+                                                <span class="badge bg-success">Vigente</span>
+                                            }
+                                            else
+                                            {
+
+                                                <span class="badge bg-secondary">No vigente</span>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <form asp-action="PagarPaquete" method="post">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="idUsuario" value="@Model.Id" />
+                                    <button type="submit" class="btn btn-outline-success w-100">
+                                        Pagar paquete
+                                    </button>
+                                </form>
+
+                                <button type="button" class="btn btn-outline-primary w-100 mt-2"
+                                        data-bs-toggle="modal" data-bs-target="#modalPaquete">
+                                    Cambiar paquete
+                                </button>
+
+                                <a asp-action="HistorialPagos" asp-route-id="@Model.Id" class="btn btn-outline-secondary w-100 mt-2">
+                                    Historial de pagos
+                                </a>
+
+
+                            }
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-between mt-4">
+                        <a asp-action="Index" class="btn btn-outline-secondary">Volver</a>
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- MODAL (sirve para Agregar o Cambiar) -->
+<div class="modal fade" id="modalPaquete" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content cr-card">
+            <div class="modal-header">
+                <h5 class="modal-title">Seleccionar paquete</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+
+            <form asp-action="CambiarPaquete" method="post">
+                @Html.AntiForgeryToken()
+
+                <div class="modal-body">
+                    <input type="hidden" name="idUsuario" value="@Model.Id" />
+                    <input type="hidden" name="idPaquete" id="idPaqueteSeleccionado" value="" />
+
+                    <p class="text-muted mb-3">
+                        Seleccioná un paquete para <strong>@nombreCompleto</strong>.
+                        <br />
+                        <span class="small">
+                            Al guardar se reemplazan las lecciones por las del paquete y se recalculan fechas desde hoy.
+                        </span>
+                    </p>
+
+                    @if (paquetesDisponibles == null || !paquetesDisponibles.Any())
+                    {
+                        <div class="alert alert-info mb-0">
+                            No hay paquetes activos disponibles.
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="row g-3">
+                            @foreach (var p in paquetesDisponibles)
+                            {
+                                var isCurrent = paqueteActual != null && paqueteActual.IdPaquete == p.IdPaquete;
+
+                                <div class="col-12 col-md-6">
+                                    <div class="cr-card-paquete paquete-select-card h-100 @(isCurrent ? "selected" : "")"
+                                         data-id="@p.IdPaquete"
+                                         style="cursor:pointer;">
+                                        <div class="cr-card-paquete-body">
+                                            <div class="cr-card-title">Paquete #@p.IdPaquete</div>
+                                            <div class="cr-card-subtitle">
+                                                <div>Plan: <span class="fw-semibold">@p.CantDias</span></div>
+                                                <div>Lecciones: <span class="fw-semibold">@p.CantLecciones</span></div>
+                                                <div>Pago: <span class="fw-semibold">@p.Pago.ToString("N2")</span></div>
+                                                @if (!string.IsNullOrWhiteSpace(p.Detalle))
+                                                {
+                                                    <div class="text-muted mt-1">@p.Detalle</div>
+                                                }
+                                            </div>
+                                            @if (isCurrent)
+                                            {
+                                                <div class="mt-2">
+                                                    <span class="badge bg-info">Actual</span>
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+
+                <div class="modal-footer d-flex gap-2">
+                    <button type="submit" class="btn btn-primary w-100" id="btnGuardarPaquete">
+                        Guardar
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary w-100" data-bs-dismiss="modal">Cancelar</button>
+
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+    .paquete-select-card.selected {
+        outline: 2px solid rgba(255,255,255,.35);
+        box-shadow: 0 0 0 3px rgba(0,0,0,.2);
+    }
+
+    .paquete-select-card.selected {
+        outline: 2px solid rgba(255,255,255,.35);
+        box-shadow: 0 0 0 3px rgba(0,0,0,.2);
+    }
+
+    /* Estado bonito tipo pill */
+    .cr-status {
+        display: inline-flex;
+        align-items: center;
+        gap: .5rem;
+        padding: .35rem .75rem;
+        border-radius: 999px;
+        border: 1px solid rgba(255,255,255,.18);
+        background: rgba(255,255,255,.06);
+        font-size: .95rem;
+        font-weight: 600;
+    }
+
+    .cr-dot {
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        display: inline-block;
+        background: rgba(255,255,255,.45);
+        box-shadow: 0 0 0 4px rgba(255,255,255,.06);
+    }
+
+    .cr-status--ok .cr-dot {
+        background: #22c55e;
+        box-shadow: 0 0 0 4px rgba(34,197,94,.18);
+    }
+
+    .cr-status--off .cr-dot {
+        background: #94a3b8;
+        box-shadow: 0 0 0 4px rgba(148,163,184,.18);
+    }
+
+    .cr-status-text {
+        line-height: 1;
+    }
+
+    .cr-btn-mini {
+        padding: .45rem .9rem; /* un poco más grande que btn-sm */
+        font-size: .95rem;
+        border-radius: .4rem;
+    }
+</style>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const cards = document.querySelectorAll('.paquete-select-card');
+            const inputId = document.getElementById('idPaqueteSeleccionado');
+
+            // Permite guardar incluso si deja el mismo paquete (porque igual resetea fechas/lecciones)
+            cards.forEach(c => {
+                c.addEventListener('click', () => {
+                    cards.forEach(x => x.classList.remove('selected'));
+                    c.classList.add('selected');
+
+                    const id = c.getAttribute('data-id');
+                    inputId.value = id;
+                });
+            });
+        });
+    </script>
+}

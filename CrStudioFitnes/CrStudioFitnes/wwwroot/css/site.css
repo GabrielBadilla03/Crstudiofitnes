@@ -1,22 +1,391 @@
+/* =========================
+   Paleta (de la imagen) + tokens
+   ========================= */
+:root {
+    /*--white: #9c9ca3; /* TEXTO global (letras) */
+    --white: #eeeeee;
+    --black: #222226; /* fondo base oscuro */
+    --gray-700: #3C3C40; /* superficies / cards / navbar secundario */
+    --gray-500: #8c8c91; /* bordes / divisores / muted */
+
+    --red: #FE0100; /* primario / acento */
+    --red-hover: #DD0001; /* hover/activo */
+    /* Semánticos */
+    --bg-page: var(--black); /* fondo de página */
+    --bg-card: var(--gray-700); /* fondos de tarjetas/bloques */
+    --bg-soft: #1B1816; /* leve variación para hovers/oscilaciones */
+    --text: var(--white); /* TODA la tipografía en blanco */
+    --muted: rgba(255,255,255,.7);
+    --border: var(--gray-500);
+    --link: var(--red);
+    --link-hov: var(--red-hover);
+}
+
+/* ==================
+   Base del sitio
+   ================== */
 html {
-  font-size: 14px;
+    font-size: 14px;
 }
 
-@media (min-width: 768px) {
-  html {
-    font-size: 16px;
-  }
-}
-
-.btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
-  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
+@media (min-width:768px) {
+    html {
+        font-size: 16px;
+    }
 }
 
 html {
-  position: relative;
-  min-height: 100%;
+    position: relative;
+    min-height: 100%;
 }
 
 body {
-  margin-bottom: 60px;
+    margin-bottom: 60px;
+    background: var(--bg-page);
+    color: var(--text);
+}
+
+a {
+    color: var(--link);
+    text-decoration: none;
+}
+
+    a:hover, a:focus {
+        color: var(--link-hov);
+        text-decoration: underline;
+    }
+
+/* Foco visible accesible */
+:focus-visible {
+    outline: 2px solid var(--red);
+    outline-offset: 2px;
+}
+
+/* ==================
+   Navbar (oscura)
+   ================== */
+.cr-navbar {
+    background: var(--bg-page) !important;
+    border-bottom: 1px solid var(--bg-soft);
+}
+
+    .cr-navbar .navbar-brand {
+        color: var(--text) !important;
+        font-weight: 700;
+        letter-spacing: .3px;
+    }
+
+        .cr-navbar .navbar-brand:hover {
+            color: var(--link) !important;
+        }
+
+    .cr-navbar .nav-link {
+        color: var(--text) !important;
+        opacity: .9;
+    }
+
+        .cr-navbar .nav-link:hover, .cr-navbar .nav-link:focus {
+            color: var(--link) !important;
+            opacity: 1;
+        }
+
+    .cr-navbar .navbar-toggler {
+        border-color: var(--white); /* borde blanco opcional */
+    }
+
+    .cr-navbar .navbar-toggler-icon {
+        color: var(--white); /* borde blanco opcional */
+    }
+
+/* ==================
+   Footer (oscuro)
+   ================== */
+.footer {
+    background: var(--bg-page);
+    color: var(--text);
+    border-top: 1px solid var(--bg-soft) !important;
+}
+
+    .footer a {
+        color: var(--link);
+    }
+
+        .footer a:hover {
+            color: var(--text);
+        }
+
+/* ==================
+   Tarjetas / bloques
+   ================== */
+.cr-card {
+    background: var(--bg-card);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: .75rem;
+    box-shadow: 0 6px 18px rgba(0,0,0,.35);
+}
+
+/* Barra de filtros */
+.cr-toolbar {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: .5rem;
+}
+/* Lista móvil de paquetes */
+.cr-mobile-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.cr-mobile-item {
+    background: var(--bg-page);
+    border-radius: .75rem;
+    border: 1px solid var(--border);
+    padding: .75rem .9rem;
+    box-shadow: 0 4px 12px rgba(0,0,0,.35);
+}
+
+
+/* ==================
+   Formularios
+   ================== */
+.form-control, .form-select {
+    background: var(--bg-page);
+    color: var(--text);
+    border-color: var(--border);
+}
+
+    .form-control::placeholder {
+        color: var(--muted);
+    }
+
+    .btn:focus, .btn:active:focus, .btn-link.nav-link:focus,
+    .form-control:focus, .form-check-input:focus {
+        box-shadow: 0 0 0 .1rem rgba(255,255,255,.3), 0 0 0 .25rem var(--red);
+        outline: none;
+    }
+
+/* ==================
+   Botones
+   ================== */
+.btn-primary {
+    background: var(--red);
+    color: var(--text) !important; /* MISMO color que el form-control */
+    border-color: var(--red);
+}
+
+    .btn-primary:hover {
+        background: var(--red-hover);
+        border-color: var(--red-hover);
+        color: var(--text) !important; /* que no cambie al hacer hover */
+    }
+
+.btn-outline-primary {
+    color: var(--red);
+    border-color: var(--red);
+    background: transparent;
+}
+
+    .btn-outline-primary:hover {
+        color: var(--white);
+        background: var(--red);
+        border-color: var(--red);
+    }
+
+.btn-outline-danger {
+    color: var(--red-hover);
+    border-color: var(--red-hover);
+    background: transparent;
+}
+
+    .btn-outline-danger:hover {
+        color: var(--white);
+        background: var(--red-hover);
+        border-color: var(--red-hover);
+    }
+
+.btn-outline-dark {
+    color: var(--white);
+    border-color: var(--white);
+}
+
+    .btn-outline-dark:hover {
+        color: var(--white);
+        background: transparent;
+        border-color: var(--link);
+    }
+
+/* ==================
+   Tablas (modo oscuro)
+   ================== */
+.table {
+    color: var(--text);
+    --bs-table-bg: transparent;
+}
+
+    /* Encabezado de tabla: mismo color que el FONDO de la página */
+    .table thead,
+    .cr-table thead {
+        background: var(--bg-page); /* aquí usamos el fondo global, no el de la card */
+        color: var(--text); /* mismo color que el título */
+        border-bottom: 1px solid var(--border);
+    }
+
+        .table thead th,
+        .cr-table thead th {
+            font-weight: 600;
+        }
+
+    /* Hover suave, sin rojo */
+    .table tbody tr:hover,
+    .cr-table tbody tr:hover {
+        background: var(--bg-soft); /* tono oscuro, ya no rojo */
+    }
+
+
+/* #FE0100 al 8% */
+
+/* ==================
+   Badges
+   ================== */
+.badge.bg-secondary {
+    background-color: var(--gray-500) !important;
+    color: var(--white) !important;
+}
+
+.badge.bg-success {
+    background-color: #198754 !important;
+}
+/* si usas success, conserva semántica */
+
+/* ==================
+   Paginación (oscura)
+   ================== */
+.pagination .page-link {
+    color: var(--white);
+    background: var(--bg-card);
+    border-color: var(--border);
+}
+
+.pagination .page-item.active .page-link {
+    color: var(--white);
+    background: var(--red);
+    border-color: var(--red);
+}
+
+.pagination .page-link:hover {
+    background: var(--bg-soft);
+}
+
+.pagination .page-item.disabled .page-link {
+    color: var(--muted);
+    background: var(--bg-card);
+    border-color: var(--border);
+}
+
+/* ==================
+   Alertas
+   ================== */
+.alert-info {
+    background: var(--bg-card);
+    color: var(--text);
+    border: 1px solid var(--border);
+}
+
+.alert-danger, .alert-error {
+    background: rgba(221,0,1,.10); /* #DD0001 10% */
+    color: var(--white);
+    border: 1px solid var(--red-hover);
+}
+
+/* Utilidades opcionales */
+.text-muted {
+    color: var(--muted) !important;
+}
+
+
+/* Grid móvil 2x2 */
+.cr-mobile-grid {
+    margin-top: .5rem;
+}
+/* Cards de paquetes (grid común para móvil y PC) */
+.cr-card-paquete {
+    background: var(--bg-page);
+    border-radius: .75rem;
+    border: 1px solid var(--border);
+    padding: .6rem .7rem .4rem;
+    box-shadow: 0 4px 10px rgba(0,0,0,.35);
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.cr-card-paquete-body {
+    text-align: left;
+}
+
+.cr-card-title {
+    font-size: .88rem;
+    font-weight: 600;
+    min-height: 2.4em; /* altura similar entre cards */
+}
+
+.cr-card-subtitle {
+    font-size: .8rem;
+    color: var(--muted);
+    margin-top: .25rem;
+}
+
+.cr-card-price {
+    margin-top: .35rem;
+    font-weight: 700;
+    font-size: .85rem;
+    color: var(--red);
+}
+
+/* Acciones ocultas por defecto */
+.cr-card-actions {
+    display: none;
+}
+
+/* Cuando la card está "abierta" muestra las acciones */
+.cr-card-paquete.show-actions .cr-card-actions {
+    display: block;
+}
+
+/* Efecto visual cuando está seleccionada */
+.cr-card-paquete.show-actions {
+    box-shadow: 0 0 0 1px var(--red);
+}
+
+/* Modal más delgado para acciones de paquete */
+.cr-modal-narrow {
+    max-width: 380px; /* ajusta el ancho que quieras (360–400 va bien) */
+}
+
+@media (max-width: 576px) {
+    .cr-modal-narrow {
+        margin: 0 1.5rem; /* deja un poco de margen a los lados en móvil */
+    }
+}
+
+.form-control:focus,
+.form-select:focus {
+    background: var(--bg-page); /* mismo fondo oscuro que el resto */
+    color: var(--text); /* texto claro */
+    border-color: var(--border);
+}
+
+/* Labels de form-floating en modo oscuro */
+.form-floating > label {
+    color: var(--muted);
+}
+
+.form-floating > .form-control:focus ~ label,
+.form-floating > .form-control:not(:placeholder-shown) ~ label,
+.form-floating > .form-select ~ label,
+.form-floating > textarea.form-control:focus ~ label,
+.form-floating > textarea.form-control:not(:placeholder-shown) ~ label {
+    color: var(--muted);
 }

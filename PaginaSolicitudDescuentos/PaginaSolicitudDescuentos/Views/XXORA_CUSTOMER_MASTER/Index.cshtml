@@ -1,0 +1,303 @@
+﻿@model IEnumerable<PaginaSolicitudDescuentos.Models.XXORA_CUSTOMER_MASTER>
+
+@{
+    ViewData["Title"] = "Index";
+}
+
+<h1>Index</h1>
+
+<p>
+    <a asp-action="Create">Create New</a>
+</p>
+<table class="table">
+    <thead>
+        <tr>
+            <th>
+                @Html.DisplayNameFor(model => model.BU_NOMBRE)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.PARTY_NAME)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.PARTY_ID)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.IDCLIENTE)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.NOMBRE_CLIENTE)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.NOMBRE_CLASECLIENTE)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.ACCOUNT_ID)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.CLIENTE_ESTATUS)
+            </th>
+            @*
+            <th>
+                @Html.DisplayNameFor(model => model.SITIO)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.PARTY_SITE_NUMBER)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.NOMBRE_SITIO)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.SITIO_ESTATUS)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.PAIS)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.SITIO_DIR1)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.SITIO_DIR2)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.SITIO_DIR3)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.SITIO_CIUDAD)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.SITIO_ESTADO)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.SITIO_POSTALCODE)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.SITIO_PROVINCIA)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.SITIO_CANTON)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.SITIO_DISTRITO)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.EMAIL_CLIENTE)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.TELEFONO1_CLIENTE)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.LATITUD_MUNICIPIO)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.LONGITUD_MUNICIPIO)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.VENDEDOR)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.GRUPO_CLIENTE)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.RUTA)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.AR_NUMERO)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.CATEGORIA)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.CUST_ACCT_SITE_ID)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.SITE_USE_ID)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.BILL_TO_SITE_USE_ID)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.ORGANIZATION_ID)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.LIMITECREDITO)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.LIMITECREDITO_MONEDA)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.TERMINO_PAGO)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.PARTY_SITE_PRIMARY_FLAG)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.CEDULA)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.IDVENDEDOR)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.PARTY_SITE_ID)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.ACCT_LAST_UPDATE_DATE)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.SITE_LAST_UPDATE_DATE)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.BILL_TO_SITE)
+            </th>
+            *@
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+@foreach (var item in Model) {
+        <tr>
+            <td>
+                @Html.DisplayFor(modelItem => item.BU_NOMBRE)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.PARTY_NAME)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.PARTY_ID)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.IDCLIENTE)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.NOMBRE_CLIENTE)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.NOMBRE_CLASECLIENTE)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.ACCOUNT_ID)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.CLIENTE_ESTATUS)
+            </td>
+            @*
+            <td>
+                @Html.DisplayFor(modelItem => item.SITIO)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.PARTY_SITE_NUMBER)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.NOMBRE_SITIO)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.SITIO_ESTATUS)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.PAIS)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.SITIO_DIR1)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.SITIO_DIR2)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.SITIO_DIR3)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.SITIO_CIUDAD)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.SITIO_ESTADO)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.SITIO_POSTALCODE)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.SITIO_PROVINCIA)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.SITIO_CANTON)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.SITIO_DISTRITO)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.EMAIL_CLIENTE)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.TELEFONO1_CLIENTE)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.LATITUD_MUNICIPIO)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.LONGITUD_MUNICIPIO)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.VENDEDOR)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.GRUPO_CLIENTE)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.RUTA)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.AR_NUMERO)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.CATEGORIA)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.CUST_ACCT_SITE_ID)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.SITE_USE_ID)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.BILL_TO_SITE_USE_ID)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.ORGANIZATION_ID)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.LIMITECREDITO)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.LIMITECREDITO_MONEDA)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.TERMINO_PAGO)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.PARTY_SITE_PRIMARY_FLAG)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.CEDULA)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.IDVENDEDOR)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.PARTY_SITE_ID)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.ACCT_LAST_UPDATE_DATE)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.SITE_LAST_UPDATE_DATE)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.BILL_TO_SITE)
+            </td>
+            *@
+            <td>
+                <a asp-action="Edit" asp-route-id="@item.REGISTRY_ID">Edit</a> |
+                <a asp-action="Details" asp-route-id="@item.REGISTRY_ID">Details</a> |
+                <a asp-action="Delete" asp-route-id="@item.REGISTRY_ID">Delete</a>
+            </td>
+        </tr>
+}
+    </tbody>
+</table>

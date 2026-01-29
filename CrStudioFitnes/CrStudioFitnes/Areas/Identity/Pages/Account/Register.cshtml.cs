@@ -17,6 +17,7 @@ using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.EntityFrameworkCore; // <-- para AnyAsync
 using Microsoft.Extensions.Logging;
 using CrStudioFitnes.Models;
 
@@ -46,60 +47,59 @@ namespace CrStudioFitnes.Areas.Identity.Pages.Account
             _emailSender = emailSender;
         }
 
-        /// <summary>
-        ///     This API supports the ASP.NET Core Identity default UI infrastructure and is not intended to be used
-        ///     directly from your code. This API may change or be removed in future releases.
-        /// </summary>
         [BindProperty]
         public InputModel Input { get; set; }
 
-        /// <summary>
-        ///     This API supports the ASP.NET Core Identity default UI infrastructure and is not intended to be used
-        ///     directly from your code. This API may change or be removed in future releases.
-        /// </summary>
         public string ReturnUrl { get; set; }
 
-        /// <summary>
-        ///     This API supports the ASP.NET Core Identity default UI infrastructure and is not intended to be used
-        ///     directly from your code. This API may change or be removed in future releases.
-        /// </summary>
         public IList<AuthenticationScheme> ExternalLogins { get; set; }
 
-        /// <summary>
-        ///     This API supports the ASP.NET Core Identity default UI infrastructure and is not intended to be used
-        ///     directly from your code. This API may change or be removed in future releases.
-        /// </summary>
         public class InputModel
         {
-            /// <summary>
-            ///     This API supports the ASP.NET Core Identity default UI infrastructure and is not intended to be used
-            ///     directly from your code. This API may change or be removed in future releases.
-            /// </summary>
+            [Required, StringLength(60)]
+            [Display(Name = "Nombre")]
+            public string Nombre { get; set; }
+
+            [Required, StringLength(80)]
+            [Display(Name = "Apellidos")]
+            public string Apellidos { get; set; }
+
+            [Required, StringLength(25)]
+            [Display(Name = "Cédula")]
+            public string Cedula { get; set; }
+
+            [StringLength(25)]
+            [Display(Name = "Teléfono personal")]
+            public string TelefonoPersonal { get; set; }
+
+            [StringLength(25)]
+            [Display(Name = "Teléfono de emergencia")]
+            public string TelefonoEmergencia { get; set; }
+
+            [StringLength(120)]
+            [Display(Name = "Lesión u operación")]
+            public string LesionOperacion { get; set; }
+
+            [StringLength(120)]
+            [Display(Name = "Patología")]
+            public string Patologia { get; set; }
+
             [Required]
             [EmailAddress]
             [Display(Name = "Email")]
             public string Email { get; set; }
 
-            /// <summary>
-            ///     This API supports the ASP.NET Core Identity default UI infrastructure and is not intended to be used
-            ///     directly from your code. This API may change or be removed in future releases.
-            /// </summary>
             [Required]
-            [StringLength(100, ErrorMessage = "The {0} must be at least {2} and at max {1} characters long.", MinimumLength = 6)]
+            [StringLength(100, ErrorMessage = "La {0} debe tener al menos {2} y máximo {1} caracteres.", MinimumLength = 6)]
             [DataType(DataType.Password)]
-            [Display(Name = "Password")]
+            [Display(Name = "Contraseña")]
             public string Password { get; set; }
 
-            /// <summary>
-            ///     This API supports the ASP.NET Core Identity default UI infrastructure and is not intended to be used
-            ///     directly from your code. This API may change or be removed in future releases.
-            /// </summary>
             [DataType(DataType.Password)]
-            [Display(Name = "Confirm password")]
-            [Compare("Password", ErrorMessage = "The password and confirmation password do not match.")]
+            [Display(Name = "Confirmar contraseña")]
+            [Compare("Password", ErrorMessage = "La contraseña y la confirmación no coinciden.")]
             public string ConfirmPassword { get; set; }
         }
-
 
         public async Task OnGetAsync(string returnUrl = null)
         {
@@ -111,47 +111,80 @@ namespace CrStudioFitnes.Areas.Identity.Pages.Account
         {
             returnUrl ??= Url.Content("~/");
             ExternalLogins = (await _signInManager.GetExternalAuthenticationSchemesAsync()).ToList();
-            if (ModelState.IsValid)
+
+            // Normalizaciones simples
+            Input.Nombre = Input.Nombre?.Trim();
+            Input.Apellidos = Input.Apellidos?.Trim();
+            Input.Cedula = Input.Cedula?.Trim();
+            Input.TelefonoPersonal = string.IsNullOrWhiteSpace(Input.TelefonoPersonal) ? null : Input.TelefonoPersonal.Trim();
+            Input.TelefonoEmergencia = string.IsNullOrWhiteSpace(Input.TelefonoEmergencia) ? null : Input.TelefonoEmergencia.Trim();
+            Input.LesionOperacion = string.IsNullOrWhiteSpace(Input.LesionOperacion) ? null : Input.LesionOperacion.Trim();
+            Input.Patologia = string.IsNullOrWhiteSpace(Input.Patologia) ? null : Input.Patologia.Trim();
+
+            // Validación extra: evitar cédula duplicada
+            if (!string.IsNullOrWhiteSpace(Input.Cedula))
             {
-                var user = CreateUser();
-
-                await _userStore.SetUserNameAsync(user, Input.Email, CancellationToken.None);
-                await _emailStore.SetEmailAsync(user, Input.Email, CancellationToken.None);
-                var result = await _userManager.CreateAsync(user, Input.Password);
-
-                if (result.Succeeded)
+                var cedulaExiste = await _userManager.Users.AnyAsync(u => u.Cedula == Input.Cedula);
+                if (cedulaExiste)
                 {
-                    _logger.LogInformation("User created a new account with password.");
-
-                    var userId = await _userManager.GetUserIdAsync(user);
-                    var code = await _userManager.GenerateEmailConfirmationTokenAsync(user);
-                    code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));
-                    var callbackUrl = Url.Page(
-                        "/Account/ConfirmEmail",
-                        pageHandler: null,
-                        values: new { area = "Identity", userId = userId, code = code, returnUrl = returnUrl },
-                        protocol: Request.Scheme);
-
-                    await _emailSender.SendEmailAsync(Input.Email, "Confirm your email",
-                        $"Please confirm your account by <a href='{HtmlEncoder.Default.Encode(callbackUrl)}'>clicking here</a>.");
-
-                    if (_userManager.Options.SignIn.RequireConfirmedAccount)
-                    {
-                        return RedirectToPage("RegisterConfirmation", new { email = Input.Email, returnUrl = returnUrl });
-                    }
-                    else
-                    {
-                        await _signInManager.SignInAsync(user, isPersistent: false);
-                        return LocalRedirect(returnUrl);
-                    }
-                }
-                foreach (var error in result.Errors)
-                {
-                    ModelState.AddModelError(string.Empty, error.Description);
+                    ModelState.AddModelError("Input.Cedula", "Ya existe un usuario registrado con esa cédula.");
                 }
             }
 
-            // If we got this far, something failed, redisplay form
+            if (!ModelState.IsValid)
+                return Page();
+
+            var user = CreateUser();
+
+            // Username + email (como viene por defecto)
+            await _userStore.SetUserNameAsync(user, Input.Email, CancellationToken.None);
+            await _emailStore.SetEmailAsync(user, Input.Email, CancellationToken.None);
+
+            // Campos personalizados de tu ApplicationUser
+            user.Nombre = Input.Nombre;
+            user.Apellidos = Input.Apellidos;
+            user.Cedula = Input.Cedula;
+            user.TelefonoPersonal = Input.TelefonoPersonal;
+            user.TelefonoEmergencia = Input.TelefonoEmergencia;
+            user.LesionOperacion = Input.LesionOperacion;
+            user.Patologia = Input.Patologia;
+
+            // Opcional: también llenar PhoneNumber de Identity
+            if (!string.IsNullOrWhiteSpace(Input.TelefonoPersonal))
+                user.PhoneNumber = Input.TelefonoPersonal;
+
+            var result = await _userManager.CreateAsync(user, Input.Password);
+
+            if (result.Succeeded)
+            {
+                _logger.LogInformation("User created a new account with password.");
+
+                var userId = await _userManager.GetUserIdAsync(user);
+                var code = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+                code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));
+                var callbackUrl = Url.Page(
+                    "/Account/ConfirmEmail",
+                    pageHandler: null,
+                    values: new { area = "Identity", userId = userId, code = code, returnUrl = returnUrl },
+                    protocol: Request.Scheme);
+
+                await _emailSender.SendEmailAsync(Input.Email, "Confirmar tu email",
+                    $"Por favor confirma tu cuenta haciendo <a href='{HtmlEncoder.Default.Encode(callbackUrl)}'>clic aquí</a>.");
+
+                if (_userManager.Options.SignIn.RequireConfirmedAccount)
+                {
+                    return RedirectToPage("RegisterConfirmation", new { email = Input.Email, returnUrl = returnUrl });
+                }
+
+                await _signInManager.SignInAsync(user, isPersistent: false);
+                return LocalRedirect(returnUrl);
+            }
+
+            foreach (var error in result.Errors)
+            {
+                ModelState.AddModelError(string.Empty, error.Description);
+            }
+
             return Page();
         }
 

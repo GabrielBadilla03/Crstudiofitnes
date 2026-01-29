@@ -1,0 +1,123 @@
+﻿@model PaginaSolicitudDescuentos.Models.XXORA_DISCOUNT_LIST
+
+@{
+    ViewData["Title"] = "Create";
+}
+
+<h1>Create</h1>
+
+<h4>XXORA_DISCOUNT_LIST</h4>
+<hr />
+<div class="row">
+    <div class="col-md-4">
+        <form asp-action="Create">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            <div class="form-group">
+                <label asp-for="DISCOUNT_LIST_ID" class="control-label"></label>
+                <input asp-for="DISCOUNT_LIST_ID" class="form-control" />
+                <span asp-validation-for="DISCOUNT_LIST_ID" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="DISCOUNT_LIST_NAME" class="control-label"></label>
+                <input asp-for="DISCOUNT_LIST_NAME" class="form-control" />
+                <span asp-validation-for="DISCOUNT_LIST_NAME" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="BU_NAME" class="control-label"></label>
+                <input asp-for="BU_NAME" class="form-control" />
+                <span asp-validation-for="BU_NAME" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="CURRENCY_CODE" class="control-label"></label>
+                <input asp-for="CURRENCY_CODE" class="form-control" />
+                <span asp-validation-for="CURRENCY_CODE" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="DISCOUNT_LIST_ITEM_ID" class="control-label"></label>
+                <input asp-for="DISCOUNT_LIST_ITEM_ID" class="form-control" />
+                <span asp-validation-for="DISCOUNT_LIST_ITEM_ID" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="ITEM_NUMBER" class="control-label"></label>
+                <input asp-for="ITEM_NUMBER" class="form-control" />
+                <span asp-validation-for="ITEM_NUMBER" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="PRICING_UOM_CODE" class="control-label"></label>
+                <input asp-for="PRICING_UOM_CODE" class="form-control" />
+                <span asp-validation-for="PRICING_UOM_CODE" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="RULE_DISCOUNT_NAME" class="control-label"></label>
+                <input asp-for="RULE_DISCOUNT_NAME" class="form-control" />
+                <span asp-validation-for="RULE_DISCOUNT_NAME" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="PRICING_RULE_TYPE_CODE" class="control-label"></label>
+                <input asp-for="PRICING_RULE_TYPE_CODE" class="form-control" />
+                <span asp-validation-for="PRICING_RULE_TYPE_CODE" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="PARTY_NUMBER" class="control-label"></label>
+                <input asp-for="PARTY_NUMBER" class="form-control" />
+                <span asp-validation-for="PARTY_NUMBER" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="DISCOUNT_TYPE" class="control-label"></label>
+                <input asp-for="DISCOUNT_TYPE" class="form-control" />
+                <span asp-validation-for="DISCOUNT_TYPE" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="DISCOUNT_PRICE" class="control-label"></label>
+                <input asp-for="DISCOUNT_PRICE" class="form-control" />
+                <span asp-validation-for="DISCOUNT_PRICE" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="START_DATE" class="control-label"></label>
+                <input asp-for="START_DATE" class="form-control" />
+                <span asp-validation-for="START_DATE" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="END_DATE" class="control-label"></label>
+                <input asp-for="END_DATE" class="form-control" />
+                <span asp-validation-for="END_DATE" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="STATUS" class="control-label"></label>
+                <input asp-for="STATUS" class="form-control" />
+                <span asp-validation-for="STATUS" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="CREATION_DATE" class="control-label"></label>
+                <input asp-for="CREATION_DATE" class="form-control" />
+                <span asp-validation-for="CREATION_DATE" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="CREATED_BY" class="control-label"></label>
+                <input asp-for="CREATED_BY" class="form-control" />
+                <span asp-validation-for="CREATED_BY" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="LAST_UPDATE_DATE" class="control-label"></label>
+                <input asp-for="LAST_UPDATE_DATE" class="form-control" />
+                <span asp-validation-for="LAST_UPDATE_DATE" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="LAST_UPDATED_BY" class="control-label"></label>
+                <input asp-for="LAST_UPDATED_BY" class="form-control" />
+                <span asp-validation-for="LAST_UPDATED_BY" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <input type="submit" value="Create" class="btn btn-primary" />
+            </div>
+        </form>
+    </div>
+</div>
+
+<div>
+    <a asp-action="Index">Back to List</a>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

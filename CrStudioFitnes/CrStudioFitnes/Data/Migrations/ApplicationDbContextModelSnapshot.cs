@@ -321,7 +321,10 @@ namespace CrStudioFitnes.Data.Migrations
                     b.Property<int>("CantLecciones")
                         .HasColumnType("int");
 
-                    b.Property<DateTime>("Fecha")
+                    b.Property<DateTime>("FechaFin")
+                        .HasColumnType("date");
+
+                    b.Property<DateTime>("FechaInicio")
                         .HasColumnType("date");
 
                     b.Property<int>("IdPaquete")

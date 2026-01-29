@@ -1,0 +1,189 @@
+﻿@model List<CrStudioFitnes.Models.PagoPaquete>
+
+@{
+    ViewData["Title"] = "Historial de pagos";
+    var nombreUsuario = ViewData["UsuarioNombre"] as string ?? "Usuario";
+    var usuarioId = ViewData["UsuarioId"] as string ?? "";
+}
+
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+
+            <div class="card shadow-sm cr-card">
+                <div class="card-body p-4 p-md-5">
+
+                    <div class="text-center mb-3">
+                        <h1 class="h3 mb-1">@ViewData["Title"]</h1>
+                        <p class="text-muted mb-0">Pagos realizados a @nombreUsuario.</p>
+                    </div>
+
+                    <div class="d-flex justify-content-between mb-3">
+                        <a asp-action="Details" asp-route-id="@usuarioId" class="btn btn-outline-secondary">
+                            Volver a detalles
+                        </a>
+                    </div>
+
+                    @if (Model == null || !Model.Any())
+                    {
+                        <div class="alert alert-info mb-0">
+                            Este usuario no tiene pagos registrados.
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="table-responsive">
+                            <!-- ✅ tabla principal con clase historial-table -->
+                            <table class="table table-hover align-middle historial-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 180px;" class="py-3">Fecha</th>
+                                        <th style="width: 160px;" class="py-3">Monto</th>
+                                        <th class="py-3">Resumen</th>
+                                    </tr>
+                                </thead>
+
+                                <tbody class="historial-tbody">
+                                    @foreach (var p in Model)
+                                    {
+                                        var collapseId = $"pago_det_{p.IdPagoPaquete}";
+                                        var detallesCount = p.Detalles?.Count ?? 0;
+
+                                        <tr class="historial-row"
+                                            style="cursor:pointer;"
+                                            data-bs-toggle="collapse"
+                                            data-bs-target="#@collapseId"
+                                            aria-expanded="false"
+                                            aria-controls="@collapseId">
+                                            <td class="py-3">@p.Fecha.ToString("dd/MM/yyyy HH:mm")</td>
+                                            <td class="py-3">@p.Monto.ToString("N2")</td>
+                                            <td class="py-3">
+                                                Pago #@p.IdPagoPaquete — Detalles: @detallesCount
+                                            </td>
+                                        </tr>
+
+                                        <!-- ✅ fila expandida con clase historial-detalle-row -->
+                                        <tr class="collapse historial-detalle-row" id="@collapseId">
+                                            <td colspan="3" class="py-3">
+                                                <div class="p-3 rounded historial-detalle-box">
+                                                    <div class="mb-2">
+                                                        <div class="historial-titulo">Detalle del pago</div>
+
+                                                        <div style="font-size:.95rem;">
+                                                            <div><span class="fw-semibold">Numero de pago:</span> @p.IdPagoPaquete</div>
+                                                            <div>
+                                                                <span class="fw-semibold">Usuario:</span>
+                                                                @($"{p.Usuario?.Nombre} {p.Usuario?.Apellidos}".Trim())
+                                                            </div>
+                                                            <div><span class="fw-semibold">Fecha:</span> @p.Fecha.ToString("dd/MM/yyyy HH:mm")</div>
+                                                            <div><span class="fw-semibold">Monto:</span> @p.Monto.ToString("N2")</div>
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="mt-3">
+                                                        <div class="historial-titulo">Detalle del paquete pagado</div>
+
+                                                        @if (p.Detalles == null || !p.Detalles.Any())
+                                                        {
+                                                            <div class="text-muted">Sin detalles registrados.</div>
+                                                        }
+                                                        else
+                                                        {
+                                                            <div class="table-responsive">
+                                                                <!-- ✅ tabla interna también con historial-table -->
+                                                                <table class="table table-sm align-middle historial-table mb-0">
+                                                                    <thead>
+                                                                        <tr>
+                                                                            <th style="width:140px;">Plan</th>
+                                                                            <th style="width:160px;">Lecciones paquete</th>
+                                                                            <th style="width:120px;">Pago</th>
+                                                                            <th>Detalle</th>
+                                                                        </tr>
+                                                                    </thead>
+                                                                    <tbody>
+                                                                        @foreach (var d in p.Detalles)
+                                                                        {
+                                                                            <tr>
+                                                                                <td>@d.CantDias</td>
+                                                                                <td>@(d.CantLecciones?.ToString() ?? "—")</td>
+                                                                                <td>@d.Pago.ToString("N2")</td>
+                                                                                <td>@(string.IsNullOrWhiteSpace(d.Detalle) ? "—" : d.Detalle)</td>
+                                                                            </tr>
+                                                                        }
+                                                                    </tbody>
+                                                                </table>
+                                                            </div>
+                                                        }
+                                                    </div>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="text-muted mt-2" style="font-size:.9rem;">
+                            Tip: tocá/clickeá una fila para ver el detalle del pago y del paquete.
+                        </div>
+                    }
+
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<style>
+    /* ====== TABLA HISTORIAL (principal + interna) ====== */
+    .historial-table {
+        --bs-table-color: rgba(255,255,255,.92);
+        --bs-table-hover-color: rgba(255,255,255,.92);
+        --bs-table-hover-bg: rgba(255,255,255,.08);
+    }
+
+        /* Asegurar texto visible en hover */
+        .historial-table.table-hover > tbody > tr:hover > * {
+            color: rgba(255,255,255,.92) !important;
+        }
+
+    /* Tamaño grande para filas principales */
+    .historial-tbody td {
+        font-size: 1.05rem;
+        line-height: 1.35rem;
+    }
+
+    .historial-row td {
+        padding-top: 1rem !important;
+        padding-bottom: 1rem !important;
+    }
+
+    /* ====== DETALLE EXPANDIDO ====== */
+    .historial-detalle-row > td {
+        color: rgba(255,255,255,.92) !important;
+    }
+
+    .historial-detalle-box {
+        background: rgba(0,0,0,.10);
+    }
+
+    /* Títulos del expandido */
+    .historial-titulo {
+        color: rgba(255,255,255,.92) !important;
+        font-weight: 700;
+        margin-bottom: .35rem;
+    }
+
+    /* Si adentro hay text-muted, que no desaparezca */
+    .historial-detalle-row .text-muted {
+        color: rgba(255,255,255,.78) !important;
+    }
+
+    /* Tabla interna legible */
+    .historial-detalle-row table,
+    .historial-detalle-row table td,
+    .historial-detalle-row table th {
+        color: rgba(255,255,255,.92) !important;
+    }
+</style>

@@ -1,0 +1,155 @@
+﻿@model IEnumerable<PaginaSolicitudDescuentos.Models.XXORA_ITEM_MASTER>
+
+@{
+    ViewData["Title"] = "Index";
+}
+
+<h1>Index</h1>
+
+<p>
+    <a asp-action="Create">Create New</a>
+</p>
+<table class="table">
+    <thead>
+        <tr>
+            <th>
+                @Html.DisplayNameFor(model => model.BU_NAME)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.ORGANIZATION_CODE)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.DESCRIPTION)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.LONG_DESCRIPTION)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.CASE_PACK_QUANTITY)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.PRIMARY_UOM_CODE)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.TAX_CLASSIFICATION_CODE)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.TAX_RATE)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.CATEGORY_CODE)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.CATEGORY_NAME)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.SUBCATEGORY_CODE)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.SUBCATEGORY_NAME)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.ORIGIN_COUNTRY)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.STATUS)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.CREATION_DATE)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.CREATED_BY)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.LAST_UPDATE_DATE)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.LAST_UPDATED_BY)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.UNIT_WEIGHT)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.WEIGHT_UOM_CODE)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.SECONDARY_UOM_CODE)
+            </th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+@foreach (var item in Model) {
+        <tr>
+            <td>
+                @Html.DisplayFor(modelItem => item.BU_NAME)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.ORGANIZATION_CODE)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.DESCRIPTION)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.LONG_DESCRIPTION)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.CASE_PACK_QUANTITY)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.PRIMARY_UOM_CODE)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.TAX_CLASSIFICATION_CODE)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.TAX_RATE)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.CATEGORY_CODE)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.CATEGORY_NAME)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.SUBCATEGORY_CODE)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.SUBCATEGORY_NAME)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.ORIGIN_COUNTRY)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.STATUS)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.CREATION_DATE)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.CREATED_BY)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.LAST_UPDATE_DATE)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.LAST_UPDATED_BY)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.UNIT_WEIGHT)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.WEIGHT_UOM_CODE)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.SECONDARY_UOM_CODE)
+            </td>
+            <td>
+                <a asp-action="Edit" asp-route-id="@item.ITEM_NUMBER">Edit</a> |
+                <a asp-action="Details" asp-route-id="@item.ITEM_NUMBER">Details</a> |
+                <a asp-action="Delete" asp-route-id="@item.ITEM_NUMBER">Delete</a>
+            </td>
+        </tr>
+}
+    </tbody>
+</table>

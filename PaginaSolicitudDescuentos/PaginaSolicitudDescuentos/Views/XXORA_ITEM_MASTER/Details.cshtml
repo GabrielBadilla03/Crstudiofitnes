@@ -1,0 +1,144 @@
+﻿@model PaginaSolicitudDescuentos.Models.XXORA_ITEM_MASTER
+
+@{
+    ViewData["Title"] = "Details";
+}
+
+<h1>Details</h1>
+
+<div>
+    <h4>XXORA_ITEM_MASTER</h4>
+    <hr />
+    <dl class="row">
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.BU_NAME)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.BU_NAME)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.ORGANIZATION_CODE)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.ORGANIZATION_CODE)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.DESCRIPTION)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.DESCRIPTION)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.LONG_DESCRIPTION)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.LONG_DESCRIPTION)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.CASE_PACK_QUANTITY)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.CASE_PACK_QUANTITY)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.PRIMARY_UOM_CODE)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.PRIMARY_UOM_CODE)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.TAX_CLASSIFICATION_CODE)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.TAX_CLASSIFICATION_CODE)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.TAX_RATE)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.TAX_RATE)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.CATEGORY_CODE)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.CATEGORY_CODE)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.CATEGORY_NAME)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.CATEGORY_NAME)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.SUBCATEGORY_CODE)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.SUBCATEGORY_CODE)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.SUBCATEGORY_NAME)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.SUBCATEGORY_NAME)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.ORIGIN_COUNTRY)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.ORIGIN_COUNTRY)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.STATUS)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.STATUS)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.CREATION_DATE)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.CREATION_DATE)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.CREATED_BY)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.CREATED_BY)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.LAST_UPDATE_DATE)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.LAST_UPDATE_DATE)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.LAST_UPDATED_BY)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.LAST_UPDATED_BY)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.UNIT_WEIGHT)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.UNIT_WEIGHT)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.WEIGHT_UOM_CODE)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.WEIGHT_UOM_CODE)
+        </dd>
+        <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.SECONDARY_UOM_CODE)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.SECONDARY_UOM_CODE)
+        </dd>
+    </dl>
+</div>
+<div>
+    <a asp-action="Edit" asp-route-id="@Model?.ITEM_NUMBER">Edit</a> |
+    <a asp-action="Index">Back to List</a>
+</div>

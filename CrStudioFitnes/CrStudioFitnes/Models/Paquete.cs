@@ -11,7 +11,7 @@ namespace CrStudioFitnes.Models
         [Required]
         public TipoPlanDias CantDias { get; set; }
 
-        [Required, Range(1, 1000)]
+        [Required, Range(1, 1000, ErrorMessage = "La cantidad de lecciones no puede ser negativa.")]
         public int CantLecciones { get; set; }
 
         [Required, Column(TypeName = "decimal(10,2)")]

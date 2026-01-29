@@ -1,0 +1,17 @@
+﻿
+
+traer todas las tablas de un esquema en oracle ef core
+Scaffold-DbContext "User Id=BG_INTUSER;Password=BGx49cHm5*81X489v;Data Source=bgatptest_low;
+Tns_Admin=C:\Users\gabri\Downloads\ConsoleApp2\ConsoleApp2\WALLET_BGATP_TEST;
+Wallet_Location=C:\Users\gabri\Downloads\ConsoleApp2\ConsoleApp2\WALLET_BGATP_TEST;Wallet_Password=BGx1_89db9ax21;
+" Oracle.EntityFrameworkCore -Context OracleContext -OutputDir Models -Schemas BG_INTUSER -Tables XXORA_CUSTOMER_MASTER
+-UseDatabaseNames -NoOnConfiguring -Force
+
+
+traer solo una tabla en oracle ef core
+Scaffold-DbContext "User Id=BG_INTUSER;Password=BGx49cHm5*81X489v;
+Data Source=bgatptest_low;Tns_Admin=C:\Users\gabri\Downloads\ConsoleApp2\ConsoleApp2\WALLET_BGATP_TEST;
+Wallet_Location=C:\Users\gabri\Downloads\ConsoleApp2\ConsoleApp2\WALLET_BGATP_TEST;Wallet_Password=BGx1_89db9ax21;
+" Oracle.EntityFrameworkCore -Context OracleContext -OutputDir Models -Tables XXORA_DISCOUNT_LIST,XXORA_CUSTOMER_MASTER,XXORA_ITEM_MASTER
+-UseDatabaseNames -NoOnConfiguring -Force
+

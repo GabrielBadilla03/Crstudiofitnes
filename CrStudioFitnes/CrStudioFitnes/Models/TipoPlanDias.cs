@@ -7,7 +7,6 @@ namespace CrStudioFitnes.Models
         Diario = 1,
         Semanal = 2,
         Quincenal = 3,
-        Trimestral = 4,
-        Mensual = 5
+        Mensual = 4
     }
 }
