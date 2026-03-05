@@ -20,6 +20,7 @@ using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore; // <-- para AnyAsync
 using Microsoft.Extensions.Logging;
 using CrStudioFitnes.Models;
+using Microsoft.AspNetCore.Identity;
 
 namespace CrStudioFitnes.Areas.Identity.Pages.Account
 {
@@ -31,13 +32,15 @@ namespace CrStudioFitnes.Areas.Identity.Pages.Account
         private readonly IUserEmailStore<ApplicationUser> _emailStore;
         private readonly ILogger<RegisterModel> _logger;
         private readonly IEmailSender _emailSender;
+        private readonly RoleManager<IdentityRole> _roleManager;
 
         public RegisterModel(
             UserManager<ApplicationUser> userManager,
             IUserStore<ApplicationUser> userStore,
             SignInManager<ApplicationUser> signInManager,
             ILogger<RegisterModel> logger,
-            IEmailSender emailSender)
+            IEmailSender emailSender,
+            RoleManager<IdentityRole> roleManager)
         {
             _userManager = userManager;
             _userStore = userStore;
@@ -45,6 +48,7 @@ namespace CrStudioFitnes.Areas.Identity.Pages.Account
             _signInManager = signInManager;
             _logger = logger;
             _emailSender = emailSender;
+            _roleManager = roleManager;
         }
 
         [BindProperty]
@@ -149,6 +153,10 @@ namespace CrStudioFitnes.Areas.Identity.Pages.Account
             user.LesionOperacion = Input.LesionOperacion;
             user.Patologia = Input.Patologia;
 
+            user.EmailConfirmed = true;               // ? SIEMPRE confirmado
+            user.NormalizedEmail = Input.Email?.Trim().ToUpperInvariant();
+            user.NormalizedUserName = Input.Email?.Trim().ToUpperInvariant();
+
             // Opcional: también llenar PhoneNumber de Identity
             if (!string.IsNullOrWhiteSpace(Input.TelefonoPersonal))
                 user.PhoneNumber = Input.TelefonoPersonal;
@@ -159,30 +167,34 @@ namespace CrStudioFitnes.Areas.Identity.Pages.Account
             {
                 _logger.LogInformation("User created a new account with password.");
 
-                var userId = await _userManager.GetUserIdAsync(user);
-                var code = await _userManager.GenerateEmailConfirmationTokenAsync(user);
-                code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));
-                var callbackUrl = Url.Page(
-                    "/Account/ConfirmEmail",
-                    pageHandler: null,
-                    values: new { area = "Identity", userId = userId, code = code, returnUrl = returnUrl },
-                    protocol: Request.Scheme);
+                const string defaultRole = "Usuario";
 
-                await _emailSender.SendEmailAsync(Input.Email, "Confirmar tu email",
-                    $"Por favor confirma tu cuenta haciendo <a href='{HtmlEncoder.Default.Encode(callbackUrl)}'>clic aquí</a>.");
-
-                if (_userManager.Options.SignIn.RequireConfirmedAccount)
+                // (Opcional pero recomendado) Asegurar que el rol exista
+                if (!await _roleManager.RoleExistsAsync(defaultRole))
                 {
-                    return RedirectToPage("RegisterConfirmation", new { email = Input.Email, returnUrl = returnUrl });
+                    var createRole = await _roleManager.CreateAsync(new IdentityRole(defaultRole));
+                    if (!createRole.Succeeded)
+                    {
+                        foreach (var e in createRole.Errors)
+                            ModelState.AddModelError(string.Empty, e.Description);
+
+                        return Page();
+                    }
                 }
 
+                // Asignar rol por defecto
+                var addRole = await _userManager.AddToRoleAsync(user, defaultRole);
+                if (!addRole.Succeeded)
+                {
+                    foreach (var e in addRole.Errors)
+                        ModelState.AddModelError(string.Empty, e.Description);
+
+                    return Page();
+                }
+
+                // Loguear directo (DESPUÉS de asignar rol)
                 await _signInManager.SignInAsync(user, isPersistent: false);
                 return LocalRedirect(returnUrl);
-            }
-
-            foreach (var error in result.Errors)
-            {
-                ModelState.AddModelError(string.Empty, error.Description);
             }
 
             return Page();

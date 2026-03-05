@@ -1,11 +1,13 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-VisualStudioVersion = 17.14.36603.0 d17.14
+# Visual Studio Version 18
+VisualStudioVersion = 18.2.11415.280 d18.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CrStudioFitnes", "CrStudioFitnes\CrStudioFitnes.csproj", "{57F03D9D-A361-4709-BE39-C7AC9F9FD0E1}"
 EndProject
 Project("{00D1A9C2-B5F0-4AF3-8072-F6C62B433612}") = "DB", "DB\DB.sqlproj", "{AB8CFE83-FCAA-42C7-A89A-9CAD1BE432CB}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EnviaCorreoNotificaciones", "EnviaCorreoNotificaciones\EnviaCorreoNotificaciones.csproj", "{8B9497EA-DB8B-4D8F-BE75-6502BA4F1D8F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -23,6 +25,10 @@ Global
 		{AB8CFE83-FCAA-42C7-A89A-9CAD1BE432CB}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{AB8CFE83-FCAA-42C7-A89A-9CAD1BE432CB}.Release|Any CPU.Build.0 = Release|Any CPU
 		{AB8CFE83-FCAA-42C7-A89A-9CAD1BE432CB}.Release|Any CPU.Deploy.0 = Release|Any CPU
+		{8B9497EA-DB8B-4D8F-BE75-6502BA4F1D8F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8B9497EA-DB8B-4D8F-BE75-6502BA4F1D8F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8B9497EA-DB8B-4D8F-BE75-6502BA4F1D8F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8B9497EA-DB8B-4D8F-BE75-6502BA4F1D8F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

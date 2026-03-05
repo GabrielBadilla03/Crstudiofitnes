@@ -1,0 +1,112 @@
+﻿@model List<CrStudioFitnes.Models.Pesaje>
+
+@{
+    var h = ViewBag.HistorialPesaje as CrStudioFitnes.Models.Historial;
+
+    decimal? pesoActual = null;
+    if (ViewBag.PesoActual != null)
+    {
+        try { pesoActual = (decimal)ViewBag.PesoActual; } catch { }
+    }
+}
+
+@if (h == null)
+{
+    <div class="alert alert-info mb-0">No tenés historial registrado todavía.</div>
+}
+else
+{
+    <!-- ✅ RESUMEN DEL HISTORIAL MÁS RECIENTE -->
+    <div class="mb-3 p-3 rounded" style="background: rgba(0,0,0,.06);">
+        <div class="fw-semibold mb-2">Historial más reciente</div>
+
+        <div class="row g-2">
+            <div class="col-12 col-md-6">
+                <div><span class="text-muted">Inicio:</span> <span class="fw-semibold">@h.FechaInicio.ToString("dd/MM/yyyy")</span></div>
+                <div><span class="text-muted">Fin:</span> <span class="fw-semibold">@(h.FechaFin.HasValue? h.FechaFin.Value.ToString("dd/MM/yyyy") : "—")</span></div>
+                <div><span class="text-muted">Frecuencia:</span> <span class="fw-semibold">@(h.Frecuencia.HasValue? h.Frecuencia.Value.ToString() : "—")</span></div>
+            </div>
+
+            <div class="col-12 col-md-6">
+                <div><span class="text-muted">Peso inicial:</span> <span class="fw-semibold">@((h.Peso.HasValue) ? h.Peso.Value.ToString("N2") : "—")</span></div>
+                <div><span class="text-muted">Peso actual:</span> <span class="fw-semibold">@(pesoActual.HasValue? pesoActual.Value.ToString("N2") : "—")</span></div>
+                <div><span class="text-muted">Objetivo:</span> <span class="fw-semibold">@(!string.IsNullOrWhiteSpace(h.Objetivo) ? h.Objetivo : "—")</span></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ✅ TABLA DE PESAJE (solo del historial más reciente) -->
+    @if (Model == null || !Model.Any())
+    {
+        <div class="alert alert-info mb-0">Este historial aún no tiene pesajes registrados.</div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th style="width:220px;">Fecha</th>
+                        <th style="width:160px;">Peso (kg)</th>
+                        <th>Resumen</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    @foreach (var p in Model)
+                    {
+                        var collapseId = $"pesaje_det_{p.IdPesaje}";
+                        <tr style="cursor:pointer;"
+                            data-bs-toggle="collapse"
+                            data-bs-target="#@collapseId"
+                            aria-expanded="false"
+                            aria-controls="@collapseId">
+                            <td>@p.Fecha.ToString("dd/MM/yyyy")</td>
+                            <td>@p.Peso.ToString("N2")</td>
+                            <td>Pesaje #@p.IdPesaje</td>
+                        </tr>
+
+                        <tr class="collapse" id="@collapseId">
+                            <td colspan="3">
+                                <div class="p-3 rounded" style="background: rgba(0,0,0,.08);">
+                                    <div class="fw-semibold mb-2">Medidas por cuerpo (cm)</div>
+
+                                    @if (p.MedidasCuerpo == null || !p.MedidasCuerpo.Any())
+                                    {
+                                        <div class="text-muted">Este pesaje no tiene medidas registradas.</div>
+                                    }
+                                    else
+                                    {
+                                        <div class="table-responsive">
+                                            <table class="table table-sm align-middle mb-0">
+                                                <thead>
+                                                    <tr>
+                                                        <th style="width:240px;">Parte</th>
+                                                        <th style="width:180px;">Medida</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    @foreach (var m in p.MedidasCuerpo.OrderBy(x => x.Cuerpo?.Nombre ?? ""))
+                                                    {
+                                                        <tr>
+                                                            <td>@(m.Cuerpo?.Nombre ?? "—")</td>
+                                                            <td>@m.Medida.ToString("N2")</td>
+                                                        </tr>
+                                                    }
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <div class="text-muted mt-2" style="font-size:.9rem;">
+            Tip: tocá/clickeá una fila para ver sus medidas por cuerpo.
+        </div>
+    }
+}

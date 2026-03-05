@@ -1,4 +1,4 @@
-/* =========================
+﻿/* =========================
    Paleta (de la imagen) + tokens
    ========================= */
 :root {
@@ -10,11 +10,11 @@
 
     --red: #FE0100; /* primario / acento */
     --red-hover: #DD0001; /* hover/activo */
-    /* Sem�nticos */
-    --bg-page: var(--black); /* fondo de p�gina */
+    /* Semánticos */
+    --bg-page: var(--black); /* fondo de página */
     --bg-card: var(--gray-700); /* fondos de tarjetas/bloques */
-    --bg-soft: #1B1816; /* leve variaci�n para hovers/oscilaciones */
-    --text: var(--white); /* TODA la tipograf�a en blanco */
+    --bg-soft: #1B1816; /* leve variación para hovers/oscilaciones */
+    --text: var(--white); /* TODA la tipografía en blanco */
     --muted: rgba(255,255,255,.7);
     --border: var(--gray-500);
     --link: var(--red);
@@ -131,7 +131,7 @@ a {
     border: 1px solid var(--border);
     border-radius: .5rem;
 }
-/* Lista m�vil de paquetes */
+/* Lista móvil de paquetes */
 .cr-mobile-list {
     display: flex;
     flex-direction: column;
@@ -180,17 +180,26 @@ a {
         color: var(--text) !important; /* que no cambie al hacer hover */
     }
 
-.btn-outline-primary {
-    color: var(--red);
-    border-color: var(--red);
-    background: transparent;
-}
+    .btn-outline-primary {
+        color: var(--red) !important;
+        border-color: var(--red) !important;
+        background: transparent !important;
+    }
 
     .btn-outline-primary:hover {
-        color: var(--white);
-        background: var(--red);
-        border-color: var(--red);
+        color: var(--white) !important;
+        background: var(--red) !important;
+        border-color: var(--red) !important;
     }
+
+        /* ✅ Disabled: mantener rojo, no azul */
+        .btn-outline-primary:disabled,
+        .btn-outline-primary.disabled {
+            color: var(--red) !important;
+            border-color: var(--red) !important;
+            background: transparent !important;
+            opacity: .75 !important;
+        }
 
 .btn-outline-danger {
     color: var(--red-hover);
@@ -223,11 +232,11 @@ a {
     --bs-table-bg: transparent;
 }
 
-    /* Encabezado de tabla: mismo color que el FONDO de la p�gina */
+    /* Encabezado de tabla: mismo color que el FONDO de la página */
     .table thead,
     .cr-table thead {
-        background: var(--bg-page); /* aqu� usamos el fondo global, no el de la card */
-        color: var(--text); /* mismo color que el t�tulo */
+        background: var(--bg-page); /* aquí usamos el fondo global, no el de la card */
+        color: var(--text); /* mismo color que el título */
         border-bottom: 1px solid var(--border);
     }
 
@@ -256,10 +265,10 @@ a {
 .badge.bg-success {
     background-color: #198754 !important;
 }
-/* si usas success, conserva sem�ntica */
+/* si usas success, conserva semántica */
 
 /* ==================
-   Paginaci�n (oscura)
+   Paginación (oscura)
    ================== */
 .pagination .page-link {
     color: var(--white);
@@ -304,11 +313,11 @@ a {
 }
 
 
-/* Grid m�vil 2x2 */
+/* Grid móvil 2x2 */
 .cr-mobile-grid {
     margin-top: .5rem;
 }
-/* Cards de paquetes (grid com�n para m�vil y PC) */
+/* Cards de paquetes (grid común para móvil y PC) */
 .cr-card-paquete {
     background: var(--bg-page);
     border-radius: .75rem;
@@ -349,24 +358,24 @@ a {
     display: none;
 }
 
-/* Cuando la card est� "abierta" muestra las acciones */
+/* Cuando la card está "abierta" muestra las acciones */
 .cr-card-paquete.show-actions .cr-card-actions {
     display: block;
 }
 
-/* Efecto visual cuando est� seleccionada */
+/* Efecto visual cuando está seleccionada */
 .cr-card-paquete.show-actions {
     box-shadow: 0 0 0 1px var(--red);
 }
 
-/* Modal m�s delgado para acciones de paquete */
+/* Modal más delgado para acciones de paquete */
 .cr-modal-narrow {
-    max-width: 380px; /* ajusta el ancho que quieras (360�400 va bien) */
+    max-width: 380px; /* ajusta el ancho que quieras (360–400 va bien) */
 }
 
 @media (max-width: 576px) {
     .cr-modal-narrow {
-        margin: 0 1.5rem; /* deja un poco de margen a los lados en m�vil */
+        margin: 0 1.5rem; /* deja un poco de margen a los lados en móvil */
     }
 }
 
@@ -388,4 +397,343 @@ a {
 .form-floating > textarea.form-control:focus ~ label,
 .form-floating > textarea.form-control:not(:placeholder-shown) ~ label {
     color: var(--muted);
+}
+
+
+/* ==================
+   Tablas (modo oscuro) - FIX HOVER (texto siempre visible)
+   ================== */
+
+/* Variables globales para TODAS las tablas Bootstrap */
+.table,
+.cr-table {
+    color: var(--text);
+    --bs-table-color: var(--text);
+    --bs-table-bg: transparent;
+    /* Bordes */
+    --bs-table-border-color: rgba(255,255,255,.12);
+    /* Striped */
+    --bs-table-striped-color: var(--text);
+    --bs-table-striped-bg: rgba(255,255,255,.04);
+    /* Hover: ACLARA (no oscurece) y mantiene texto claro */
+    --bs-table-hover-color: var(--text);
+    --bs-table-hover-bg: rgba(255,255,255,.06);
+    /* Active/selected */
+    --bs-table-active-color: var(--text);
+    --bs-table-active-bg: rgba(255,255,255,.08);
+}
+
+    /* Encabezado de tabla */
+    .table thead,
+    .cr-table thead {
+        background: var(--bg-page);
+        color: var(--text);
+        border-bottom: 1px solid var(--border);
+    }
+
+        .table thead th,
+        .cr-table thead th {
+            font-weight: 600;
+        }
+
+    /* ? CLAVE: cuando hay hover, forzar que el texto NO se ponga oscuro */
+    .table.table-hover > tbody > tr:hover > *,
+    .cr-table.table-hover > tbody > tr:hover > *,
+    .table.table-hover > tbody > tr:focus-within > *,
+    .cr-table.table-hover > tbody > tr:focus-within > * {
+        color: var(--text) !important;
+    }
+
+    /* ? Evita que tu regla vieja oscurezca el hover (y la reemplaza por un hover suave) */
+    .table tbody tr:hover,
+    .cr-table tbody tr:hover {
+        background: transparent !important; /* Bootstrap ya aplica el hover con variables */
+    }
+
+    /* Asegurar que text-muted sea legible en tablas oscuras */
+    .table .text-muted,
+    .cr-table .text-muted {
+        color: var(--muted) !important;
+    }
+
+/* ==================
+   Tamaño “grande” para tablas (opcional)
+   ================== */
+.cr-table-lg td {
+    font-size: 1.05rem;
+    line-height: 1.35rem;
+}
+
+.cr-table-lg td,
+.cr-table-lg th {
+    padding-top: 1rem !important;
+    padding-bottom: 1rem !important;
+}
+
+/* ==================
+   Historial de pagos (mover desde el <style> del view)
+   ================== */
+.historial-tbody td {
+    font-size: 1.05rem;
+    line-height: 1.35rem;
+}
+
+.historial-row td {
+    padding-top: 1rem !important;
+    padding-bottom: 1rem !important;
+}
+
+/* Detalle expandido */
+.historial-detalle-row > td {
+    color: var(--text) !important;
+}
+
+.historial-detalle-box {
+    background: rgba(0,0,0,.10);
+}
+
+.historial-titulo {
+    color: var(--text) !important;
+    font-weight: 700;
+    margin-bottom: .35rem;
+}
+
+/* text-muted dentro del expandido */
+.historial-detalle-row .text-muted {
+    color: rgba(255,255,255,.78) !important;
+}
+
+/* Tabla interna legible */
+.historial-detalle-row table,
+.historial-detalle-row table td,
+.historial-detalle-row table th {
+    color: var(--text) !important;
+}
+
+/* Checkbox Activo más grande */
+.check-activo-lg {
+    transform: scale(1.70);
+    transform-origin: left center;
+    cursor: pointer;
+    margin-right: .35rem;
+    margin-top: 1rem;
+}
+
+/* Texto un poquito más grande */
+.label-activo-lg {
+    font-size: 1.10rem;
+    cursor: pointer;
+    margin-left: 1rem;
+}
+
+/* Opcional: que no quede “hundido” por el scale */
+.form-check .check-activo-lg {
+    margin-top: .15rem;
+}
+
+/* =========================
+   Calendario Reservas (grande)
+   ========================= */
+/* =========================
+   Calendario Reservas (grande) - MENOS ALTO
+   ========================= */
+.cr-calendar-wrap {
+    border: 1px solid var(--border);
+    border-radius: .75rem;
+    overflow: hidden;
+}
+
+.cr-calendar thead th {
+    text-align: center;
+    padding: .75rem .25rem;
+    font-weight: 700;
+}
+
+.cr-calendar td {
+    border-color: rgba(255,255,255,.08);
+    vertical-align: top;
+}
+
+/* Botón/celda del día */
+/* Botón/celda del día */
+.cr-day-btn {
+    width: 100%;
+    height: 92px;
+    border: 0;
+    background: transparent;
+    color: var(--text);
+    padding: .55rem;
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    transition: background .15s ease, transform .05s ease;
+}
+
+    .cr-day-btn:hover {
+        background: rgba(255,255,255,.06);
+    }
+
+    /* “flash” + efecto al presionar */
+    .cr-day-btn:active {
+        background: rgba(255,255,255,.10);
+        transform: scale(.995);
+    }
+
+    /* =========================
+   Día seleccionado: borde rojo (igual que hora)
+   ========================= */
+    .cr-day-btn.active {
+        background: transparent !important;
+        color: var(--text) !important;
+        box-shadow: inset 0 0 0 2px var(--red) !important;
+    }
+
+        .cr-day-btn.active:hover {
+            background: rgba(255,255,255,.06) !important;
+        }
+
+    .cr-day-btn:focus-visible {
+        outline: none;
+    }
+
+    .cr-day-btn.is-out {
+        opacity: .45;
+    }
+
+    .cr-day-btn.is-blocked,
+    .cr-day-btn:disabled {
+        background: rgba(0,0,0,.18);
+        cursor: not-allowed;
+        opacity: .85;
+    }
+
+    .cr-day-btn.is-blocked:hover,
+    .cr-day-btn:disabled:hover {
+    background: rgba(0,0,0,.18);
+     }
+
+.cr-day-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .5rem;
+}
+
+.cr-day-num {
+    font-size: 1.02rem; /* ✅ un toque menos */
+    font-weight: 800;
+}
+
+.cr-day-badge {
+    font-size: .72rem;
+    padding: .28rem .42rem;
+}
+
+/* “Bottom” lo dejamos para mantener altura pareja */
+.cr-day-bottom {
+    font-size: .80rem;
+    line-height: 1rem;
+    min-height: 1rem; /* ✅ mantiene consistencia sin hacerlo alto */
+}
+
+/* Responsive: en móvil aún más bajo */
+@media (max-width: 576px) {
+    .cr-day-btn {
+        height: 76px; /* ✅ antes 92 */
+        padding: .45rem;
+    }
+
+    .cr-day-num {
+        font-size: .95rem;
+    }
+}
+
+/* =========================
+   Hora seleccionada: borde rojo, sin fondo blanco
+   ========================= */
+.cr-hour-btn.active {
+    background: transparent !important; /* ✅ NO blanco */
+    color: var(--text) !important; /* texto claro */
+    border-color: rgba(255,255,255,.20) !important;
+    box-shadow: inset 0 0 0 2px var(--red) !important; /* ✅ ralla roja */
+}
+
+    /* Evita que Bootstrap cambie el look al hover */
+    .cr-hour-btn.active:hover {
+        background: rgba(255,255,255,.06) !important;
+    }
+
+/* Por si algún estilo global te lo vuelve blanco */
+.cr-hour-btn.btn-outline-light.active,
+.cr-hour-btn.btn-outline-light.active:focus {
+    background: transparent !important;
+    color: var(--text) !important;
+}
+
+/* =========================
+   Botón Reservar: rojo aun deshabilitado
+   ========================= */
+#btnReservar.btn-primary:disabled {
+    background: var(--red) !important; /* rojo normal */
+    border-color: var(--red) !important;
+    color: var(--text) !important;
+    opacity: .75 !important; /* se nota que está deshabilitado */
+    cursor: not-allowed;
+}
+
+/* Cuando ya está habilitado: más encendido */
+#btnReservar.btn-primary:not(:disabled) {
+    background: var(--red-hover) !important; /* rojo más fuerte */
+    border-color: var(--red-hover) !important;
+    opacity: 1 !important;
+}
+
+/* =========================
+   Hora ya reservada por el usuario (verde)
+   ========================= */
+.cr-hour-btn.cr-hour-mine {
+    background: rgba(25,135,84,.20) !important; /* verde suave */
+    border-color: #198754 !important; /* borde verde */
+    box-shadow: inset 0 0 0 2px #198754 !important; /* ralla verde */
+    color: #fff !important;
+    opacity: 1 !important;
+    cursor: default !important;
+}
+
+    .cr-hour-btn.cr-hour-mine:hover {
+        background: rgba(25,135,84,.25) !important;
+    }
+
+
+/* ✅ Botón "Aplicar cambio" (roles) en rojo aunque esté disabled */
+#btnAplicarRol.btn-primary:disabled,
+#btnAplicarRol.btn-primary.disabled {
+    background: var(--red) !important;
+    border-color: var(--red) !important;
+    color: var(--text) !important;
+    opacity: .75 !important;
+    cursor: not-allowed;
+}
+
+/* ✅ Cuando esté habilitado, más encendido */
+#btnAplicarRol.btn-primary:not(:disabled) {
+    background: var(--red-hover) !important;
+    border-color: var(--red-hover) !important;
+    color: var(--text) !important;
+    opacity: 1 !important;
+}
+
+/* ✅ FIX: Inputs readonly en tema oscuro (Bootstrap los pone claros) */
+.form-control[readonly],
+.form-control:read-only {
+    background: var(--bg-page) !important;
+    color: var(--text) !important;
+    border-color: var(--border) !important;
+    opacity: 1 !important;
+}
+
+/* Opcional: cuando no hay usuario seleccionado */
+#usuarioTxt.text-muted {
+    color: var(--muted) !important;
 }

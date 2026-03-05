@@ -1,89 +1,156 @@
 ﻿@model IEnumerable<CrStudioFitnes.Models.Historial>
 
 @{
-    ViewData["Title"] = "Index";
+    ViewData["Title"] = "Historiales";
+
+    var currentIdUsuario = ViewData["CurrentIdUsuario"] as string ?? "";
+    var hasUser = !string.IsNullOrWhiteSpace(currentIdUsuario);
 }
 
-<h1>Index</h1>
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
 
-<p>
-    <a asp-action="Create">Create New</a>
-</p>
-<table class="table">
-    <thead>
-        <tr>
-            <th>
-                @Html.DisplayNameFor(model => model.FechaInicio)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.FechaFin)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Estatura)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Peso)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Edad)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Estado)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Actividad)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Frecuencia)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Objetivo)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Usuario)
-            </th>
-            <th></th>
-        </tr>
-    </thead>
-    <tbody>
-@foreach (var item in Model) {
-        <tr>
-            <td>
-                @Html.DisplayFor(modelItem => item.FechaInicio)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.FechaFin)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.Estatura)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.Peso)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.Edad)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.Estado)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.Actividad)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.Frecuencia)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.Objetivo)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.Usuario.Id)
-            </td>
-            <td>
-                <a asp-action="Edit" asp-route-id="@item.IdHistorial">Edit</a> |
-                <a asp-action="Details" asp-route-id="@item.IdHistorial">Details</a> |
-                <a asp-action="Delete" asp-route-id="@item.IdHistorial">Delete</a>
-            </td>
-        </tr>
+            <div class="card shadow-sm cr-card">
+                <div class="card-body p-4 p-md-5">
+
+                    <!-- Encabezado y botón crear -->
+                    <div class="d-flex flex-wrap align-items-center mb-3">
+                        <div class="text-center flex-grow-1 w-100">
+                            <h1 class="h3 mb-1">@ViewData["Title"]</h1>
+                            <p class="text-muted mb-0">
+                                @if (hasUser)
+                                {
+                                    <text>Historiales del usuario seleccionado.</text>
+                                }
+                                else
+                                {
+                                    <text>No se recibió un usuario.</text>
+                                }
+                            </p>
+                        </div>
+
+                        @if (hasUser)
+                        {
+                            <div class="mt-3 mt-md-0 text-center text-md-end w-100 w-md-auto ms-md-auto">
+                                <a asp-action="Create"
+                                   asp-route-idUsuario="@currentIdUsuario"
+                                   class="btn btn-primary">
+                                    Crear nuevo
+                                </a>
+                            </div>
+                        }
+                    </div>
+
+                    <!-- Tabla -->
+                    @if (hasUser && Model != null && Model.Any())
+                    {
+                        <div class="table-responsive">
+                            <table class="table cr-table table-hover align-middle mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Inicio</th>
+                                        <th>Fin</th>
+                                        <th>Frecuencia</th>
+                                        <th class="text-end">Estatura</th>
+                                        <th class="text-end">Peso</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var item in Model)
+                                    {
+                                        var freqText = item.Frecuencia?.ToString() ?? "—";
+
+                                        var titulo = $"Historial {item.FechaInicio:dd/MM/yyyy}"
+                                        + (item.FechaFin.HasValue ? $" - {item.FechaFin:dd/MM/yyyy}" : "")
+                                        + $" · {freqText}";
+
+                                        <tr class="hist-row"
+                                            style="cursor:pointer;"
+                                            data-id="@item.IdHistorial"
+                                            data-nombre="@titulo">
+                                            <td>@item.FechaInicio.ToString("dd/MM/yyyy")</td>
+                                            <td>@(item.FechaFin.HasValue? item.FechaFin.Value.ToString("dd/MM/yyyy") : "—")</td>
+                                            <td>@freqText</td>
+                                            <td class="text-end">@((item.Estatura.HasValue) ? item.Estatura.Value.ToString("N2") : "—")</td>
+                                            <td class="text-end">@((item.Peso.HasValue) ? item.Peso.Value.ToString("N2") : "—")</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else if (hasUser)
+                    {
+                        <div class="alert alert-info mb-0">
+                            Este usuario no tiene historiales registrados.
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="alert alert-warning mb-0">
+                            Entrá a Historial desde el botón <strong>Historial</strong> del modal de usuarios.
+                        </div>
+                    }
+
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- MODAL DE ACCIONES (Detalles / Borrar) -->
+<div class="modal fade" id="historialModal" tabindex="-1" aria-labelledby="historialModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered cr-modal-narrow">
+        <div class="modal-content cr-card">
+            <div class="modal-header">
+                <h5 class="modal-title" id="historialModalLabel">Acciones del historial</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-2 text-center">
+                    <strong id="modalHistorialNombre"></strong>
+                </p>
+            </div>
+            <div class="modal-footer d-flex flex-column flex-sm-row gap-2">
+                <a id="modalDetailsLink" class="btn btn-outline-light w-100">Detalles</a>
+                <a id="modalDeleteLink" class="btn btn-outline-danger w-100">Borrar</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+
+            // ===== Modal por click en fila =====
+            const modalElement = document.getElementById('historialModal');
+            const modalNombre = document.getElementById('modalHistorialNombre');
+            const detailsLink = document.getElementById('modalDetailsLink');
+            const deleteLink = document.getElementById('modalDeleteLink');
+
+            const detailsBaseUrl = '@Url.Action("Details", "Historial")'; // /Historial/Details
+            const deleteBaseUrl = '@Url.Action("Delete", "Historial")';   // /Historial/Delete
+
+            if (modalElement) {
+                const bsModal = new bootstrap.Modal(modalElement);
+
+                document.querySelectorAll('tr.hist-row[data-id]').forEach(row => {
+                    row.addEventListener('click', () => {
+                        const id = row.getAttribute('data-id');
+                        const nombre = row.getAttribute('data-nombre') || 'Historial';
+
+                        modalNombre.textContent = nombre;
+
+                        detailsLink.href = detailsBaseUrl + '/' + id;
+                        deleteLink.href = deleteBaseUrl + '/' + id;
+
+                        bsModal.show();
+                    });
+                });
+            }
+        });
+    </script>
 }
-    </tbody>
-</table>

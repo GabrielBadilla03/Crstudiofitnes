@@ -9,6 +9,8 @@
 );
 
 
+
+
 GO
 CREATE UNIQUE NONCLUSTERED INDEX [IX_Reservas_IdUsuario_Fecha_IdHora]
     ON [dbo].[Reservas]([IdUsuario] ASC, [Fecha] ASC, [IdHora] ASC);
@@ -17,4 +19,9 @@ CREATE UNIQUE NONCLUSTERED INDEX [IX_Reservas_IdUsuario_Fecha_IdHora]
 GO
 CREATE NONCLUSTERED INDEX [IX_Reservas_IdHora]
     ON [dbo].[Reservas]([IdHora] ASC);
+
+
+GO
+CREATE NONCLUSTERED INDEX [IX_Reservas_Fecha_IdHora]
+    ON [dbo].[Reservas]([Fecha] ASC, [IdHora] ASC);
 

@@ -1,81 +1,99 @@
 ﻿@model CrStudioFitnes.Models.Historial
 
 @{
-    ViewData["Title"] = "Delete";
+    ViewData["Title"] = "Eliminar Historial";
+    var usuario = Model.Usuario;
+    var nombre = usuario != null ? $"{usuario.Nombre} {usuario.Apellidos}".Trim() : "";
+    var cedula = usuario?.Cedula ?? "";
+    var email = usuario?.Email ?? "";
+
+    var tituloUsuario = (!string.IsNullOrWhiteSpace(nombre) ? nombre : "Usuario")
+        + (string.IsNullOrWhiteSpace(cedula) ? "" : $" · {cedula}")
+        + (string.IsNullOrWhiteSpace(email) ? "" : $" · {email}");
 }
 
-<h1>Delete</h1>
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
 
-<h3>Are you sure you want to delete this?</h3>
-<div>
-    <h4>Historial</h4>
-    <hr />
-    <dl class="row">
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.FechaInicio)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.FechaInicio)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.FechaFin)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.FechaFin)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.Estatura)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Estatura)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.Peso)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Peso)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.Edad)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Edad)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.Estado)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Estado)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.Actividad)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Actividad)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.Frecuencia)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Frecuencia)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.Objetivo)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Objetivo)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.Usuario)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Usuario.Id)
-        </dd>
-    </dl>
-    
-    <form asp-action="Delete">
-        <input type="hidden" asp-for="IdHistorial" />
-        <input type="submit" value="Delete" class="btn btn-danger" /> |
-        <a asp-action="Index">Back to List</a>
-    </form>
+            <div class="card shadow-sm cr-card">
+                <div class="card-body p-4 p-md-5">
+
+                    <div class="text-center mb-3">
+                        <h1 class="h3 mb-1">@ViewData["Title"]</h1>
+                        <p class="text-muted mb-0">
+                            Esta acción no se puede deshacer.
+                        </p>
+                    </div>
+
+                    <div class="alert alert-danger">
+                        <strong>¿Seguro que desea eliminar este historial?</strong>
+                        <div class="small mt-1 text-muted">
+                            @tituloUsuario
+                        </div>
+                    </div>
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="cr-card-paquete h-100" style="cursor:default;">
+                                <div class="cr-card-paquete-body">
+                                    <div class="cr-card-title">Fechas</div>
+                                    <div class="cr-card-subtitle">
+                                        <div><span class="text-muted">Inicio:</span> <span class="fw-semibold">@Model.FechaInicio.ToString("dd/MM/yyyy")</span></div>
+                                        <div><span class="text-muted">Fin:</span> <span class="fw-semibold">@((Model.FechaFin.HasValue) ? Model.FechaFin.Value.ToString("dd/MM/yyyy") : "—")</span></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="cr-card-paquete h-100" style="cursor:default;">
+                                <div class="cr-card-paquete-body">
+                                    <div class="cr-card-title">Datos físicos</div>
+                                    <div class="cr-card-subtitle">
+                                        <div><span class="text-muted">Estatura:</span> <span class="fw-semibold">@((Model.Estatura.HasValue) ? Model.Estatura.Value.ToString("N2") : "—")</span></div>
+                                        <div><span class="text-muted">Peso:</span> <span class="fw-semibold">@((Model.Peso.HasValue) ? Model.Peso.Value.ToString("N2") : "—")</span></div>
+                                        <div><span class="text-muted">Edad:</span> <span class="fw-semibold">@((Model.Edad.HasValue) ? Model.Edad.Value.ToString() : "—")</span></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-12">
+                            <div class="cr-card-paquete" style="cursor:default;">
+                                <div class="cr-card-paquete-body">
+                                    <div class="cr-card-title">Información adicional</div>
+                                    <div class="cr-card-subtitle">
+                                        <div><span class="text-muted">Estado:</span> <span class="fw-semibold">@(!string.IsNullOrWhiteSpace(Model.Estado) ? Model.Estado : "—")</span></div>
+                                        <div><span class="text-muted">Actividad:</span> <span class="fw-semibold">@(!string.IsNullOrWhiteSpace(Model.Actividad) ? Model.Actividad : "—")</span></div>
+                                        <div>
+                                            <span class="text-muted">Frecuencia:</span>
+                                            <span class="fw-semibold">@((Model.Frecuencia?.ToString()) ?? "—")</span>
+                                        </div>
+                                        <div><span class="text-muted">Objetivo:</span> <span class="fw-semibold">@(!string.IsNullOrWhiteSpace(Model.Objetivo) ? Model.Objetivo : "—")</span></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-12 d-flex justify-content-between mt-3">
+                            <a asp-action="Index" asp-route-idUsuario="@Model.IdUsuario" class="btn btn-outline-secondary">
+                                Volver
+                            </a>
+
+                            <form asp-action="Delete" method="post" class="m-0">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" asp-for="IdHistorial" />
+                                <button type="submit" class="btn btn-outline-danger">
+                                    Eliminar
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+    </div>
 </div>

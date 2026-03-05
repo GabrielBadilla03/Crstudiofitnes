@@ -17,7 +17,7 @@ namespace CrStudioFitnes.Data.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "8.0.21")
+                .HasAnnotation("ProductVersion", "8.0.23")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -121,6 +121,47 @@ namespace CrStudioFitnes.Data.Migrations
                     b.ToTable("AspNetUsers", (string)null);
                 });
 
+            modelBuilder.Entity("CrStudioFitnes.Models.BloqueoHorario", b =>
+                {
+                    b.Property<int>("IdBloqueoHorario")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("IdBloqueoHorario"));
+
+                    b.Property<bool>("Activo")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("Fecha")
+                        .HasColumnType("date");
+
+                    b.Property<int?>("IdHora")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Motivo")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.HasKey("IdBloqueoHorario");
+
+                    b.HasIndex("Fecha")
+                        .IsUnique()
+                        .HasFilter("[Activo] = 1 AND [Fecha] IS NOT NULL AND [IdHora] IS NULL");
+
+                    b.HasIndex("IdHora")
+                        .IsUnique()
+                        .HasFilter("[Activo] = 1 AND [Fecha] IS NULL AND [IdHora] IS NOT NULL");
+
+                    b.HasIndex("Fecha", "IdHora")
+                        .IsUnique()
+                        .HasFilter("[Activo] = 1 AND [Fecha] IS NOT NULL AND [IdHora] IS NOT NULL");
+
+                    b.ToTable("BloqueosHorarios", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_BloqueosHorarios_FechaOrHora", "[Fecha] IS NOT NULL OR [IdHora] IS NOT NULL");
+                        });
+                });
+
             modelBuilder.Entity("CrStudioFitnes.Models.Cuerpo", b =>
                 {
                     b.Property<int>("IdCuerpo")
@@ -174,8 +215,8 @@ namespace CrStudioFitnes.Data.Migrations
                     b.Property<DateTime>("FechaInicio")
                         .HasColumnType("date");
 
-                    b.Property<int?>("Frecuencia")
-                        .HasColumnType("int");
+                    b.Property<string>("Frecuencia")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("IdUsuario")
                         .IsRequired()
@@ -407,6 +448,8 @@ namespace CrStudioFitnes.Data.Migrations
 
                     b.HasIndex("IdHora");
 
+                    b.HasIndex("Fecha", "IdHora");
+
                     b.HasIndex("IdUsuario", "Fecha", "IdHora")
                         .IsUnique();
 
@@ -548,6 +591,16 @@ namespace CrStudioFitnes.Data.Migrations
                     b.HasKey("UserId", "LoginProvider", "Name");
 
                     b.ToTable("AspNetUserTokens", (string)null);
+                });
+
+            modelBuilder.Entity("CrStudioFitnes.Models.BloqueoHorario", b =>
+                {
+                    b.HasOne("CrStudioFitnes.Models.HoraReserva", "HoraReserva")
+                        .WithMany("BloqueosHorarios")
+                        .HasForeignKey("IdHora")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("HoraReserva");
                 });
 
             modelBuilder.Entity("CrStudioFitnes.Models.Historial", b =>
@@ -725,6 +778,8 @@ namespace CrStudioFitnes.Data.Migrations
 
             modelBuilder.Entity("CrStudioFitnes.Models.HoraReserva", b =>
                 {
+                    b.Navigation("BloqueosHorarios");
+
                     b.Navigation("Reservas");
                 });
 

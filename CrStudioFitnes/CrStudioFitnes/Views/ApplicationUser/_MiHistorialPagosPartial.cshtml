@@ -1,0 +1,76 @@
+﻿@model List<CrStudioFitnes.Models.PagoPaquete>
+
+@if (Model == null || !Model.Any())
+{
+    <div class="alert alert-info mb-0">No tenés pagos registrados.</div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead>
+                <tr>
+                    <th style="width:180px;">Fecha</th>
+                    <th style="width:160px;">Monto</th>
+                    <th>Resumen</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var p in Model)
+                {
+                    var collapseId = $"pago_{p.IdPagoPaquete}";
+                    <tr style="cursor:pointer;"
+                        data-bs-toggle="collapse"
+                        data-bs-target="#@collapseId"
+                        aria-expanded="false"
+                        aria-controls="@collapseId">
+                        <td>@p.Fecha.ToString("dd/MM/yyyy HH:mm")</td>
+                        <td>@p.Monto.ToString("N2")</td>
+                        <td>Pago #@p.IdPagoPaquete</td>
+                    </tr>
+
+                    <tr class="collapse" id="@collapseId">
+                        <td colspan="3">
+                            <div class="p-3 rounded" style="background: rgba(0,0,0,.08);">
+                                @if (p.Detalles == null || !p.Detalles.Any())
+                                {
+                                    <div class="text-muted">Sin detalles registrados.</div>
+                                }
+                                else
+                                {
+                                    <div class="table-responsive">
+                                        <table class="table table-sm align-middle mb-0">
+                                            <thead>
+                                                <tr>
+                                                    <th style="width:140px;">Plan</th>
+                                                    <th style="width:160px;">Lecciones</th>
+                                                    <th style="width:120px;">Pago</th>
+                                                    <th>Detalle</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach (var d in p.Detalles)
+                                                {
+                                                    <tr>
+                                                        <td>@d.CantDias</td>
+                                                        <td>@(d.CantLecciones?.ToString() ?? "—")</td>
+                                                        <td>@d.Pago.ToString("N2")</td>
+                                                        <td>@(string.IsNullOrWhiteSpace(d.Detalle) ? "—" : d.Detalle)</td>
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                }
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <div class="text-muted mt-2" style="font-size:.9rem;">
+        Tip: tocá/clickeá una fila para ver el detalle.
+    </div>
+}

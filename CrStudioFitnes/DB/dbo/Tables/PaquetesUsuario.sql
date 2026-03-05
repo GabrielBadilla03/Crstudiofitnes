@@ -3,11 +3,14 @@
     [IdPaquete]        INT            NOT NULL,
     [IdUsuario]        NVARCHAR (450) NOT NULL,
     [CantLecciones]    INT            NOT NULL,
-    [Fecha]            DATE           NOT NULL,
+    [FechaInicio]      DATE           NOT NULL,
+    [FechaFin]         DATE           DEFAULT ('0001-01-01') NOT NULL,
     CONSTRAINT [PK_PaquetesUsuario] PRIMARY KEY CLUSTERED ([IdPaqueteUsuario] ASC),
     CONSTRAINT [FK_PaquetesUsuario_AspNetUsers_IdUsuario] FOREIGN KEY ([IdUsuario]) REFERENCES [dbo].[AspNetUsers] ([Id]) ON DELETE CASCADE,
     CONSTRAINT [FK_PaquetesUsuario_Paquetes_IdPaquete] FOREIGN KEY ([IdPaquete]) REFERENCES [dbo].[Paquetes] ([IdPaquete])
 );
+
+
 
 
 GO

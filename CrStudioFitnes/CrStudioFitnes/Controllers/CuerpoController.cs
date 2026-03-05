@@ -1,15 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Rendering;
-using Microsoft.EntityFrameworkCore;
-using CrStudioFitnes.Data;
+﻿using CrStudioFitnes.Data;
 using CrStudioFitnes.Models;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using System.Threading.Tasks;
 
 namespace CrStudioFitnes.Controllers
 {
+    [Authorize(Roles = "Administrador,Entrenador")]
     public class CuerpoController : Controller
     {
         private readonly ApplicationDbContext _context;
@@ -22,25 +20,8 @@ namespace CrStudioFitnes.Controllers
         // GET: Cuerpo
         public async Task<IActionResult> Index()
         {
-            return View(await _context.Cuerpos.ToListAsync());
-        }
-
-        // GET: Cuerpo/Details/5
-        public async Task<IActionResult> Details(int? id)
-        {
-            if (id == null)
-            {
-                return NotFound();
-            }
-
-            var cuerpo = await _context.Cuerpos
-                .FirstOrDefaultAsync(m => m.IdCuerpo == id);
-            if (cuerpo == null)
-            {
-                return NotFound();
-            }
-
-            return View(cuerpo);
+            var data = await _context.Cuerpos.AsNoTracking().ToListAsync();
+            return View(data);
         }
 
         // GET: Cuerpo/Create
@@ -50,86 +31,27 @@ namespace CrStudioFitnes.Controllers
         }
 
         // POST: Cuerpo/Create
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create([Bind("IdCuerpo,Nombre,Detalle")] Cuerpo cuerpo)
         {
-            if (ModelState.IsValid)
-            {
-                _context.Add(cuerpo);
-                await _context.SaveChangesAsync();
-                return RedirectToAction(nameof(Index));
-            }
-            return View(cuerpo);
-        }
+            if (!ModelState.IsValid) return View(cuerpo);
 
-        // GET: Cuerpo/Edit/5
-        public async Task<IActionResult> Edit(int? id)
-        {
-            if (id == null)
-            {
-                return NotFound();
-            }
-
-            var cuerpo = await _context.Cuerpos.FindAsync(id);
-            if (cuerpo == null)
-            {
-                return NotFound();
-            }
-            return View(cuerpo);
-        }
-
-        // POST: Cuerpo/Edit/5
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("IdCuerpo,Nombre,Detalle")] Cuerpo cuerpo)
-        {
-            if (id != cuerpo.IdCuerpo)
-            {
-                return NotFound();
-            }
-
-            if (ModelState.IsValid)
-            {
-                try
-                {
-                    _context.Update(cuerpo);
-                    await _context.SaveChangesAsync();
-                }
-                catch (DbUpdateConcurrencyException)
-                {
-                    if (!CuerpoExists(cuerpo.IdCuerpo))
-                    {
-                        return NotFound();
-                    }
-                    else
-                    {
-                        throw;
-                    }
-                }
-                return RedirectToAction(nameof(Index));
-            }
-            return View(cuerpo);
+            _context.Add(cuerpo);
+            await _context.SaveChangesAsync();
+            return RedirectToAction(nameof(Index));
         }
 
         // GET: Cuerpo/Delete/5
         public async Task<IActionResult> Delete(int? id)
         {
-            if (id == null)
-            {
-                return NotFound();
-            }
+            if (id == null) return NotFound();
 
             var cuerpo = await _context.Cuerpos
+                .AsNoTracking()
                 .FirstOrDefaultAsync(m => m.IdCuerpo == id);
-            if (cuerpo == null)
-            {
-                return NotFound();
-            }
+
+            if (cuerpo == null) return NotFound();
 
             return View(cuerpo);
         }
@@ -143,15 +65,10 @@ namespace CrStudioFitnes.Controllers
             if (cuerpo != null)
             {
                 _context.Cuerpos.Remove(cuerpo);
+                await _context.SaveChangesAsync();
             }
 
-            await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
-        }
-
-        private bool CuerpoExists(int id)
-        {
-            return _context.Cuerpos.Any(e => e.IdCuerpo == id);
         }
     }
 }

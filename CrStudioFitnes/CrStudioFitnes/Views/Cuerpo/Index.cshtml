@@ -1,41 +1,70 @@
 ﻿@model IEnumerable<CrStudioFitnes.Models.Cuerpo>
 
 @{
-    ViewData["Title"] = "Index";
+    ViewData["Title"] = "Cuerpos";
 }
 
-<h1>Index</h1>
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="card shadow-sm cr-card">
+                <div class="card-body p-4 p-md-5">
 
-<p>
-    <a asp-action="Create">Create New</a>
-</p>
-<table class="table">
-    <thead>
-        <tr>
-            <th>
-                @Html.DisplayNameFor(model => model.Nombre)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Detalle)
-            </th>
-            <th></th>
-        </tr>
-    </thead>
-    <tbody>
-@foreach (var item in Model) {
-        <tr>
-            <td>
-                @Html.DisplayFor(modelItem => item.Nombre)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.Detalle)
-            </td>
-            <td>
-                <a asp-action="Edit" asp-route-id="@item.IdCuerpo">Edit</a> |
-                <a asp-action="Details" asp-route-id="@item.IdCuerpo">Details</a> |
-                <a asp-action="Delete" asp-route-id="@item.IdCuerpo">Delete</a>
-            </td>
-        </tr>
-}
-    </tbody>
-</table>
+                    <!-- Encabezado + botón crear -->
+                    <div class="d-flex flex-wrap align-items-center mb-3">
+                        <div class="text-center flex-grow-1 w-100">
+                            <h1 class="h3 mb-1">@ViewData["Title"]</h1>
+                            <p class="text-muted mb-0">Listado de cuerpos registrados.</p>
+                        </div>
+
+                        <div class="mt-3 mt-md-0 text-center text-md-end w-100 w-md-auto ms-md-auto">
+                            <a asp-action="Create" class="btn btn-primary">Crear nuevo</a>
+                        </div>
+                    </div>
+
+                    @if (Model == null || !Model.Any())
+                    {
+                        <div class="alert alert-info mb-0">
+                            No hay cuerpos registrados.
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle cr-table cr-table-lg mb-0">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 30%;">Nombre</th>
+                                        <th>Detalle</th>
+                                        <th class="text-end" style="width: 140px;">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var item in Model)
+                                    {
+                                        <tr>
+                                            <td class="fw-semibold">
+                                                @(!string.IsNullOrWhiteSpace(item.Nombre) ? item.Nombre : "Sin nombre")
+                                            </td>
+                                            <td class="text-muted">
+                                                @(!string.IsNullOrWhiteSpace(item.Detalle) ? item.Detalle : "—")
+                                            </td>
+                                            <td class="text-end">
+                                                <a asp-action="Delete"
+                                                   asp-route-id="@item.IdCuerpo"
+                                                   class="btn btn-outline-danger btn-sm">
+                                                    Eliminar
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

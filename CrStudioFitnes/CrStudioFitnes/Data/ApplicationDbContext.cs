@@ -15,6 +15,7 @@ namespace CrStudioFitnes.Data
             : base(options) { }
 
         // DbSets
+        public DbSet<BloqueoHorario> BloqueosHorarios { get; set; } = null!;
         public DbSet<Cuerpo> Cuerpos => Set<Cuerpo>();
         public DbSet<Historial> Historiales => Set<Historial>();
         public DbSet<HoraReserva> HorasReserva => Set<HoraReserva>();
@@ -107,6 +108,9 @@ namespace CrStudioFitnes.Data
                 .HasIndex(r => new { r.IdUsuario, r.Fecha, r.IdHora })
                 .IsUnique();
 
+            modelBuilder.Entity<Reserva>()
+                .HasIndex(r => new { r.Fecha, r.IdHora });
+
             // -------- HoraReserva
             modelBuilder.Entity<HoraReserva>()
                 .Property(h => h.Hora)
@@ -151,11 +155,49 @@ namespace CrStudioFitnes.Data
                 .HasForeignKey(pc => pc.IdPesaje)
                 .OnDelete(DeleteBehavior.Cascade);
 
+            modelBuilder.Entity<Historial>()
+                .Property(h => h.Frecuencia)
+                .HasConversion<string>();
+
             modelBuilder.Entity<PesajeCuerpo>()
                 .HasOne(pc => pc.Cuerpo)
                 .WithMany(c => c.Pesajes)
                 .HasForeignKey(pc => pc.IdCuerpo)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<BloqueoHorario>(e =>
+            {
+                e.ToTable("BloqueosHorarios");
+
+                // Relación opcional con HoraReserva
+                e.HasOne(b => b.HoraReserva)
+                 .WithMany(h => h.BloqueosHorarios)
+                 .HasForeignKey(b => b.IdHora)
+                 .IsRequired(false)
+                 .OnDelete(DeleteBehavior.Restrict);
+
+                // Regla: al menos uno debe venir (Fecha o IdHora). Prohíbe ambos NULL.
+                modelBuilder.Entity<BloqueoHorario>()
+                    .ToTable(tb => tb.HasCheckConstraint(
+                        "CK_BloqueosHorarios_FechaOrHora",
+                        "[Fecha] IS NOT NULL OR [IdHora] IS NOT NULL"
+                    ));
+
+                // Evitar duplicados (SQL Server: índices filtrados)    
+                e.HasIndex(x => x.IdHora)
+                  .IsUnique()
+                  .HasFilter("[Activo] = 1 AND [Fecha] IS NULL AND [IdHora] IS NOT NULL");
+
+                e.HasIndex(x => x.Fecha)
+                 .IsUnique()
+                 .HasFilter("[Activo] = 1 AND [Fecha] IS NOT NULL AND [IdHora] IS NULL");
+
+                e.HasIndex(x => new { x.Fecha, x.IdHora })
+                 .IsUnique()
+                 .HasFilter("[Activo] = 1 AND [Fecha] IS NOT NULL AND [IdHora] IS NOT NULL");
+
+            });
         }
+
     }
 }

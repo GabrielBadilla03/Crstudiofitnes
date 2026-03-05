@@ -4,9 +4,32 @@
 @{
     ViewData["Title"] = "Paquetes";
 
-    var currentBuscar = ViewData["CurrentBuscar"] as string;
-    bool? currentSoloActivos = ViewData["CurrentSoloActivos"] as bool?;
+    var currentBuscar = ViewData["CurrentBuscar"] as string ?? "";
+
+    bool currentSoloActivos = true;
+    var rawSoloActivos = ViewData["CurrentSoloActivos"];
+
+    if (rawSoloActivos is bool b)
+    {
+        currentSoloActivos = b;
+    }
+    else if (rawSoloActivos is string s && bool.TryParse(s, out var parsed))
+    {
+        currentSoloActivos = parsed;
+    }
+    // si viene null u otra cosa, se queda en true
+
+    bool canManage = User.IsInRole("Administrador")
+        || User.IsInRole("Gestor de pagos")
+        || User.IsInRole("GestorPagos");
+
+    bool isViewer = (User.IsInRole("Usuario") || User.IsInRole("Entrenador")) && !canManage;
 }
+
+
+
+
+
 
 <div class="container py-4">
     <div class="row justify-content-center">
@@ -23,16 +46,17 @@
                         </div>
 
                         <!-- Botón: en móvil centrado debajo, en PC a la derecha -->
-                        <div class="mt-3 mt-md-0 text-center text-md-end w-100 w-md-auto ms-md-auto">
-                            <a asp-action="Create" class="btn btn-primary">
-                                Crear nuevo
-                            </a>
-                        </div>
+                        @if (canManage)
+                        {
+                            <div class="mt-3 mt-md-0 text-center text-md-end w-100 w-md-auto ms-md-auto">
+                                <a asp-action="Create" class="btn btn-primary">Crear nuevo</a>
+                            </div>
+                        }
                     </div>
 
                     <!-- Filtros -->
                     <form method="get" class="row g-2 mb-3">
-                        <!-- Buscar: siempre ocupa toda la fila en pantallas pequeñas -->
+                        <!-- Buscar -->
                         <div class="col-12 col-md-6">
                             <input name="buscar"
                                    id="buscar"
@@ -41,38 +65,38 @@
                                    placeholder="Buscar por detalle..." />
                         </div>
 
-                        <!-- Activos: en móvil ocupa 6 columnas (mitad fila), en md 4 -->
-                        <div class="col-6 col-md-4 d-flex align-items-center ">
-                            <div class="form-check ms-2">
-                                <input class="form-check-input check-activos-lg"
-                                       type="checkbox"
-                                       id="soloActivos"
-                                       name="soloActivos"
-                                       value="true"
-                                       @(currentSoloActivos == true ? "checked" : "") />
-                                <label class="form-check-label" for="soloActivos">
-                                    Activos
-                                </label>
+                        @if (canManage)
+                        {
+                            <!-- Para que el checkbox envíe false cuando está desmarcado -->
+                            <input type="hidden" name="soloActivos" value="false" />
+
+                            <div class="col-6 col-md-4 d-flex align-items-center">
+                                <div class="form-check ms-2">
+                                    <input class="form-check-input check-activos-lg"
+                                           type="checkbox"
+                                           id="soloActivos"
+                                           name="soloActivos"
+                                           value="true"
+                                           @(currentSoloActivos ? "checked" : "") />
+                                    <label class="form-check-label" for="soloActivos">Activos</label>
+                                </div>
                             </div>
-                        </div>
-                        <style>
-                            .check-activos-lg {
-                                transform: scale(1.5); /* agranda el check */
-                                transform-origin: center;
-                                cursor: pointer;
-                            }
 
-                                /* Opcional: ajusta un poco el espacio para que no se vea desalineado */
-                                .check-activos-lg + .form-check-label {
-                                    font-size: 0.95rem;
-                                }
-                        </style>
+                            <div class="col-6 col-md-2 d-flex gap-2 align-items-end justify-content-end justify-content-md-start">
+                                <button type="submit" class="btn btn-outline-primary w-100">Filtrar</button>
 
-                        <!-- Botones: en móvil otras 6 columnas (misma fila que "Activos"), en md 2 -->
-                        <div class="col-6 col-md-2 d-flex gap-2 align-items-end justify-content-end justify-content-md-start">
-                            <button type="submit" class="btn btn-outline-primary w-100">Filtrar</button>
-                            <a asp-action="Index" class="btn btn-outline-secondary w-100">Limpiar</a>
-                        </div>
+                                <!-- ✅ Limpiar para Admin/Gestor: reset=true => muestra también inactivos -->
+                                <a asp-action="Index" asp-route-reset="true" class="btn btn-outline-secondary w-100">Limpiar</a>
+                            </div>
+                        }
+                        else
+                        {
+                            <!-- Usuario/Entrenador: sin checkbox ni botón filtrar -->
+                            <div class="col-12 col-md-6 d-flex justify-content-end">
+                                <!-- ✅ Limpiar NO quita el filtro por roles (controller fuerza activos igual) -->
+                                <a asp-action="Index" class="btn btn-outline-secondary">Limpiar</a>
+                            </div>
+                        }
                     </form>
 
 
@@ -88,40 +112,67 @@
                         <div class="row g-3 mt-2">
                             @foreach (var item in Model)
                             {
-                                var nombre = !string.IsNullOrWhiteSpace(item.Detalle)
-                                ? item.Detalle
-                                : "Paquete sin nombre";
+                                var nombre = !string.IsNullOrWhiteSpace(item.Detalle) ? item.Detalle : "Paquete sin nombre";
 
                                 <div class="col-6 col-lg-3">
-                                    <div class="cr-card-paquete h-100"
-                                         data-id="@item.IdPaquete"
-                                         data-nombre="@nombre">
-                                        <div class="cr-card-paquete-body">
-                                            <div class="cr-card-title">
-                                                @nombre
-                                            </div>
 
-                                            <div class="cr-card-subtitle">
-                                                @item.CantDias<br />
-                                                @item.CantLecciones lecciones
-                                            </div>
+                                    @if (canManage)
+                                    {
+                                        <div class="cr-card-paquete h-100 cr-card-paquete-click"
+                                             data-id="@item.IdPaquete"
+                                             data-nombre="@nombre">
+                                            <div class="cr-card-paquete-body">
+                                                <div class="cr-card-title">@nombre</div>
 
-                                            <div class="cr-card-price">
-                                                ₡@item.Pago.ToString("N0")
-                                            </div>
+                                                <div class="cr-card-subtitle">
+                                                    @item.CantDias<br />
+                                                    @item.CantLecciones lecciones
+                                                </div>
 
-                                            <div class="mt-1">
-                                                @if (item.Activo)
-                                                {
-                                                    <span class="badge bg-success">Activo</span>
-                                                }
-                                                else
-                                                {
-                                                    <span class="badge bg-secondary">Inactivo</span>
-                                                }
+                                                <div class="cr-card-price">₡@item.Pago.ToString("N0")</div>
+
+                                                <div class="mt-1">
+                                                    @if (item.Activo)
+                                                    {
+                                                        <span class="badge bg-success">Activo</span>
+                                                    }
+                                                    else
+                                                    {
+
+                                                        <span class="badge bg-secondary">Inactivo</span>
+                                                    }
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="cr-card-paquete h-100">
+                                            <div class="cr-card-paquete-body">
+                                                <div class="cr-card-title">@nombre</div>
+
+                                                <div class="cr-card-subtitle">
+                                                    @item.CantDias<br />
+                                                    @item.CantLecciones lecciones
+                                                </div>
+
+                                                <div class="cr-card-price">₡@item.Pago.ToString("N0")</div>
+
+                                                <div class="mt-1">
+                                                    @if (item.Activo)
+                                                    {
+                                                        <span class="badge bg-success">Activo</span>
+                                                    }
+                                                    else
+                                                    {
+
+                                                        <span class="badge bg-secondary">Inactivo</span>
+                                                    }
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+
                                 </div>
                             }
                         </div>
@@ -170,63 +221,60 @@
     </div>
 </div>
 
-<!-- MODAL DE ACCIONES -->
-<div class="modal fade" id="paqueteModal" tabindex="-1" aria-labelledby="paqueteModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered cr-modal-narrow">
-        <div class="modal-content cr-card">
-            <div class="modal-header">
-                <h5 class="modal-title" id="paqueteModalLabel">Acciones del paquete</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-            </div>
-            <div class="modal-body">
-                <p class="mb-2 text-center">
-                    <strong id="modalPaqueteNombre"></strong>
-                </p>
+@if (canManage)
+{
+    <!-- MODAL DE ACCIONES -->
+    <div class="modal fade" id="paqueteModal" tabindex="-1" aria-labelledby="paqueteModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered cr-modal-narrow">
+            <div class="modal-content cr-card">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="paqueteModalLabel">Acciones del paquete</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-2 text-center">
+                        <strong id="modalPaqueteNombre"></strong>
+                    </p>
 
-            </div>
-            <div class="modal-footer d-flex flex-column flex-sm-row gap-2">
-                <a id="modalEditLink" class="btn btn-primary w-100">Editar</a>
-                <a id="modalDetailsLink" class="btn btn-outline-light w-100">Detalles</a>
-                <a id="modalDeleteLink" class="btn btn-outline-danger w-100">Borrar</a>
+                </div>
+                <div class="modal-footer d-flex flex-column flex-sm-row gap-2">
+                    <a id="modalEditLink" class="btn btn-primary w-100">Editar</a>
+                    <a id="modalDeleteLink" class="btn btn-outline-danger w-100">Borrar</a>
+                </div>
             </div>
         </div>
     </div>
-</div>
+}
 
 @section Scripts {
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            const cards = document.querySelectorAll('.cr-card-paquete');
-            const modalElement = document.getElementById('paqueteModal');
-            const modalNombre = document.getElementById('modalPaqueteNombre');
-            const editLink = document.getElementById('modalEditLink');
-            const detailsLink = document.getElementById('modalDetailsLink');
-            const deleteLink = document.getElementById('modalDeleteLink');
+    @if (canManage)
+    {
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                const cards = document.querySelectorAll('.cr-card-paquete-click');
+                const modalElement = document.getElementById('paqueteModal');
+                const modalNombre = document.getElementById('modalPaqueteNombre');
+                const editLink = document.getElementById('modalEditLink');
+                const deleteLink = document.getElementById('modalDeleteLink');
 
-            // Rutas base generadas por ASP.NET Core
-            const editBaseUrl = '@Url.Action("Edit", "Paquetes")';       // /Paquetes/Edit
-            const detailsBaseUrl = '@Url.Action("Details", "Paquetes")'; // /Paquetes/Details
-            const deleteBaseUrl = '@Url.Action("Delete", "Paquetes")';   // /Paquetes/Delete
+                const editBaseUrl = '@Url.Action("Edit", "Paquetes")';
+                const deleteBaseUrl = '@Url.Action("Delete", "Paquetes")';
 
-            const bsModal = new bootstrap.Modal(modalElement);
+                const bsModal = new bootstrap.Modal(modalElement);
 
-            cards.forEach(function (card) {
-                card.addEventListener('click', function () {
-                    const id = card.getAttribute('data-id');
-                    const nombre = card.getAttribute('data-nombre') || 'Paquete';
+                cards.forEach(function (card) {
+                    card.addEventListener('click', function () {
+                        const id = card.getAttribute('data-id');
+                        const nombre = card.getAttribute('data-nombre') || 'Paquete';
 
-                    // Setear texto
-                    modalNombre.textContent = nombre;
+                        modalNombre.textContent = nombre;
+                        editLink.href = editBaseUrl + '/' + id;
+                        deleteLink.href = deleteBaseUrl + '/' + id;
 
-                    // Construir URLs con el id seleccionado
-                    editLink.href = editBaseUrl + '/' + id;
-                    detailsLink.href = detailsBaseUrl + '/' + id;
-                    deleteLink.href = deleteBaseUrl + '/' + id;
-
-                    // Mostrar modal
-                    bsModal.show();
+                        bsModal.show();
+                    });
                 });
             });
-        });
-    </script>
+        </script>
+    }
 }

@@ -8,11 +8,13 @@
     [Edad]        INT            NULL,
     [Estado]      NVARCHAR (50)  NULL,
     [Actividad]   NVARCHAR (50)  NULL,
-    [Frecuencia]  INT            NULL,
+    [Frecuencia]  NVARCHAR (MAX) NULL,
     [Objetivo]    NVARCHAR (120) NULL,
     CONSTRAINT [PK_Historiales] PRIMARY KEY CLUSTERED ([IdHistorial] ASC),
     CONSTRAINT [FK_Historiales_AspNetUsers_IdUsuario] FOREIGN KEY ([IdUsuario]) REFERENCES [dbo].[AspNetUsers] ([Id]) ON DELETE CASCADE
 );
+
+
 
 
 GO

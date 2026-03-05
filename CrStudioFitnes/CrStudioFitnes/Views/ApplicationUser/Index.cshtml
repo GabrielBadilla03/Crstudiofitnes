@@ -8,6 +8,14 @@
     bool? currentSoloActivos = ViewData["CurrentSoloActivos"] as bool?;
 
     var now = DateTimeOffset.UtcNow;
+
+    // ===== Permisos según el controller =====
+    bool canDetails = User.IsInRole("Gestor de Pagos") || User.IsInRole("Administrador") || User.IsInRole("Entrenador");
+    bool canHistorialPagos = User.IsInRole("Administrador") || User.IsInRole("Entrenador");
+
+    // Historial (fitness): tu HistorialController no tiene [Authorize] en lo que pegaste.
+    // Si luego lo restringís, ajustás esta condición.
+    bool canHistorialFitness = User.IsInRole("Administrador") || User.IsInRole("Entrenador"); ;
 }
 
 <div class="container py-4">
@@ -181,10 +189,18 @@
                 </p>
             </div>
             <div class="modal-footer d-flex flex-column flex-sm-row gap-2">
-                <a id="modalEditLink" class="btn btn-primary w-100">Editar</a>
-                <a id="modalDetailsLink" class="btn btn-outline-light w-100">Detalles</a>
-                <a id="modalDeleteLink" class="btn btn-outline-danger w-100">Borrar</a>
+                @if (canDetails)
+                {
+                    <a id="modalDetailsLink" class="btn btn-outline-light w-100">Detalles</a>
+                }
+
+                @if (canHistorialFitness)
+                {
+                    <a id="modalHistorialLink" class="btn btn-primary w-100">Historial de Pesaje</a>
+                }
+
             </div>
+
         </div>
     </div>
 </div>
@@ -195,13 +211,13 @@
             const cards = document.querySelectorAll('.cr-card-usuario');
             const modalElement = document.getElementById('usuarioModal');
             const modalNombre = document.getElementById('modalUsuarioNombre');
-            const editLink = document.getElementById('modalEditLink');
-            const detailsLink = document.getElementById('modalDetailsLink');
-            const deleteLink = document.getElementById('modalDeleteLink');
 
-            const editBaseUrl = '@Url.Action("Edit", "ApplicationUser")';
+            const detailsLink = document.getElementById('modalDetailsLink');
+            const historialLink = document.getElementById('modalHistorialLink');
+
             const detailsBaseUrl = '@Url.Action("Details", "ApplicationUser")';
-            const deleteBaseUrl = '@Url.Action("Delete", "ApplicationUser")';
+            const historialBaseUrl = '@Url.Action("Index", "Historial")';
+            const historialPagosBaseUrl = '@Url.Action("HistorialPagos", "ApplicationUser")';
 
             const bsModal = new bootstrap.Modal(modalElement);
 
@@ -212,9 +228,16 @@
 
                     modalNombre.textContent = nombre;
 
-                    editLink.href = editBaseUrl + '/' + id;
-                    detailsLink.href = detailsBaseUrl + '/' + id;
-                    deleteLink.href = deleteBaseUrl + '/' + id;
+                    // /ApplicationUser/Details/{id}
+                    if (detailsLink) {
+                        detailsLink.href = detailsBaseUrl + '/' + id;
+                    }
+
+                    // /Historial?idUsuario={id}
+                    if (historialLink) {
+                        historialLink.href = historialBaseUrl + '?idUsuario=' + encodeURIComponent(id);
+                    }
+
 
                     bsModal.show();
                 });

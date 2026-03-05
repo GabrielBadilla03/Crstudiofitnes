@@ -21,5 +21,8 @@ namespace CrStudioFitnes.Models
 
         // Nav
         public ICollection<Reserva> Reservas { get; set; } = new List<Reserva>();
+
+        public ICollection<BloqueoHorario> BloqueosHorarios { get; set; } = new List<BloqueoHorario>();
+
     }
 }

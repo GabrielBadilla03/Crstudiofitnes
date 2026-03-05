@@ -1,47 +1,461 @@
-﻿@model IEnumerable<CrStudioFitnes.Models.Reserva>
+﻿@model CrStudioFitnes.Views.Reservas.ReservasCalendarioVM
+@using System.Globalization
 
 @{
-    ViewData["Title"] = "Index";
+    ViewData["Title"] = "Reservas";
+    var cultura = CultureInfo.GetCultureInfo("es-CR");
+
+    // navegación
+    var current = new DateTime(Model.Year, Model.Month, 1);
+    var prev = current.AddMonths(-1);
+    var next = current.AddMonths(1);
+
+    string[] dias = new[] { "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom" };
 }
 
-<h1>Index</h1>
+<div class="container-fluid py-3">
+    <div class="row justify-content-center">
+        <div class="col-12 col-xxl-10">
 
-<p>
-    <a asp-action="Create">Create New</a>
-</p>
-<table class="table">
-    <thead>
-        <tr>
-            <th>
-                @Html.DisplayNameFor(model => model.Fecha)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Usuario)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.HoraReserva)
-            </th>
-            <th></th>
-        </tr>
-    </thead>
-    <tbody>
-@foreach (var item in Model) {
-        <tr>
-            <td>
-                @Html.DisplayFor(modelItem => item.Fecha)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.Usuario.Id)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.HoraReserva.IdHora)
-            </td>
-            <td>
-                <a asp-action="Edit" asp-route-id="@item.IdReserva">Edit</a> |
-                <a asp-action="Details" asp-route-id="@item.IdReserva">Details</a> |
-                <a asp-action="Delete" asp-route-id="@item.IdReserva">Delete</a>
-            </td>
-        </tr>
+            <div class="card shadow-sm cr-card">
+                <div class="card-body p-3 p-md-4">
+
+                    <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+                        <div class="text-center flex-grow-1 w-100">
+                            <h1 class="h3 mb-1">Reservas</h1>
+                            <p class="text-muted mb-0">Seleccioná un día y luego una hora disponible.</p>
+                        </div>
+
+                        <div class="d-flex gap-2 ms-auto">
+                            <a class="btn btn-outline-secondary"
+                               asp-action="Index"
+                               asp-route-year="@prev.Year"
+                               asp-route-month="@prev.Month">
+                                ← @cultura.DateTimeFormat.GetMonthName(prev.Month)
+                            </a>
+
+                            <div class="btn btn-outline-light disabled">
+                                @Model.MonthLabel
+                            </div>
+
+                            <a class="btn btn-outline-secondary"
+                               asp-action="Index"
+                               asp-route-year="@next.Year"
+                               asp-route-month="@next.Month">
+                                @cultura.DateTimeFormat.GetMonthName(next.Month) →
+                            </a>
+                        </div>
+                    </div>
+
+                    @if (TempData["Error"] != null)
+                    {
+                        <div class="alert alert-danger">@TempData["Error"]</div>
+                    }
+                    @if (TempData["Ok"] != null)
+                    {
+                        <div class="alert alert-info">@TempData["Ok"]</div>
+                    }
+
+                    <div class="table-responsive cr-calendar-wrap">
+                        <table class="table cr-table cr-calendar mb-0">
+                            <thead>
+                                <tr>
+                                    @foreach (var d in dias)
+                                    {
+                                        <th class="text-center">@d</th>
+                                    }
+                                </tr>
+                            </thead>
+
+                            <tbody>
+                                @for (int week = 0; week < 6; week++)
+                                {
+                                    <tr>
+                                        @for (int dow = 0; dow < 7; dow++)
+                                        {
+                                            var cell = Model.Days[week * 7 + dow];
+
+                                            var iso = cell.Date.ToString("yyyy-MM-dd");
+                                            var dayNumber = cell.Date.Day;
+
+                                            var classes = "cr-day-btn";
+                                            if (!cell.IsCurrentMonth) classes += " is-out";
+                                            if (cell.IsToday) classes += " is-today";
+                                            if (cell.IsBlockedDay) classes += " is-blocked";
+
+                                            <td class="p-0">
+                                                <button type="button"
+                                                        class="@classes"
+                                                        data-date="@iso"
+                                                        @(cell.IsBlockedDay ? "disabled" : "")>
+                                                    <div class="cr-day-top">
+                                                        <span class="cr-day-num">@dayNumber</span>
+                                                    </div>
+
+                                                    @* Sin texto de bloqueado. Esto es solo para mantener altura consistente *@
+                                                    <div class="cr-day-bottom"></div>
+                                                </button>
+
+                                            </td>
+                                        }
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="text-muted mt-2" style="font-size:.9rem;">
+                        Tip: el número verde es cuántas reservas existen ese día.
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- MODAL HORAS -->
+<div class="modal fade" id="horasModal" tabindex="-1" aria-labelledby="horasModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content cr-card">
+            <div class="modal-header">
+                <h5 class="modal-title" id="horasModalLabel">Seleccionar hora</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+
+            <div class="modal-body">
+                <div class="text-center mb-2">
+                    <div class="fw-semibold" id="modalFechaTxt"></div>
+                    <div class="text-muted small" id="modalAyudaTxt">Elegí una hora disponible.</div>
+                </div>
+
+                <div id="modalHorasContainer" class="row g-2 mt-2">
+                    <!-- aquí se renderizan botones -->
+                </div>
+
+                <div id="modalMsg" class="text-center text-muted small mt-3"></div>
+
+            </div>
+
+            @{
+                var puedeConsultar = User.IsInRole("Administrador") || User.IsInRole("Entrenador");
+            }
+
+            <div class="modal-footer d-flex flex-column flex-sm-row gap-2">
+                <form id="formReservar" method="post" asp-action="CrearDesdeCalendario" class="w-100">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="date" id="inputDate" />
+                    <input type="hidden" name="idHora" id="inputHora" />
+                    <button type="submit" id="btnReservar" class="btn btn-primary w-100" disabled>
+                        Reservar
+                    </button>
+                </form>
+
+                @if (puedeConsultar)
+                {
+                    <button type="button" id="btnConsultar" class="btn btn-outline-primary w-100" disabled>
+                        Consultar reservas
+                    </button>
+                }
+
+                <button type="button" class="btn btn-outline-secondary w-100" data-bs-dismiss="modal">
+                    Cancelar
+                </button>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL RESERVAS (se abre encima del modal de horas) -->
+<div class="modal fade" id="reservasModal" tabindex="-1" aria-labelledby="reservasModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+        <div class="modal-content cr-card">
+            <div class="modal-header">
+                <h5 class="modal-title" id="reservasModalLabel">Reservas</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+
+            <div class="modal-body">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <div class="fw-semibold" id="reservasSubTitle">Cargando...</div>
+                    <span class="badge bg-secondary" id="reservasTotal">0</span>
+                </div>
+
+                <div id="reservasLoading" class="text-center text-muted py-4">
+                    Cargando reservas...
+                </div>
+
+                <div id="reservasEmpty" class="text-center text-muted py-4 d-none">
+                    No hay reservas para esta hora.
+                </div>
+
+                <div class="table-responsive d-none" id="reservasTableWrap">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Nombre</th>
+                                <th>Email</th>
+                                <th>Teléfono</th>
+                            </tr>
+                        </thead>
+                        <tbody id="reservasTbody">
+                        </tbody>
+                    </table>
+                </div>
+
+                <div id="reservasError" class="alert alert-danger d-none mt-3"></div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+
+            // ✅ stacking (recomendado)
+            document.addEventListener('show.bs.modal', function (event) {
+                const openModals = document.querySelectorAll('.modal.show').length;
+                const zIndex = 1050 + (openModals * 20);
+                event.target.style.zIndex = zIndex;
+
+                setTimeout(() => {
+                    const backdrops = document.querySelectorAll('.modal-backdrop:not(.modal-stack)');
+                    const lastBackdrop = backdrops[backdrops.length - 1];
+                    if (lastBackdrop) {
+                        lastBackdrop.style.zIndex = zIndex - 1;
+                        lastBackdrop.classList.add('modal-stack');
+                    }
+                });
+            });
+
+            document.addEventListener('hidden.bs.modal', function () {
+                if (document.querySelectorAll('.modal.show').length > 0) {
+                    document.body.classList.add('modal-open');
+                }
+            });
+
+            const dayButtons = document.querySelectorAll('.cr-day-btn:not([disabled])');
+            const modalEl = document.getElementById('horasModal');
+            const bsModal = new bootstrap.Modal(modalEl);
+
+            const fechaTxt = document.getElementById('modalFechaTxt');
+            const ayudaTxt = document.getElementById('modalAyudaTxt');
+            const container = document.getElementById('modalHorasContainer');
+            const msg = document.getElementById('modalMsg');
+
+            const inputDate = document.getElementById('inputDate');
+            const inputHora = document.getElementById('inputHora');
+            const btnReservar = document.getElementById('btnReservar');
+
+            // ✅ Admin/Entrenador
+            const puedeConsultar = @((User.IsInRole("Administrador") || User.IsInRole("Entrenador")).ToString().ToLower());
+            const btnConsultar = document.getElementById('btnConsultar');
+
+            // ✅ Modal Reservas
+            const reservasModalEl = document.getElementById('reservasModal');
+            const bsReservasModal = reservasModalEl ? new bootstrap.Modal(reservasModalEl) : null;
+
+            const reservasModalLabel = document.getElementById('reservasModalLabel');
+            const reservasSubTitle = document.getElementById('reservasSubTitle');
+            const reservasTotal = document.getElementById('reservasTotal');
+            const reservasLoading = document.getElementById('reservasLoading');
+            const reservasEmpty = document.getElementById('reservasEmpty');
+            const reservasTableWrap = document.getElementById('reservasTableWrap');
+            const reservasTbody = document.getElementById('reservasTbody');
+            const reservasError = document.getElementById('reservasError');
+
+            let selectedHoraLabel = ''; // para mostrar en el modal de reservas
+
+            function resetSelection() {
+                inputHora.value = '';
+                selectedHoraLabel = '';
+                btnReservar.disabled = true;
+                if (btnConsultar) btnConsultar.disabled = true;
+                container.querySelectorAll('button[data-id]').forEach(x => x.classList.remove('active'));
+            }
+
+            function setReservasUIState(state) {
+                // state: 'loading' | 'empty' | 'table' | 'error'
+                reservasLoading.classList.add('d-none');
+                reservasEmpty.classList.add('d-none');
+                reservasTableWrap.classList.add('d-none');
+                reservasError.classList.add('d-none');
+
+                if (state === 'loading') reservasLoading.classList.remove('d-none');
+                if (state === 'empty') reservasEmpty.classList.remove('d-none');
+                if (state === 'table') reservasTableWrap.classList.remove('d-none');
+                if (state === 'error') reservasError.classList.remove('d-none');
+            }
+
+            async function consultarReservasModal() {
+                if (!puedeConsultar || !bsReservasModal) return;
+
+                const iso = inputDate.value;
+                const idHora = inputHora.value;
+
+                if (!iso || !idHora) return;
+
+                // Abrir modal arriba y mostrar loading
+                reservasModalLabel.textContent = 'Reservas';
+                reservasSubTitle.textContent = `Fecha: ${iso} | Hora: ${selectedHoraLabel || idHora}`;
+                reservasTotal.textContent = '0';
+                reservasTbody.innerHTML = '';
+                reservasError.textContent = '';
+                setReservasUIState('loading');
+
+                bsReservasModal.show();
+
+                try {
+                    const url = '/Reservas/GetReservasPorHora?date=' + encodeURIComponent(iso) + '&idHora=' + encodeURIComponent(idHora);
+                    const res = await fetch(url);
+                    if (!res.ok) throw new Error('No se pudieron consultar las reservas.');
+
+                    const data = await res.json();
+
+                    const total = data.total || 0;
+                    const horaEtiqueta = data.horaEtiqueta || selectedHoraLabel || '';
+                    const reservas = data.reservas || [];
+
+                    reservasSubTitle.textContent = `Fecha: ${data.date || iso} | Hora: ${horaEtiqueta}`;
+                    reservasTotal.textContent = total.toString();
+
+                    reservasTbody.innerHTML = '';
+
+                    if (reservas.length === 0) {
+                        setReservasUIState('empty');
+                        return;
+                    }
+
+                    reservas.forEach(r => {
+                        const tr = document.createElement('tr');
+
+                        const tdNombre = document.createElement('td');
+                        tdNombre.textContent = r.nombre || 'Usuario';
+
+                        const tdEmail = document.createElement('td');
+                        tdEmail.textContent = r.email || '';
+
+                        const tdTel = document.createElement('td');
+                        tdTel.textContent = r.telefono || '';
+
+                        tr.appendChild(tdNombre);
+                        tr.appendChild(tdEmail);
+                        tr.appendChild(tdTel);
+
+                        reservasTbody.appendChild(tr);
+                    });
+
+                    setReservasUIState('table');
+
+                } catch (e) {
+                    reservasError.textContent = (e && e.message) ? e.message : 'Error consultando reservas.';
+                    setReservasUIState('error');
+                }
+            }
+
+            if (btnConsultar) {
+                btnConsultar.addEventListener('click', consultarReservasModal);
+            }
+
+            // ============================
+            // Cargar horas al elegir día
+            // ============================
+            dayButtons.forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    document.querySelectorAll('.cr-day-btn').forEach(x => x.classList.remove('active'));
+                    btn.classList.add('active');
+
+                    const iso = btn.getAttribute('data-date');
+                    inputDate.value = iso;
+                    resetSelection();
+
+                    const parts = iso.split('-'); // yyyy-mm-dd
+                    const d = new Date(parts[0], parts[1] - 1, parts[2]);
+                    fechaTxt.textContent = d.toLocaleDateString('es-CR', {
+                        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+                    });
+
+                    ayudaTxt.textContent = 'Cargando horas...';
+                    msg.textContent = '';
+                    container.innerHTML = '';
+
+                    bsModal.show();
+
+                    try {
+                        const res = await fetch('/Reservas/GetHorasDisponibles?date=' + encodeURIComponent(iso));
+                        if (!res.ok) throw new Error('Error consultando horas.');
+                        const data = await res.json();
+
+                        ayudaTxt.textContent = 'Elegí una hora disponible.';
+                        resetSelection();
+
+                        const horas = data.horas || [];
+                        if (horas.length === 0) {
+                            msg.textContent = 'No hay horas disponibles para este día.';
+                            return;
+                        }
+
+                        horas.forEach(h => {
+                            const col = document.createElement('div');
+                            col.className = 'col-6';
+
+                            const b = document.createElement('button');
+                            b.type = 'button';
+
+                            const baseClass = h.disponible ? 'btn-outline-light' : 'btn-outline-secondary';
+                            b.className = 'btn w-100 cr-hour-btn ' + baseClass;
+
+                            b.textContent = h.etiqueta;
+                            b.setAttribute('data-id', h.idHora);
+
+                            if (!h.disponible) b.classList.add('cr-hour-disabled');
+
+                            // ✅ si NO es admin/entrenador: mantener comportamiento original
+                            if (!puedeConsultar) {
+                                if (h.esMia) {
+                                    b.classList.add('cr-hour-mine');
+                                    b.disabled = true;
+                                    b.title = 'Ya reservaste esta hora';
+                                } else {
+                                    b.disabled = !h.disponible;
+                                }
+                            } else {
+                                // ✅ admin/entrenador puede seleccionar para consultar (aunque esté llena/bloqueada)
+                                b.disabled = false;
+                            }
+
+                            b.addEventListener('click', () => {
+                                container.querySelectorAll('button[data-id]').forEach(x => x.classList.remove('active'));
+                                b.classList.add('active');
+
+                                inputHora.value = h.idHora;
+                                selectedHoraLabel = h.etiqueta;
+
+                                // reservar solo si realmente disponible y no es mía
+                                btnReservar.disabled = !(h.disponible && !h.esMia);
+
+                                if (btnConsultar) btnConsultar.disabled = false;
+                            });
+
+                            col.appendChild(b);
+                            container.appendChild(col);
+                        });
+
+                    } catch (e) {
+                        ayudaTxt.textContent = 'Error';
+                        msg.textContent = (e && e.message) ? e.message : 'Error al cargar horas.';
+                    }
+                });
+            });
+        });
+    </script>
+
 }
-    </tbody>
-</table>

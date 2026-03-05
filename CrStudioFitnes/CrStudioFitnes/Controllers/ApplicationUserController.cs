@@ -8,17 +8,21 @@ using SIGE.Helpers;
 
 namespace CrStudioFitnes.Controllers
 {
+
     public class ApplicationUserController : Controller
     {
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly RoleManager<IdentityRole> _roleManager;
         private readonly ApplicationDbContext _db;
 
-        public ApplicationUserController(UserManager<ApplicationUser> userManager, ApplicationDbContext db)
+        public ApplicationUserController(UserManager<ApplicationUser> userManager, ApplicationDbContext db, RoleManager<IdentityRole> roleManager)
         {
             _userManager = userManager;
             _db = db;
+            _roleManager = roleManager;
         }
 
+        [Authorize(Roles = "Gestor de Pagos,Administrador,Entrenador")]
         // GET: ApplicationUser
         public async Task<IActionResult> Index(int? pageNumber, string? buscar, bool? soloActivos)
         {
@@ -58,6 +62,7 @@ namespace CrStudioFitnes.Controllers
             return View(model);
         }
 
+        [Authorize(Roles = "Gestor de Pagos,Administrador,Entrenador")]
         // GET: ApplicationUser/Details/{id}
         public async Task<IActionResult> Details(string id)
         {
@@ -73,7 +78,7 @@ namespace CrStudioFitnes.Controllers
             if (user == null)
                 return NotFound();
 
-            // paquetes para el modal
+            // paquetes para el modal (ya lo tenías)
             ViewBag.PaquetesDisponibles = await _db.Paquetes
                 .AsNoTracking()
                 .Where(p => p.Activo)
@@ -81,13 +86,107 @@ namespace CrStudioFitnes.Controllers
                 .ThenBy(p => p.Pago)
                 .ToListAsync();
 
+            // ✅ ROLES para el modal de roles
+            var rolesUsuario = (await _userManager.GetRolesAsync(user)).ToList();
+
+            var todosRoles = await _roleManager.Roles
+                .AsNoTracking()
+                .Select(r => r.Name!)
+                .Where(n => n != null && n != "")
+                .OrderBy(n => n)
+                .ToListAsync();
+
+            var rolesNoTiene = todosRoles
+                .Except(rolesUsuario, StringComparer.OrdinalIgnoreCase)
+                .OrderBy(x => x)
+                .ToList();
+
+            ViewBag.RolesUsuario = rolesUsuario;
+            ViewBag.RolesNoTiene = rolesNoTiene;
+
             return View(user);
         }
+
+        [Authorize(Roles = "Administrador")]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        // opcional (recomendado): solo admin gestiona roles
+        //[Authorize(Roles = "Administrador")]
+        public async Task<IActionResult> GestionarRoles(string idUsuario, string? addRole, string? removeRole)
+        {
+            if (string.IsNullOrWhiteSpace(idUsuario))
+                return NotFound();
+
+            var user = await _userManager.FindByIdAsync(idUsuario);
+            if (user == null)
+                return NotFound();
+
+            bool wantsAdd = !string.IsNullOrWhiteSpace(addRole);
+            bool wantsRemove = !string.IsNullOrWhiteSpace(removeRole);
+
+            // ✅ regla: exactamente UNO
+            if (wantsAdd == wantsRemove) // ambos true o ambos false
+            {
+                TempData["ErrorRoles"] = "Debés seleccionar un rol para agregar O un rol para quitar (no ambos).";
+                return RedirectToAction(nameof(Details), new { id = idUsuario });
+            }
+
+            if (wantsAdd)
+            {
+                addRole = addRole!.Trim();
+
+                if (!await _roleManager.RoleExistsAsync(addRole))
+                {
+                    TempData["ErrorRoles"] = $"El rol '{addRole}' no existe.";
+                    return RedirectToAction(nameof(Details), new { id = idUsuario });
+                }
+
+                var yaLoTiene = await _userManager.IsInRoleAsync(user, addRole);
+                if (!yaLoTiene)
+                {
+                    var res = await _userManager.AddToRoleAsync(user, addRole);
+                    if (!res.Succeeded)
+                    {
+                        TempData["ErrorRoles"] = string.Join(" | ", res.Errors.Select(e => e.Description));
+                        return RedirectToAction(nameof(Details), new { id = idUsuario });
+                    }
+                }
+
+                TempData["OkRoles"] = $"Rol agregado: {addRole}";
+                return RedirectToAction(nameof(Details), new { id = idUsuario });
+            }
+            else
+            {
+                removeRole = removeRole!.Trim();
+
+                if (!await _roleManager.RoleExistsAsync(removeRole))
+                {
+                    TempData["ErrorRoles"] = $"El rol '{removeRole}' no existe.";
+                    return RedirectToAction(nameof(Details), new { id = idUsuario });
+                }
+
+                var loTiene = await _userManager.IsInRoleAsync(user, removeRole);
+                if (loTiene)
+                {
+                    var res = await _userManager.RemoveFromRoleAsync(user, removeRole);
+                    if (!res.Succeeded)
+                    {
+                        TempData["ErrorRoles"] = string.Join(" | ", res.Errors.Select(e => e.Description));
+                        return RedirectToAction(nameof(Details), new { id = idUsuario });
+                    }
+                }
+
+                TempData["OkRoles"] = $"Rol removido: {removeRole}";
+                return RedirectToAction(nameof(Details), new { id = idUsuario });
+            }
+        }
+
 
         // POST: ApplicationUser/CambiarPaquete
         // ✅ Solo reemplaza el paquete ligado (IdPaquete). No cambia lecciones ni fechas.
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Gestor de Pagos,Administrador,Entrenador")]
         public async Task<IActionResult> CambiarPaquete(string idUsuario, int idPaquete)
         {
             if (string.IsNullOrWhiteSpace(idUsuario) || idPaquete <= 0)
@@ -138,6 +237,7 @@ namespace CrStudioFitnes.Controllers
         // ✅ Registra pago + copia detalle del paquete + AHORA sí aplica lecciones y fechas.
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Gestor de Pagos,Administrador")]
         public async Task<IActionResult> PagarPaquete(string idUsuario)
         {
             if (string.IsNullOrWhiteSpace(idUsuario))
@@ -159,8 +259,6 @@ namespace CrStudioFitnes.Controllers
             var p = pu.Paquete;
             var hoy = DateTime.Today;
 
-            await using var tx = await _db.Database.BeginTransactionAsync();
-
             // 1) Guardar pago + detalle (snapshot del paquete)
             var pago = new PagoPaquete
             {
@@ -172,22 +270,22 @@ namespace CrStudioFitnes.Controllers
             pago.Detalles.Add(new PagoPaqueteDetalle
             {
                 CantDias = p.CantDias,
-                CantLecciones = p.CantLecciones, // ✅ lecciones propias del paquete
+                CantLecciones = p.CantLecciones,
                 Pago = p.Pago,
                 Detalle = p.Detalle
             });
 
             _db.PagosPaquete.Add(pago);
 
-            // 2) AHORA sí aplicar paquete al usuario (reemplaza lecciones y fechas)
-            pu.CantLecciones = p.CantLecciones; // ✅ reemplaza por las del paquete
+            // 2) Aplicar paquete al usuario
+            pu.CantLecciones = p.CantLecciones;
             pu.FechaInicio = hoy;
             pu.FechaFin = CalcularFechaFin(hoy, p.CantDias);
 
+            // No hace falta Update(pu) si ya viene trackeado, pero no estorba.
             _db.PaquetesUsuario.Update(pu);
 
             await _db.SaveChangesAsync();
-            await tx.CommitAsync();
 
             TempData["OkPago"] = "Pago registrado. Lecciones y fechas actualizadas.";
             return RedirectToAction(nameof(Details), new { id = idUsuario });
@@ -207,6 +305,7 @@ namespace CrStudioFitnes.Controllers
         }
 
         // GET: ApplicationUser/HistorialPagos/{id}
+        [Authorize(Roles = "Gestor de Pagos,Administrador,Usuario")]
         public async Task<IActionResult> HistorialPagos(string id)
         {
             if (string.IsNullOrWhiteSpace(id))
@@ -234,7 +333,7 @@ namespace CrStudioFitnes.Controllers
             return View(pagos);
         }
 
-
+        [Authorize(Roles = "Administrador")]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Desactivar(string idUsuario)
@@ -263,6 +362,7 @@ namespace CrStudioFitnes.Controllers
             return RedirectToAction(nameof(Details), new { id = idUsuario });
         }
 
+        [Authorize(Roles = "Administrador")]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Activar(string idUsuario)
@@ -286,6 +386,112 @@ namespace CrStudioFitnes.Controllers
             TempData["OkEstado"] = "Usuario activado correctamente.";
             return RedirectToAction(nameof(Details), new { id = idUsuario });
         }
+
+
+        // ==========================
+        // MI PERFIL (usuario logueado)
+        // ==========================
+        [Authorize]
+        [HttpGet]
+        public async Task<IActionResult> MiPerfil()
+        {
+            var userId = _userManager.GetUserId(User);
+            if (string.IsNullOrWhiteSpace(userId)) return Challenge();
+
+            var user = await _userManager.Users
+                .AsNoTracking()
+                .FirstOrDefaultAsync(u => u.Id == userId);
+
+            if (user == null) return Challenge();
+
+            return View(user);
+        }
+
+        [Authorize]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> MiPerfil(string? telefonoPersonal, string? telefonoEmergencia, string? lesionOperacion, string? patologia)
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null) return Challenge();
+
+            // ✅ solo campos permitidos
+            user.TelefonoPersonal = string.IsNullOrWhiteSpace(telefonoPersonal) ? null : telefonoPersonal.Trim();
+            user.TelefonoEmergencia = string.IsNullOrWhiteSpace(telefonoEmergencia) ? null : telefonoEmergencia.Trim();
+            user.LesionOperacion = string.IsNullOrWhiteSpace(lesionOperacion) ? null : lesionOperacion.Trim();
+            user.Patologia = string.IsNullOrWhiteSpace(patologia) ? null : patologia.Trim();
+
+            var res = await _userManager.UpdateAsync(user);
+            if (!res.Succeeded)
+            {
+                TempData["ErrorMiPerfil"] = string.Join(" | ", res.Errors.Select(e => e.Description));
+                return RedirectToAction(nameof(MiPerfil));
+            }
+
+            TempData["OkMiPerfil"] = "Datos actualizados correctamente.";
+            return RedirectToAction(nameof(MiPerfil));
+        }
+
+        // ==========================
+        // PARTIALS para MODALES
+        // ==========================
+        [Authorize]
+        [HttpGet]
+        public async Task<IActionResult> MiHistorialPagosPartial()
+        {
+            var userId = _userManager.GetUserId(User);
+            if (string.IsNullOrWhiteSpace(userId)) return Challenge();
+
+            var pagos = await _db.PagosPaquete
+                .AsNoTracking()
+                .Where(p => p.IdUsuario == userId)
+                .Include(p => p.Detalles)
+                .OrderByDescending(p => p.Fecha)
+                .Take(80)
+                .ToListAsync();
+
+            return PartialView("_MiHistorialPagosPartial", pagos);
+        }
+
+        [Authorize]
+        [HttpGet]
+        public async Task<IActionResult> MiHistorialPesajePartial()
+        {
+            var userId = _userManager.GetUserId(User);
+            if (string.IsNullOrWhiteSpace(userId)) return Challenge();
+
+            // ✅ Historial más reciente por FechaInicio
+            var historial = await _db.Historiales
+                .AsNoTracking()
+                .Where(h => h.IdUsuario == userId)
+                .OrderByDescending(h => h.FechaInicio)
+                .FirstOrDefaultAsync();
+
+            if (historial == null)
+            {
+                ViewBag.HistorialPesaje = null;
+                ViewBag.PesoActual = null;
+                return PartialView("_MiHistorialPesajePartial", new List<Pesaje>());
+            }
+
+            // ✅ Pesajes SOLO de ese historial más reciente
+            var pesajes = await _db.Pesajes
+                .AsNoTracking()
+                .Where(p => p.IdHistorial == historial.IdHistorial)
+                .Include(p => p.MedidasCuerpo)
+                    .ThenInclude(mc => mc.Cuerpo)
+                .OrderByDescending(p => p.Fecha)
+                .ThenByDescending(p => p.IdPesaje)
+                .Take(80)
+                .ToListAsync();
+
+            // ✅ Para el resumen arriba de la tabla
+            ViewBag.HistorialPesaje = historial;
+            ViewBag.PesoActual = pesajes.FirstOrDefault()?.Peso; // último por el orden desc
+
+            return PartialView("_MiHistorialPesajePartial", pesajes);
+        }
+
 
     }
 }

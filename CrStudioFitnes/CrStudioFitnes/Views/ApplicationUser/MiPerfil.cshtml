@@ -1,0 +1,216 @@
+﻿@model CrStudioFitnes.Models.ApplicationUser
+
+@{
+    ViewData["Title"] = "Mi perfil";
+    var nombreCompleto = $"{Model.Nombre} {Model.Apellidos}".Trim();
+    if (string.IsNullOrWhiteSpace(nombreCompleto)) { nombreCompleto = "Usuario"; }
+}
+
+@if (TempData["OkMiPerfil"] != null)
+{
+    <div class="alert alert-success">@TempData["OkMiPerfil"]</div>
+}
+@if (TempData["ErrorMiPerfil"] != null)
+{
+    <div class="alert alert-danger">@TempData["ErrorMiPerfil"]</div>
+}
+
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+
+            <div class="card shadow-sm cr-card">
+                <div class="card-body p-4 p-md-5">
+
+                    <div class="text-center mb-3">
+                        <h1 class="h3 mb-1">@ViewData["Title"]</h1>
+                        <p class="text-muted mb-0">Accedé a tus datos y revisá tus historiales.</p>
+                    </div>
+
+                    <!-- ✅ FORM envuelve todo para que el botón Guardar vaya al final -->
+                    <form asp-action="MiPerfil" method="post">
+                        @Html.AntiForgeryToken()
+
+                        <div class="row g-4">
+
+                            <!-- =========================
+                                 COLUMNA 1: NO EDITABLES
+                                 ========================= -->
+                            <div class="col-md-6">
+                                <h5 class="mb-3">Datos (solo lectura)</h5>
+
+                                <div class="mb-2">
+                                    <div class="text-muted" style="font-size:.9rem;">Nombre</div>
+                                    <div class="fw-semibold">@nombreCompleto</div>
+                                </div>
+
+                                <div class="mb-2">
+                                    <div class="text-muted" style="font-size:.9rem;">Cédula</div>
+                                    <div class="fw-semibold">@Model.Cedula</div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <div class="text-muted" style="font-size:.9rem;">Email</div>
+                                    <div class="fw-semibold">@Model.Email</div>
+                                </div>
+
+                                <!-- Botón historial (columna 2) -->
+                                <button class="btn btn-outline-primary w-100 mt-3"
+                                        type="button"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#modalPesaje">
+                                    Ver historial de pesaje
+                                </button>
+
+                                <!-- Botón historial (columna 1) -->
+                                <button class="btn btn-outline-secondary w-100 mt-3"
+                                        type="button"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#modalPagos">
+                                    Ver historial de pagos
+                                </button>
+                            </div>
+
+                            <!-- =========================
+                                 COLUMNA 2: EDITABLES
+                                 ========================= -->
+                            <div class="col-md-6">
+                                <h5 class="mb-3">Datos editables</h5>
+
+                                <div class="mb-2">
+                                    <label class="form-label">Teléfono personal</label>
+                                    <input class="form-control"
+                                           name="telefonoPersonal"
+                                           value="@Model.TelefonoPersonal"
+                                           placeholder="Ej: 8888-8888" />
+                                </div>
+
+                                <div class="mb-2">
+                                    <label class="form-label">Teléfono emergencia</label>
+                                    <input class="form-control"
+                                           name="telefonoEmergencia"
+                                           value="@Model.TelefonoEmergencia"
+                                           placeholder="Ej: 8777-7777" />
+                                </div>
+
+                                <div class="mb-2">
+                                    <label class="form-label">Lesión / Operación</label>
+                                    <input class="form-control"
+                                           name="lesionOperacion"
+                                           value="@Model.LesionOperacion"
+                                           placeholder="Opcional" />
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label">Patología</label>
+                                    <input class="form-control"
+                                           name="patologia"
+                                           value="@Model.Patologia"
+                                           placeholder="Opcional" />
+                                </div>
+
+  
+                            </div>
+
+                        </div>
+
+                        <!-- ✅ Fila final: Volver izq / Guardar der -->
+                        <div class="d-flex justify-content-between mt-4">
+                            <a asp-controller="Reservas" asp-action="Index" class="btn btn-outline-secondary">
+                                Volver
+                            </a>
+
+                            <button type="submit" class="btn btn-primary">
+                                Guardar cambios
+                            </button>
+                        </div>
+                    </form>
+
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- MODAL PAGOS -->
+<div class="modal fade" id="modalPagos" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content cr-card">
+            <div class="modal-header">
+                <h5 class="modal-title">Historial de pagos</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body" id="modalPagosBody">
+                <div class="text-center py-4">
+                    <div class="spinner-border" role="status"></div>
+                    <div class="text-muted mt-2">Cargando...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL PESAJE -->
+<div class="modal fade" id="modalPesaje" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content cr-card">
+            <div class="modal-header">
+                <h5 class="modal-title">Historial de pesaje</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body" id="modalPesajeBody">
+                <div class="text-center py-4">
+                    <div class="spinner-border" role="status"></div>
+                    <div class="text-muted mt-2">Cargando...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        (function () {
+            const pagosUrl = '@Url.Action("MiHistorialPagosPartial", "ApplicationUser")';
+            const pesajeUrl = '@Url.Action("MiHistorialPesajePartial", "ApplicationUser")';
+
+            let loadedPagos = false;
+            let loadedPesaje = false;
+
+            const pagosBody = document.getElementById('modalPagosBody');
+            const pesajeBody = document.getElementById('modalPesajeBody');
+
+            const modalPagos = document.getElementById('modalPagos');
+            const modalPesaje = document.getElementById('modalPesaje');
+
+            async function loadInto(url, container) {
+                const res = await fetch(url, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                    cache: 'no-store'
+                });
+
+                if (!res.ok) {
+                    container.innerHTML = `<div class="alert alert-danger mb-0">No se pudo cargar la información.</div>`;
+                    return false; // ✅ importantísimo
+                }
+
+                container.innerHTML = await res.text();
+                return true;
+            }
+
+            modalPagos.addEventListener('show.bs.modal', async () => {
+                if (loadedPagos) return;
+                loadedPagos = await loadInto(pagosUrl, pagosBody); // ✅ solo true si cargó
+            });
+
+            modalPesaje.addEventListener('show.bs.modal', async () => {
+                if (loadedPesaje) return;
+                loadedPesaje = await loadInto(pesajeUrl, pesajeBody); // ✅ solo true si cargó
+            });
+
+            // Opcional: si querés que SIEMPRE recargue cada vez que abrís el modal
+            // modalPesaje.addEventListener('hidden.bs.modal', () => { loadedPesaje = false; });
+        })();
+    </script>
+}

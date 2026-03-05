@@ -16,7 +16,7 @@
             <div class="container-fluid">
                 <a class="navbar-brand d-flex align-items-center"
                    asp-area=""
-                   asp-controller="Home"
+                   asp-controller="reservas"
                    asp-action="Index">
                     <img src="~/css/logo.png"
                          asp-append-version="true"
@@ -29,12 +29,48 @@
                 </button>
                 <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
                     <ul class="navbar-nav flex-grow-1">
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Paquetes" asp-action="Index">Paquetes</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="ApplicationUser" asp-action="Index">Usuarios</a>
-                        </li>
+
+                        @if (User.IsInRole("Usuario"))
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-area="" asp-controller="Paquetes" asp-action="Index">Paquetes</a>
+                            </li>
+                        }
+
+
+                        @*listo los roles*@
+                        @if (User.IsInRole("Gestor de Horarios") || User.IsInRole("Administrador"))
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-area="" asp-controller="BloqueoHorarios" asp-action="Index">Gestionar Horarios</a>
+                            </li>
+                        }
+
+                        @*listo los roles*@
+                         @if (User.IsInRole("Usuario"))
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-area="" asp-controller="Reservas" asp-action="Index">Reserva</a>
+                            </li>
+                        }
+
+
+
+                        @*listo los roles*@
+                        @if (User.IsInRole("Gestor de Pagos") || User.IsInRole("Administrador") || User.IsInRole("Entrenador"))
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-area="" asp-controller="ApplicationUser" asp-action="Index">Usuarios</a>
+                            </li>
+                        }
+
+                        @*listo los roles*@
+                        @if (User.IsInRole("Administrador") || User.IsInRole("Entrenador"))
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-area="" asp-controller="Cuerpo" asp-action="Index">Cuerpo</a>
+                            </li>
+                        }
                     </ul>
                     <partial name="_LoginPartial" />
                 </div>

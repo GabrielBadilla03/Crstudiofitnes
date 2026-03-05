@@ -22,7 +22,25 @@
         .FirstOrDefault();
 
     var paquetesDisponibles = ViewBag.PaquetesDisponibles as List<Paquete>;
+
+    // ==========================
+    // Permisos (según controller)
+    // ==========================
+    bool isAdmin = User.IsInRole("Administrador");
+
+    bool canCambiarEstado = isAdmin; // Activar/Desactivar
+    bool canGestionarRoles = isAdmin; // GestionarRoles
+
+    bool canCambiarPaquete =
+        User.IsInRole("Gestor de Pagos") || User.IsInRole("Administrador") || User.IsInRole("Entrenador");
+
+    bool canPagarPaquete =
+        User.IsInRole("Gestor de Pagos") || User.IsInRole("Administrador");
+
+    bool canVerHistorialPagos =
+        User.IsInRole("Gestor de Pagos") || User.IsInRole("Administrador");
 }
+
 @if (TempData["OkEstado"] != null)
 {
     <div class="alert alert-success">@TempData["OkEstado"]</div>
@@ -31,8 +49,14 @@
 {
     <div class="alert alert-danger">@TempData["ErrorEstado"]</div>
 }
-
-
+@if (TempData["ErrorRoles"] != null)
+{
+    <div class="alert alert-danger mt-2">@TempData["ErrorRoles"]</div>
+}
+@if (TempData["OkRoles"] != null)
+{
+    <div class="alert alert-info mt-2">@TempData["OkRoles"]</div>
+}
 
 <div class="container py-4">
     <div class="row justify-content-center">
@@ -91,27 +115,39 @@
                                     <span class="cr-status-text">@(activo ? "Activo" : "Inactivo")</span>
                                 </div>
 
-                                @if (activo)
+                                @* Activar/Desactivar: solo Admin *@
+                                @if (canCambiarEstado)
                                 {
-                                    <form asp-action="Desactivar" method="post" class="m-0">
-                                        @Html.AntiForgeryToken()
-                                        <input type="hidden" name="idUsuario" value="@Model.Id" />
-                                        <button type="submit" class="btn btn-outline-danger cr-btn-mini">
-                                            Desactivar
-                                        </button>
-                                    </form>
-                                }
-                                else
-                                {
-                                    <form asp-action="Activar" method="post" class="m-0">
-                                        @Html.AntiForgeryToken()
-                                        <input type="hidden" name="idUsuario" value="@Model.Id" />
-                                        <button type="submit" class="btn btn-outline-success cr-btn-mini">
-                                            Activar
-                                        </button>
-                                    </form>
+                                    if (activo)
+                                    {
+                                        <form asp-action="Desactivar" method="post" class="m-0">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="idUsuario" value="@Model.Id" />
+                                            <button type="submit" class="btn btn-outline-danger cr-btn-mini">
+                                                Desactivar
+                                            </button>
+                                        </form>
+                                    }
+                                    else
+                                    {
+                                        <form asp-action="Activar" method="post" class="m-0">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="idUsuario" value="@Model.Id" />
+                                            <button type="submit" class="btn btn-outline-success cr-btn-mini">
+                                                Activar
+                                            </button>
+                                        </form>
+                                    }
                                 }
                             </div>
+
+                            @* Gestionar roles: solo Admin *@
+                            @if (canGestionarRoles)
+                            {
+                                <button type="button" class="btn btn-outline-primary mt-2" data-bs-toggle="modal" data-bs-target="#rolesModal">
+                                    Gestionar roles
+                                </button>
+                            }
                         </div>
 
                         <!-- Paquete -->
@@ -127,10 +163,14 @@
                                     Este usuario no tiene un paquete asignado actualmente.
                                 </div>
 
-                                <button type="button" class="btn btn-primary w-100"
-                                        data-bs-toggle="modal" data-bs-target="#modalPaquete">
-                                    Agregar paquete
-                                </button>
+                                @* Agregar/Cambiar paquete: GestorPagos/Admin/Entrenador *@
+                                @if (canCambiarPaquete)
+                                {
+                                    <button type="button" class="btn btn-primary w-100"
+                                            data-bs-toggle="modal" data-bs-target="#modalPaquete">
+                                        Agregar paquete
+                                    </button>
+                                }
                             }
                             else
                             {
@@ -175,31 +215,40 @@
                                             }
                                             else
                                             {
-
                                                 <span class="badge bg-secondary">No vigente</span>
                                             }
                                         </div>
                                     </div>
                                 </div>
 
-                                <form asp-action="PagarPaquete" method="post">
-                                    @Html.AntiForgeryToken()
-                                    <input type="hidden" name="idUsuario" value="@Model.Id" />
-                                    <button type="submit" class="btn btn-outline-success w-100">
-                                        Pagar paquete
+                                @* Pagar paquete: GestorPagos/Admin *@
+                                @if (canPagarPaquete)
+                                {
+                                    <form asp-action="PagarPaquete" method="post">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="idUsuario" value="@Model.Id" />
+                                        <button type="submit" class="btn btn-outline-success w-100">
+                                            Pagar paquete
+                                        </button>
+                                    </form>
+                                }
+
+                                @* Cambiar paquete: GestorPagos/Admin/Entrenador *@
+                                @if (canCambiarPaquete)
+                                {
+                                    <button type="button" class="btn btn-outline-primary w-100 mt-2"
+                                            data-bs-toggle="modal" data-bs-target="#modalPaquete">
+                                        Cambiar paquete
                                     </button>
-                                </form>
+                                }
 
-                                <button type="button" class="btn btn-outline-primary w-100 mt-2"
-                                        data-bs-toggle="modal" data-bs-target="#modalPaquete">
-                                    Cambiar paquete
-                                </button>
-
-                                <a asp-action="HistorialPagos" asp-route-id="@Model.Id" class="btn btn-outline-secondary w-100 mt-2">
-                                    Historial de pagos
-                                </a>
-
-
+                                @* Historial de pagos: GestorPagos/Admin/Entrenador/Usuario *@
+                                @if (canVerHistorialPagos)
+                                {
+                                    <a asp-action="HistorialPagos" asp-route-id="@Model.Id" class="btn btn-outline-secondary w-100 mt-2">
+                                        Historial de pagos
+                                    </a>
+                                }
                             }
                         </div>
                     </div>
@@ -215,83 +264,158 @@
     </div>
 </div>
 
-<!-- MODAL (sirve para Agregar o Cambiar) -->
-<div class="modal fade" id="modalPaquete" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content cr-card">
-            <div class="modal-header">
-                <h5 class="modal-title">Seleccionar paquete</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-            </div>
+@* ==========================
+   MODAL PAQUETE (solo si puede)
+   ========================== *@
+@if (canCambiarPaquete)
+{
+    <div class="modal fade" id="modalPaquete" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content cr-card">
+                <div class="modal-header">
+                    <h5 class="modal-title">Seleccionar paquete</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
 
-            <form asp-action="CambiarPaquete" method="post">
-                @Html.AntiForgeryToken()
+                <form asp-action="CambiarPaquete" method="post">
+                    @Html.AntiForgeryToken()
 
-                <div class="modal-body">
-                    <input type="hidden" name="idUsuario" value="@Model.Id" />
-                    <input type="hidden" name="idPaquete" id="idPaqueteSeleccionado" value="" />
+                    <div class="modal-body">
+                        <input type="hidden" name="idUsuario" value="@Model.Id" />
+                        <input type="hidden" name="idPaquete" id="idPaqueteSeleccionado" value="" />
 
-                    <p class="text-muted mb-3">
-                        Seleccioná un paquete para <strong>@nombreCompleto</strong>.
-                        <br />
-                        <span class="small">
-                            Al guardar se reemplazan las lecciones por las del paquete y se recalculan fechas desde hoy.
-                        </span>
-                    </p>
+                        <p class="text-muted mb-3">
+                            Seleccioná un paquete para <strong>@nombreCompleto</strong>.
+                        </p>
 
-                    @if (paquetesDisponibles == null || !paquetesDisponibles.Any())
-                    {
-                        <div class="alert alert-info mb-0">
-                            No hay paquetes activos disponibles.
-                        </div>
-                    }
-                    else
-                    {
-                        <div class="row g-3">
-                            @foreach (var p in paquetesDisponibles)
-                            {
-                                var isCurrent = paqueteActual != null && paqueteActual.IdPaquete == p.IdPaquete;
+                        @if (paquetesDisponibles == null || !paquetesDisponibles.Any())
+                        {
+                            <div class="alert alert-info mb-0">
+                                No hay paquetes activos disponibles.
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="row g-3">
+                                @foreach (var p in paquetesDisponibles)
+                                {
+                                    var isCurrent = paqueteActual != null && paqueteActual.IdPaquete == p.IdPaquete;
 
-                                <div class="col-12 col-md-6">
-                                    <div class="cr-card-paquete paquete-select-card h-100 @(isCurrent ? "selected" : "")"
-                                         data-id="@p.IdPaquete"
-                                         style="cursor:pointer;">
-                                        <div class="cr-card-paquete-body">
-                                            <div class="cr-card-title">Paquete #@p.IdPaquete</div>
-                                            <div class="cr-card-subtitle">
-                                                <div>Plan: <span class="fw-semibold">@p.CantDias</span></div>
-                                                <div>Lecciones: <span class="fw-semibold">@p.CantLecciones</span></div>
-                                                <div>Pago: <span class="fw-semibold">@p.Pago.ToString("N2")</span></div>
-                                                @if (!string.IsNullOrWhiteSpace(p.Detalle))
+                                    <div class="col-12 col-md-6">
+                                        <div class="cr-card-paquete paquete-select-card h-100 @(isCurrent ? "selected" : "")"
+                                             data-id="@p.IdPaquete"
+                                             style="cursor:pointer;">
+                                            <div class="cr-card-paquete-body">
+                                                <div class="cr-card-title">Paquete #@p.IdPaquete</div>
+                                                <div class="cr-card-subtitle">
+                                                    <div>Plan: <span class="fw-semibold">@p.CantDias</span></div>
+                                                    <div>Lecciones: <span class="fw-semibold">@p.CantLecciones</span></div>
+                                                    <div>Pago: <span class="fw-semibold">@p.Pago.ToString("N2")</span></div>
+                                                    @if (!string.IsNullOrWhiteSpace(p.Detalle))
+                                                    {
+                                                        <div class="text-muted mt-1">@p.Detalle</div>
+                                                    }
+                                                </div>
+                                                @if (isCurrent)
                                                 {
-                                                    <div class="text-muted mt-1">@p.Detalle</div>
+                                                    <div class="mt-2">
+                                                        <span class="badge bg-info">Actual</span>
+                                                    </div>
                                                 }
                                             </div>
-                                            @if (isCurrent)
-                                            {
-                                                <div class="mt-2">
-                                                    <span class="badge bg-info">Actual</span>
-                                                </div>
-                                            }
                                         </div>
                                     </div>
-                                </div>
-                            }
-                        </div>
-                    }
-                </div>
+                                }
+                            </div>
+                        }
+                    </div>
 
-                <div class="modal-footer d-flex gap-2">
-                    <button type="submit" class="btn btn-primary w-100" id="btnGuardarPaquete">
-                        Guardar
-                    </button>
-                    <button type="button" class="btn btn-outline-secondary w-100" data-bs-dismiss="modal">Cancelar</button>
-
-                </div>
-            </form>
+                    <div class="modal-footer d-flex gap-2">
+                        <button type="submit" class="btn btn-primary w-100" id="btnGuardarPaquete">
+                            Guardar
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary w-100" data-bs-dismiss="modal">Cancelar</button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
-</div>
+}
+
+@* ==========================
+   MODAL ROLES (solo Admin)
+   ========================== *@
+@if (canGestionarRoles)
+{
+    var rolesUsuario = ViewBag.RolesUsuario as List<string> ?? new List<string>();
+    var rolesNoTiene = ViewBag.RolesNoTiene as List<string> ?? new List<string>();
+
+    <div class="modal fade" id="rolesModal" tabindex="-1" aria-labelledby="rolesModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content cr-card">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="rolesModalLabel">Gestionar roles</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+
+                <form method="post" asp-action="GestionarRoles">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="idUsuario" value="@Model.Id" />
+
+                    <input type="hidden" name="addRole" id="addRole" />
+                    <input type="hidden" name="removeRole" id="removeRole" />
+
+                    <div class="modal-body">
+                        <div class="text-muted small mb-3 text-center">
+                            Elegí un rol para <strong>quitar</strong> o un rol para <strong>agregar</strong>. Solo uno a la vez.
+                        </div>
+
+                        <div class="row g-3">
+                            <div class="col-12 col-md-6">
+                                <label class="form-label fw-semibold">Roles que TIENE (quitar)</label>
+                                <select id="selRolesTiene" class="form-select">
+                                    <option value="">-- Seleccionar --</option>
+                                    @foreach (var r in rolesUsuario)
+                                    {
+                                        <option value="@r">@r</option>
+                                    }
+                                </select>
+                                @if (rolesUsuario.Count == 0)
+                                {
+                                    <div class="text-muted small mt-1">(no tiene roles)</div>
+                                }
+                            </div>
+
+                            <div class="col-12 col-md-6">
+                                <label class="form-label fw-semibold">Roles que NO tiene (agregar)</label>
+                                <select id="selRolesNoTiene" class="form-select">
+                                    <option value="">-- Seleccionar --</option>
+                                    @foreach (var r in rolesNoTiene)
+                                    {
+                                        <option value="@r">@r</option>
+                                    }
+                                </select>
+                                @if (rolesNoTiene.Count == 0)
+                                {
+                                    <div class="text-muted small mt-1">(no hay roles disponibles)</div>
+                                }
+                            </div>
+                        </div>
+
+                        <div class="text-center small mt-3" id="rolesAccionTxt"></div>
+                    </div>
+
+                    <div class="modal-footer d-flex gap-2">
+                        <button type="submit" class="btn btn-primary w-100" id="btnAplicarRol" disabled>
+                            Aplicar cambio
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary w-100" data-bs-dismiss="modal">Cerrar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+}
 
 <style>
     .paquete-select-card.selected {
@@ -299,12 +423,6 @@
         box-shadow: 0 0 0 3px rgba(0,0,0,.2);
     }
 
-    .paquete-select-card.selected {
-        outline: 2px solid rgba(255,255,255,.35);
-        box-shadow: 0 0 0 3px rgba(0,0,0,.2);
-    }
-
-    /* Estado bonito tipo pill */
     .cr-status {
         display: inline-flex;
         align-items: center;
@@ -341,7 +459,7 @@
     }
 
     .cr-btn-mini {
-        padding: .45rem .9rem; /* un poco más grande que btn-sm */
+        padding: .45rem .9rem;
         font-size: .95rem;
         border-radius: .4rem;
     }
@@ -350,19 +468,71 @@
 @section Scripts {
     <script>
         document.addEventListener('DOMContentLoaded', function () {
+
+            // ====== Selección de paquete (solo si existe el modal) ======
             const cards = document.querySelectorAll('.paquete-select-card');
             const inputId = document.getElementById('idPaqueteSeleccionado');
 
-            // Permite guardar incluso si deja el mismo paquete (porque igual resetea fechas/lecciones)
-            cards.forEach(c => {
-                c.addEventListener('click', () => {
-                    cards.forEach(x => x.classList.remove('selected'));
-                    c.classList.add('selected');
-
-                    const id = c.getAttribute('data-id');
-                    inputId.value = id;
+            if (cards && cards.length && inputId) {
+                cards.forEach(c => {
+                    c.addEventListener('click', () => {
+                        cards.forEach(x => x.classList.remove('selected'));
+                        c.classList.add('selected');
+                        inputId.value = c.getAttribute('data-id') || '';
+                    });
                 });
-            });
+            }
+
+            // ====== Gestionar roles (solo si existe el modal) ======
+            const selTiene = document.getElementById('selRolesTiene');
+            const selNoTiene = document.getElementById('selRolesNoTiene');
+
+            const inputAdd = document.getElementById('addRole');
+            const inputRemove = document.getElementById('removeRole');
+
+            const btn = document.getElementById('btnAplicarRol');
+            const txt = document.getElementById('rolesAccionTxt');
+
+            function resetHidden() {
+                if (inputAdd) inputAdd.value = '';
+                if (inputRemove) inputRemove.value = '';
+                if (btn) btn.disabled = true;
+                if (txt) txt.textContent = '';
+            }
+
+            if (selTiene && selNoTiene && inputAdd && inputRemove && btn && txt) {
+                resetHidden();
+
+                selTiene.addEventListener('change', () => {
+                    const val = selTiene.value || '';
+                    selNoTiene.value = '';
+
+                    inputAdd.value = '';
+                    inputRemove.value = val;
+
+                    if (val) {
+                        btn.disabled = false;
+                        txt.textContent = 'Se quitará el rol: ' + val;
+                    } else {
+                        resetHidden();
+                    }
+                });
+
+                selNoTiene.addEventListener('change', () => {
+                    const val = selNoTiene.value || '';
+                    selTiene.value = '';
+
+                    inputRemove.value = '';
+                    inputAdd.value = val;
+
+                    if (val) {
+                        btn.disabled = false;
+                        txt.textContent = 'Se agregará el rol: ' + val;
+                    } else {
+                        resetHidden();
+                    }
+                });
+            }
         });
     </script>
 }

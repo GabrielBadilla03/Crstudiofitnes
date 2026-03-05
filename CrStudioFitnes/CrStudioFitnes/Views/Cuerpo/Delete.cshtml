@@ -1,33 +1,85 @@
 ﻿@model CrStudioFitnes.Models.Cuerpo
 
 @{
-    ViewData["Title"] = "Delete";
+    ViewData["Title"] = "Eliminar Cuerpo";
 }
 
-<h1>Delete</h1>
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow-sm cr-card border-danger">
+                <div class="card-body p-4 p-md-5">
 
-<h3>Are you sure you want to delete this?</h3>
-<div>
-    <h4>Cuerpo</h4>
-    <hr />
-    <dl class="row">
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.Nombre)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Nombre)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.Detalle)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Detalle)
-        </dd>
-    </dl>
-    
-    <form asp-action="Delete">
-        <input type="hidden" asp-for="IdCuerpo" />
-        <input type="submit" value="Delete" class="btn btn-danger" /> |
-        <a asp-action="Index">Back to List</a>
-    </form>
+                    <div class="text-center">
+                        <h1 class="h3 mb-3 text-danger">@ViewData["Title"]</h1>
+                        <p class="text-muted mb-4">
+                            ¿Está seguro de que desea eliminar este cuerpo? Esta acción no se puede deshacer.
+                        </p>
+                    </div>
+
+                    <dl class="row mb-0">
+                        <dt class="col-sm-4 fw-bold">Nombre</dt>
+                        <dd class="col-sm-8">
+                            @(!string.IsNullOrWhiteSpace(Model.Nombre) ? Model.Nombre : "Sin nombre")
+                        </dd>
+
+                        <dt class="col-sm-4 fw-bold">Detalle</dt>
+                        <dd class="col-sm-8">
+                            @(!string.IsNullOrWhiteSpace(Model.Detalle) ? Model.Detalle : "—")
+                        </dd>
+                    </dl>
+
+                    <form id="deleteForm" asp-action="Delete" method="post" class="d-flex justify-content-between mt-4">
+                        <input type="hidden" asp-for="IdCuerpo" />
+
+                        <a asp-action="Index" class="btn btn-outline-secondary">Cancelar</a>
+
+                        <button type="button"
+                                class="btn btn-danger"
+                                data-bs-toggle="modal"
+                                data-bs-target="#confirmDeleteModal">
+                            Eliminar
+                        </button>
+                    </form>
+
+                    <!-- Modal confirmación -->
+                    <div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-labelledby="confirmDeleteLabel" aria-hidden="true">
+                        <div class="modal-dialog modal-dialog-centered cr-modal-narrow">
+                            <div class="modal-content cr-card border-0">
+                                <div class="modal-header bg-danger text-white">
+                                    <h5 class="modal-title" id="confirmDeleteLabel">Confirmar eliminación</h5>
+                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                                </div>
+
+                                <div class="modal-body">
+                                    ¿Seguro que desea eliminar
+                                    <strong>@(!string.IsNullOrWhiteSpace(Model.Nombre) ? Model.Nombre : "sin nombre")</strong>?
+                                    <div class="small text-muted mt-2">Esta acción no se puede deshacer.</div>
+                                </div>
+
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">No, cancelar</button>
+                                    <button type="button" id="confirmDeleteBtn" class="btn btn-danger">Sí, eliminar</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const confirmBtn = document.getElementById('confirmDeleteBtn');
+            const form = document.getElementById('deleteForm');
+
+            confirmBtn.addEventListener('click', function () {
+                form.submit();
+            });
+        });
+    </script>
+}

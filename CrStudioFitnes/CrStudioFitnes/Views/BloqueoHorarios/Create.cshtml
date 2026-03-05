@@ -1,0 +1,98 @@
+﻿@model CrStudioFitnes.Models.BloqueoHorario
+
+@{
+    ViewData["Title"] = "Crear bloqueo";
+}
+
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+
+            <div class="card shadow-sm cr-card">
+                <div class="card-body p-4 p-md-5">
+
+                    <div class="text-center mb-3">
+                        <h1 class="h3 mb-1">@ViewData["Title"]</h1>
+                        <p class="text-muted mb-0">Registrá un bloqueo de horario para una fecha y hora específica.</p>
+                    </div>
+
+                    <form asp-action="Create" method="post" class="mt-4" novalidate>
+                        <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+                        <div class="row g-3">
+                            <!-- Fecha -->
+                            <div class="col-md-6">
+                                <div class="form-floating">
+                                    <input asp-for="Fecha" class="form-control" placeholder="Fecha" />
+                                    <label asp-for="Fecha">Fecha</label>
+                                    <span asp-validation-for="Fecha" class="text-danger"></span>
+                                </div>
+                            </div>
+
+                            <!-- Hora -->
+                            <div class="col-md-6">
+                                <div class="form-floating">
+                                    <select asp-for="IdHora" class="form-select" asp-items="ViewBag.IdHora">
+                                        <option value="">Seleccione una hora...</option>
+                                    </select>
+                                    <label asp-for="IdHora">Hora</label>
+                                </div>
+                                <span asp-validation-for="IdHora" class="text-danger"></span>
+                            </div>
+
+                            <!-- Motivo + Activo (MISMA FILA) -->
+                            <div class="col-12">
+                                <div class="row g-3 align-items-center">
+                                    <!-- Motivo -->
+                                    <div class="col-12 col-md-8">
+                                        <div class="form-floating">
+                                            <input asp-for="Motivo" class="form-control" placeholder="Motivo" />
+                                            <label asp-for="Motivo">Motivo</label>
+                                            <span asp-validation-for="Motivo" class="text-danger"></span>
+                                        </div>
+                                    </div>
+
+                                    <!-- Activo (derecha) -->
+                                    <div class="col-12 col-md-4 d-flex align-items-center">
+                                        <div class="form-check mt-2 mt-md-0">
+                                            <input class="form-check-input check-activo-lg" asp-for="Activo" id="chkActivoCreate" />
+                                            <label class="form-check-label label-activo-lg" for="chkActivoCreate">
+                                                @Html.DisplayNameFor(m => m.Activo)
+                                            </label>
+                                        </div>
+                                        <span asp-validation-for="Activo" class="text-danger ms-2"></span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Botones -->
+                            <div class="col-12 mt-2">
+                                <div class="row g-2">
+                                    <div class="col-12 col-md-6">
+                                        <button type="submit" class="btn btn-primary w-100 btn-lg">
+                                            Guardar
+                                        </button>
+                                    </div>
+                                    <div class="col-12 col-md-6">
+                                        <a asp-action="Index" class="btn btn-outline-secondary w-100 btn-lg">
+                                            Volver
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </form>
+
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}

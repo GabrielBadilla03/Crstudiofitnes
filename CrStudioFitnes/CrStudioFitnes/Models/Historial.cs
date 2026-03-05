@@ -36,13 +36,12 @@ namespace CrStudioFitnes.Models
         [StringLength(50)]
         public string? Actividad { get; set; }
 
-        [Range(0, 14)]
-        public int? Frecuencia { get; set; }
+        public TipoPlanDias? Frecuencia { get; set; }
 
         [StringLength(120)]
         public string? Objetivo { get; set; }
 
-        public ApplicationUser Usuario { get; set; } = null!;
+        public ApplicationUser? Usuario { get; set; } = null!;
         public ICollection<Pesaje> Pesajes { get; set; } = new List<Pesaje>();
     }
 }
