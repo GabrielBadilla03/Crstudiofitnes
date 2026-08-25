@@ -4,6 +4,7 @@ using CrStudioFitnes.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace CrStudioFitnes.Data.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260627152651_nuevospagos")]
+    partial class nuevospagos
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -276,11 +279,6 @@ namespace CrStudioFitnes.Data.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("IdPagoPaquete"));
 
-                    b.Property<bool>("Activo")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(true);
-
                     b.Property<DateTime>("Fecha")
                         .HasColumnType("datetime2");
 
@@ -291,10 +289,6 @@ namespace CrStudioFitnes.Data.Migrations
                     b.Property<decimal>("Monto")
                         .HasPrecision(10, 2)
                         .HasColumnType("decimal(10,2)");
-
-                    b.Property<string>("MotivoAnulacion")
-                        .HasMaxLength(300)
-                        .HasColumnType("nvarchar(300)");
 
                     b.Property<string>("TipoPago")
                         .IsRequired()
@@ -323,14 +317,16 @@ namespace CrStudioFitnes.Data.Migrations
                         .HasColumnType("int");
 
                     b.Property<decimal>("Monto")
-                        .HasPrecision(10, 2)
                         .HasColumnType("decimal(10,2)");
+
+                    b.Property<int>("PagoPaqueteIdPagoPaquete")
+                        .HasColumnType("int");
 
                     b.HasKey("IdPagoPaqueteAbono");
 
-                    b.HasIndex("IdPagoPaquete");
+                    b.HasIndex("PagoPaqueteIdPagoPaquete");
 
-                    b.ToTable("PagoPaqueteAbono", (string)null);
+                    b.ToTable("PagoPaqueteAbono");
                 });
 
             modelBuilder.Entity("CrStudioFitnes.Models.PagoPaqueteDetalle", b =>
@@ -384,19 +380,11 @@ namespace CrStudioFitnes.Data.Migrations
                     b.Property<int>("CantLecciones")
                         .HasColumnType("int");
 
-                    b.Property<int>("CantLeccionesPorUsuario")
-                        .HasColumnType("int");
-
                     b.Property<string>("Detalle")
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
                     b.Property<decimal>("Pago")
-                        .HasPrecision(10, 2)
-                        .HasColumnType("decimal(10,2)");
-
-                    b.Property<decimal>("PagoPorUsuario")
-                        .HasPrecision(10, 2)
                         .HasColumnType("decimal(10,2)");
 
                     b.HasKey("IdPaquete");
@@ -487,11 +475,6 @@ namespace CrStudioFitnes.Data.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("IdReserva"));
 
-                    b.Property<bool>("Activa")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(true);
-
                     b.Property<DateTime>("Fecha")
                         .HasColumnType("date");
 
@@ -502,23 +485,14 @@ namespace CrStudioFitnes.Data.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
 
-                    b.Property<string>("IdUsuarioReserva")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<string>("MotivoCancelacion")
-                        .HasMaxLength(300)
-                        .HasColumnType("nvarchar(300)");
-
                     b.HasKey("IdReserva");
 
                     b.HasIndex("IdHora");
 
-                    b.HasIndex("IdUsuarioReserva");
-
                     b.HasIndex("Fecha", "IdHora");
 
-                    b.HasIndex("IdUsuario", "Fecha", "IdHora");
+                    b.HasIndex("IdUsuario", "Fecha", "IdHora")
+                        .IsUnique();
 
                     b.ToTable("Reservas");
                 });
@@ -696,7 +670,7 @@ namespace CrStudioFitnes.Data.Migrations
                 {
                     b.HasOne("CrStudioFitnes.Models.PagoPaquete", "PagoPaquete")
                         .WithMany("Abonos")
-                        .HasForeignKey("IdPagoPaquete")
+                        .HasForeignKey("PagoPaqueteIdPagoPaquete")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -774,20 +748,12 @@ namespace CrStudioFitnes.Data.Migrations
                     b.HasOne("CrStudioFitnes.Models.ApplicationUser", "Usuario")
                         .WithMany("Reservas")
                         .HasForeignKey("IdUsuario")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("CrStudioFitnes.Models.ApplicationUser", "UsuarioReserva")
-                        .WithMany("ReservasCreadas")
-                        .HasForeignKey("IdUsuarioReserva")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("HoraReserva");
 
                     b.Navigation("Usuario");
-
-                    b.Navigation("UsuarioReserva");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
@@ -850,8 +816,6 @@ namespace CrStudioFitnes.Data.Migrations
                     b.Navigation("PaquetesUsuario");
 
                     b.Navigation("Reservas");
-
-                    b.Navigation("ReservasCreadas");
                 });
 
             modelBuilder.Entity("CrStudioFitnes.Models.Cuerpo", b =>

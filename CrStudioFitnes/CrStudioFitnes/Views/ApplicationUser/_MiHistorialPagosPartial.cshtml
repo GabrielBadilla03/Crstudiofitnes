@@ -1,40 +1,169 @@
-﻿@model List<CrStudioFitnes.Models.PagoPaquete>
+@model List<CrStudioFitnes.Models.PagoPaquete>
+@using CrStudioFitnes.Models
 
-@if (Model == null || !Model.Any())
+@{
+    var pagos = Model ?? new List<PagoPaquete>();
+    var pagosActivos = pagos.Where(p => p.Activo).ToList();
+
+    var totalPendiente = pagosActivos.Sum(p => p.Monto);
+
+    var totalAbonado = pagos.Sum(p =>
+        (p.Abonos ?? new List<PagoPaqueteAbono>()).Sum(a => a.Monto));
+}
+
+@if (!pagos.Any())
 {
-    <div class="alert alert-info mb-0">No tenés pagos registrados.</div>
+    <div class="alert alert-info mb-0">
+        No tenés pagos registrados.
+    </div>
 }
 else
 {
+    <div class="d-flex align-items-center justify-content-between mb-3 gap-2 flex-wrap">
+        <h5 class="mb-0">Resumen</h5>
+
+        @if (totalPendiente > 0)
+        {
+            <span class="badge bg-warning text-dark">Tenés monto pendiente</span>
+        }
+        else
+        {
+            <span class="badge bg-success">No hay deuda activa</span>
+        }
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-12 col-md-4">
+            <div class="cr-resumen-box">
+                <div class="text-muted" style="font-size:.9rem;">Pagos registrados</div>
+                <div class="fw-semibold fs-5">@pagos.Count</div>
+            </div>
+        </div>
+
+        <div class="col-12 col-md-4">
+            <div class="cr-resumen-box">
+                <div class="text-muted" style="font-size:.9rem;">Pendiente activo</div>
+                <div class="fw-semibold fs-5">@totalPendiente.ToString("N2")</div>
+            </div>
+        </div>
+
+        <div class="col-12 col-md-4">
+            <div class="cr-resumen-box">
+                <div class="text-muted" style="font-size:.9rem;">Total abonado</div>
+                <div class="fw-semibold fs-5">@totalAbonado.ToString("N2")</div>
+            </div>
+        </div>
+    </div>
+
+    @if (totalPendiente > 0)
+    {
+        <div class="alert alert-warning">
+            Tenés un monto pendiente activo de
+            <strong>@totalPendiente.ToString("N2")</strong>.
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-success">
+            No tenés pagos activos pendientes.
+        </div>
+    }
+
     <div class="table-responsive">
         <table class="table table-hover align-middle mb-0">
             <thead>
                 <tr>
-                    <th style="width:180px;">Fecha</th>
-                    <th style="width:160px;">Monto</th>
+                    <th>Fecha</th>
+                    <th>Monto restante</th>
                     <th>Resumen</th>
+                    <th>Estado</th>
                 </tr>
             </thead>
+
             <tbody>
-                @foreach (var p in Model)
+                @foreach (var pago in pagos
+                    .OrderByDescending(p => p.Fecha)
+                    .ThenByDescending(p => p.IdPagoPaquete))
                 {
-                    var collapseId = $"pago_{p.IdPagoPaquete}";
+                    var collapseId = $"miDetallePago_{pago.IdPagoPaquete}";
+                    var detalles = pago.Detalles ?? new List<PagoPaqueteDetalle>();
+
+                    var abonos = (pago.Abonos ?? new List<PagoPaqueteAbono>())
+                        .OrderByDescending(a => a.Fecha)
+                        .ThenByDescending(a => a.IdPagoPaqueteAbono)
+                        .ToList();
+
+                    var totalOriginal = detalles.Sum(d => d.Pago);
+                    var totalAbonosPago = abonos.Sum(a => a.Monto);
+
                     <tr style="cursor:pointer;"
                         data-bs-toggle="collapse"
                         data-bs-target="#@collapseId"
                         aria-expanded="false"
                         aria-controls="@collapseId">
-                        <td>@p.Fecha.ToString("dd/MM/yyyy HH:mm")</td>
-                        <td>@p.Monto.ToString("N2")</td>
-                        <td>Pago #@p.IdPagoPaquete</td>
+                        <td>@pago.Fecha.ToString("dd/MM/yyyy HH:mm")</td>
+                        <td>@pago.Monto.ToString("N2")</td>
+                        <td>Pago #@pago.IdPagoPaquete</td>
+                        <td>
+                            @if (!pago.Activo)
+                            {
+                                <span class="badge bg-danger">Anulado</span>
+                            }
+                            else if (pago.Monto <= 0)
+                            {
+                                <span class="badge bg-success">Pagado</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-warning text-dark">Pendiente</span>
+                            }
+                        </td>
                     </tr>
 
                     <tr class="collapse" id="@collapseId">
-                        <td colspan="3">
-                            <div class="p-3 rounded" style="background: rgba(0,0,0,.08);">
-                                @if (p.Detalles == null || !p.Detalles.Any())
+                        <td colspan="4">
+                            <div class="p-3 rounded cr-detalle-pago">
+                                <div class="d-flex align-items-center justify-content-between mb-3 gap-2 flex-wrap">
+                                    <h5 class="mb-0">Detalle del pago</h5>
+
+                                    <button type="button"
+                                            class="btn btn-outline-primary btn-sm"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#modalMiHistorialAbonos_@pago.IdPagoPaquete">
+                                        Ver historial de pagos
+                                    </button>
+                                </div>
+
+                                @if (!pago.Activo)
                                 {
-                                    <div class="text-muted">Sin detalles registrados.</div>
+                                    <div class="alert alert-danger">
+                                        <div class="fw-semibold">Este pago fue anulado.</div>
+                                        <div>
+                                            <strong>Motivo:</strong>
+                                            @(string.IsNullOrWhiteSpace(pago.MotivoAnulacion)
+                                                ? "Sin motivo registrado"
+                                                : pago.MotivoAnulacion)
+                                        </div>
+                                    </div>
+                                }
+
+                                <div class="mb-3">
+                                    <div><strong>Número de pago:</strong> @pago.IdPagoPaquete</div>
+                                    <div><strong>Fecha:</strong> @pago.Fecha.ToString("dd/MM/yyyy HH:mm")</div>
+                                    <div><strong>Tipo pago:</strong> @pago.TipoPago</div>
+                                    <div><strong>Estado:</strong> @(pago.Activo ? "Activo" : "Anulado")</div>
+                                    <div><strong>Monto original:</strong> @totalOriginal.ToString("N2")</div>
+                                    <div><strong>Total abonado:</strong> @totalAbonosPago.ToString("N2")</div>
+                                    <div><strong>Monto restante:</strong> @pago.Monto.ToString("N2")</div>
+                                </div>
+
+                                <h6 class="mb-2">Detalle registrado</h6>
+
+                                @if (!detalles.Any())
+                                {
+                                    <div class="alert alert-info mb-0">
+                                        Este pago no tiene detalles registrados.
+                                    </div>
                                 }
                                 else
                                 {
@@ -42,20 +171,32 @@ else
                                         <table class="table table-sm align-middle mb-0">
                                             <thead>
                                                 <tr>
-                                                    <th style="width:140px;">Plan</th>
-                                                    <th style="width:160px;">Lecciones</th>
-                                                    <th style="width:120px;">Pago</th>
+                                                    <th>Plan</th>
+                                                    <th>Lecciones</th>
+                                                    <th>Pago</th>
                                                     <th>Detalle</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                @foreach (var d in p.Detalles)
+                                                @foreach (var detalle in detalles)
                                                 {
                                                     <tr>
-                                                        <td>@d.CantDias</td>
-                                                        <td>@(d.CantLecciones?.ToString() ?? "—")</td>
-                                                        <td>@d.Pago.ToString("N2")</td>
-                                                        <td>@(string.IsNullOrWhiteSpace(d.Detalle) ? "—" : d.Detalle)</td>
+                                                        <td>
+                                                            @(detalle.CantDias == TipoPlanDias.ClasesExtra
+                                                                ? "Clases extra"
+                                                                : detalle.CantDias.ToString())
+                                                        </td>
+                                                        <td>
+                                                            @(detalle.CantLecciones.HasValue
+                                                                ? detalle.CantLecciones.Value.ToString()
+                                                                : "—")
+                                                        </td>
+                                                        <td>@detalle.Pago.ToString("N2")</td>
+                                                        <td>
+                                                            @(string.IsNullOrWhiteSpace(detalle.Detalle)
+                                                                ? "—"
+                                                                : detalle.Detalle)
+                                                        </td>
                                                     </tr>
                                                 }
                                             </tbody>
@@ -71,6 +212,115 @@ else
     </div>
 
     <div class="text-muted mt-2" style="font-size:.9rem;">
-        Tip: tocá/clickeá una fila para ver el detalle.
+        Tip: tocá/clickeá una fila para ver el detalle del pago.
     </div>
 }
+
+@foreach (var pago in pagos
+    .OrderByDescending(p => p.Fecha)
+    .ThenByDescending(p => p.IdPagoPaquete))
+{
+    var abonosModal = (pago.Abonos ?? new List<PagoPaqueteAbono>())
+        .OrderByDescending(a => a.Fecha)
+        .ThenByDescending(a => a.IdPagoPaqueteAbono)
+        .ToList();
+
+    var totalAbonadoModal = abonosModal.Sum(a => a.Monto);
+
+    <div class="modal fade"
+         id="modalMiHistorialAbonos_@pago.IdPagoPaquete"
+         tabindex="-1"
+         aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content cr-card">
+                <div class="modal-header">
+                    <div>
+                        <h5 class="modal-title mb-0">Historial de pagos</h5>
+                        <div class="text-muted small">
+                            Pago #@pago.IdPagoPaquete - @pago.Fecha.ToString("dd/MM/yyyy")
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+
+                <div class="modal-body">
+                    @if (!pago.Activo)
+                    {
+                        <div class="alert alert-danger">
+                            Pago anulado:
+                            @(string.IsNullOrWhiteSpace(pago.MotivoAnulacion)
+                                ? "Sin motivo registrado"
+                                : pago.MotivoAnulacion)
+                        </div>
+                    }
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-12 col-md-6">
+                            <div class="cr-resumen-box">
+                                <div class="text-muted" style="font-size:.9rem;">Total abonado</div>
+                                <div class="fw-semibold fs-5">@totalAbonadoModal.ToString("N2")</div>
+                            </div>
+                        </div>
+
+                        <div class="col-12 col-md-6">
+                            <div class="cr-resumen-box">
+                                <div class="text-muted" style="font-size:.9rem;">Restante registrado</div>
+                                <div class="fw-semibold fs-5">@pago.Monto.ToString("N2")</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    @if (!abonosModal.Any())
+                    {
+                        <div class="alert alert-info mb-0">
+                            Este pago no tiene abonos registrados.
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-sm align-middle">
+                                <thead>
+                                    <tr>
+                                        <th>Fecha</th>
+                                        <th>Monto</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var abono in abonosModal)
+                                    {
+                                        <tr>
+                                            <td>@abono.Fecha.ToString("dd/MM/yyyy HH:mm")</td>
+                                            <td>@abono.Monto.ToString("N2")</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button"
+                            class="btn btn-outline-secondary w-100"
+                            data-bs-dismiss="modal">
+                        Cerrar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<style>
+    .cr-resumen-box {
+        border: 1px solid rgba(255,255,255,.16);
+        border-radius: .5rem;
+        padding: .85rem 1rem;
+        background: rgba(255,255,255,.04);
+    }
+
+    .cr-detalle-pago {
+        background: rgba(255,255,255,.04);
+    }
+</style>

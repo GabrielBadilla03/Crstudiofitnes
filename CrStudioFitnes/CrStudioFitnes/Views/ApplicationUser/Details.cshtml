@@ -1,4 +1,4 @@
-﻿@model CrStudioFitnes.Models.ApplicationUser
+@model CrStudioFitnes.Models.ApplicationUser
 @using CrStudioFitnes.Models
 
 @{
@@ -23,6 +23,18 @@
 
     var paquetesDisponibles = ViewBag.PaquetesDisponibles as List<Paquete>;
 
+    var tiposPlanFiltro = (paquetesDisponibles ?? new List<Paquete>())
+    .Select(p => p.CantDias)
+    .Distinct()
+    .OrderBy(x => x)
+    .ToList();
+
+    var leccionesFiltro = (paquetesDisponibles ?? new List<Paquete>())
+        .Select(p => p.CantLecciones)
+        .Distinct()
+        .OrderBy(x => x)
+        .ToList();
+
     // ==========================
     // Permisos (según controller)
     // ==========================
@@ -39,6 +51,9 @@
 
     bool canVerHistorialPagos =
         User.IsInRole("Gestor de Pagos") || User.IsInRole("Administrador");
+
+    bool canConfigurarFamiliar =
+     User.IsInRole("Administrador");
 }
 
 @if (TempData["OkEstado"] != null)
@@ -56,6 +71,22 @@
 @if (TempData["OkRoles"] != null)
 {
     <div class="alert alert-info mt-2">@TempData["OkRoles"]</div>
+}
+@if (TempData["OkFamiliar"] != null)
+{
+    <div class="alert alert-success mt-2">@TempData["OkFamiliar"]</div>
+}
+@if (TempData["ErrorFamiliar"] != null)
+{
+    <div class="alert alert-danger mt-2">@TempData["ErrorFamiliar"]</div>
+}
+@if (TempData["OkPago"] != null)
+{
+    <div class="alert alert-success">@TempData["OkPago"]</div>
+}
+@if (TempData["ErrorPago"] != null)
+{
+    <div class="alert alert-danger">@TempData["ErrorPago"]</div>
 }
 
 <div class="container py-4">
@@ -108,6 +139,86 @@
                                 <div class="text-muted" style="font-size:.9rem;">Teléfono emergencia</div>
                                 <div class="fw-semibold">@(!string.IsNullOrWhiteSpace(Model.TelefonoEmergencia) ? Model.TelefonoEmergencia : "—")</div>
                             </div>
+
+                            <div class="mb-2">
+                                <div class="text-muted" style="font-size:.9rem;">Lesión u operación</div>
+                                <div class="fw-semibold">
+                                    @(!string.IsNullOrWhiteSpace(Model.LesionOperacion) ? Model.LesionOperacion : "—")
+                                </div>
+                            </div>
+
+                            <div class="mb-2">
+                                <div class="text-muted" style="font-size:.9rem;">Patología</div>
+                                <div class="fw-semibold">
+                                    @(!string.IsNullOrWhiteSpace(Model.Patologia) ? Model.Patologia : "—")
+                                </div>
+                            </div>
+
+                            @if (canConfigurarFamiliar)
+                            {
+                                <form asp-action="ActualizarFamiliar" method="post" class="mt-3">
+                                    @Html.AntiForgeryToken()
+
+                                    <input type="hidden" name="idUsuario" value="@Model.Id" />
+
+                                    <div class="mb-3">
+                                        <div class="d-flex align-items-center gap-3">
+                                            <label class="text-muted mb-0" style="font-size:.9rem;" for="familiar">
+                                                Familiar
+                                            </label>
+
+                                            <div class="form-check form-switch m-0">
+                                                <input class="form-check-input"
+                                                       type="checkbox"
+                                                       role="switch"
+                                                       id="familiar"
+                                                       name="familiar"
+                                                       value="true"
+                                                @(Model.Familiar ? "checked" : "") />
+
+                                                <input type="hidden" name="familiar" value="false" />
+                                            </div>
+
+                                            <span class="fw-semibold">
+                                                @(Model.Familiar ? "Sí" : "No")
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <div class="d-flex align-items-end justify-content-between mt-3 gap-2 flex-wrap">
+                                        <div style="max-width: 180px;">
+                                            <label for="cantidadFamilia" class="form-label text-muted mb-1" style="font-size:.9rem;">
+                                                Cantidad familiar
+                                            </label>
+
+                                            <input type="number"
+                                                   class="form-control"
+                                                   id="cantidadFamilia"
+                                                   name="cantidadFamilia"
+                                                   min="0"
+                                                   value="@(Model.CantidadFamilia.HasValue ? Model.CantidadFamilia.Value.ToString() : "")" />
+                                        </div>
+
+                                        <button type="submit" class="btn btn-outline-primary cr-btn-mini">
+                                            Guardar
+                                        </button>
+                                    </div>
+                                </form>
+                            }
+                            else
+                            {
+                                <div class="mb-2">
+                                    <div class="text-muted" style="font-size:.9rem;">Familiar</div>
+                                    <div class="fw-semibold">@(Model.Familiar ? "Sí" : "No")</div>
+                                </div>
+
+                                <div class="mb-2">
+                                    <div class="text-muted" style="font-size:.9rem;">Cantidad familiar</div>
+                                    <div class="fw-semibold">
+                                        @(Model.CantidadFamilia.HasValue ? Model.CantidadFamilia.Value.ToString() : "—")
+                                    </div>
+                                </div>
+                            }
 
                             <div class="d-flex align-items-center justify-content-between mt-3 gap-2 flex-wrap">
                                 <div class="cr-status @(activo ? "cr-status--ok" : "cr-status--off")">
@@ -182,10 +293,21 @@
 
                                         <div class="cr-card-subtitle">
                                             <div>Plan: @paqueteActual.Paquete?.CantDias</div>
-                                            <div>Pago: @((paqueteActual.Paquete?.Pago ?? 0).ToString("N2"))</div>
                                             <div>
-                                                <span class="text-muted">Lecciones del paquete:</span>
+                                                <span class="text-muted">Pago total:</span>
+                                                <span class="fw-semibold">@((paqueteActual.Paquete?.Pago ?? 0).ToString("N2"))</span>
+                                            </div>
+                                            <div>
+                                                <span class="text-muted">Pago por usuario:</span>
+                                                <span class="fw-semibold">@((paqueteActual.Paquete?.PagoPorUsuario ?? 0).ToString("N2"))</span>
+                                            </div>
+                                            <div>
+                                                <span class="text-muted">Lecciones totales:</span>
                                                 <span class="fw-semibold">@paqueteActual.Paquete?.CantLecciones</span>
+                                            </div>
+                                            <div>
+                                                <span class="text-muted">Lecciones por usuario:</span>
+                                                <span class="fw-semibold">@paqueteActual.Paquete?.CantLeccionesPorUsuario</span>
                                             </div>
                                             @if (!string.IsNullOrWhiteSpace(paqueteActual.Paquete?.Detalle))
                                             {
@@ -224,13 +346,12 @@
                                 @* Pagar paquete: GestorPagos/Admin *@
                                 @if (canPagarPaquete)
                                 {
-                                    <form asp-action="PagarPaquete" method="post">
-                                        @Html.AntiForgeryToken()
-                                        <input type="hidden" name="idUsuario" value="@Model.Id" />
-                                        <button type="submit" class="btn btn-outline-success w-100">
-                                            Pagar paquete
-                                        </button>
-                                    </form>
+                                    <button type="button"
+                                            class="btn btn-outline-success w-100"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#modalPagarPaquete">
+                                        Pagar paquete
+                                    </button>
                                 }
 
                                 @* Cambiar paquete: GestorPagos/Admin/Entrenador *@
@@ -265,6 +386,87 @@
 </div>
 
 @* ==========================
+   MODAL PAGAR PAQUETE
+   ========================== *@
+@if (canPagarPaquete && paqueteActual != null)
+{
+    var montoPaqueteActual = (paqueteActual.Paquete?.PagoPorUsuario ?? 0) > 0
+        ? paqueteActual.Paquete!.PagoPorUsuario
+        : paqueteActual.Paquete?.Pago ?? 0;
+
+    var leccionesPaqueteActual = (paqueteActual.Paquete?.CantLeccionesPorUsuario ?? 0) > 0
+        ? paqueteActual.Paquete!.CantLeccionesPorUsuario
+        : paqueteActual.Paquete?.CantLecciones ?? 0;
+
+    <div class="modal fade" id="modalPagarPaquete" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content cr-card">
+                <div class="modal-header">
+                    <h5 class="modal-title">Pagar paquete</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+
+                <form asp-action="PagarPaquete" method="post">
+                    @Html.AntiForgeryToken()
+
+                    <div class="modal-body">
+                        <input type="hidden" name="idUsuario" value="@Model.Id" />
+
+                        <p class="text-muted mb-3">
+                            Registrar pago para <strong>@nombreCompleto</strong>.
+                        </p>
+
+                        <div class="row g-3 mb-3">
+                            <div class="col-12 col-sm-6">
+                                <div class="text-muted" style="font-size:.9rem;">Monto por usuario</div>
+                                <div class="fw-semibold">@montoPaqueteActual.ToString("N2")</div>
+                            </div>
+                            <div class="col-12 col-sm-6">
+                                <div class="text-muted" style="font-size:.9rem;">Lecciones por usuario</div>
+                                <div class="fw-semibold">@leccionesPaqueteActual</div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="tipoPago" class="form-label">Tipo de pago</label>
+                            <select id="tipoPago" name="tipoPago" class="form-select" required>
+                                <option value="CONTADO">Contado</option>
+                                <option value="CREDITO">Crédito</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="fechaPago" class="form-label">Fecha de pago</label>
+                            <input type="date"
+                                   id="fechaPago"
+                                   name="fechaPago"
+                                   class="form-control"
+                                   value="@hoy.ToString("yyyy-MM-dd")"
+                                   required />
+                        </div>
+
+                        <div class="alert alert-info mb-0" style="font-size:.9rem;">
+                            <strong>Contado:</strong> el pago queda en 0 y se registra un abono por el total del paquete.
+                            <br />
+                            <strong>Crédito:</strong> el pago queda con el monto original y no se registra abono.
+                        </div>
+                    </div>
+
+                    <div class="modal-footer d-flex gap-2">
+                        <button type="submit" class="btn btn-success w-100">
+                            Confirmar pago
+                        </button>
+
+                        <button type="button" class="btn btn-outline-secondary w-100" data-bs-dismiss="modal">
+                            Cancelar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+}
+@* ==========================
    MODAL PAQUETE (solo si puede)
    ========================== *@
 @if (canCambiarPaquete)
@@ -296,12 +498,54 @@
                         }
                         else
                         {
-                            <div class="row g-3">
+                            <div class="row g-2 mb-3">
+                                <div class="col-12 col-md-5">
+                                    <label for="filtroTipoPlanPaquete" class="form-label text-muted mb-1" style="font-size:.9rem;">
+                                        Tipo plan
+                                    </label>
+
+                                    <select id="filtroTipoPlanPaquete" class="form-select form-select-sm">
+                                        <option value="">Todos</option>
+                                        @foreach (var plan in tiposPlanFiltro)
+                                        {
+                                            <option value="@plan">@plan</option>
+                                        }
+                                    </select>
+                                </div>
+
+                                <div class="col-12 col-md-5">
+                                    <label for="filtroLeccionesPaquete" class="form-label text-muted mb-1" style="font-size:.9rem;">
+                                        Cantidad de lecciones
+                                    </label>
+
+                                    <select id="filtroLeccionesPaquete" class="form-select form-select-sm">
+                                        <option value="">Todas</option>
+                                        @foreach (var cant in leccionesFiltro)
+                                        {
+                                            <option value="@cant">@cant</option>
+                                        }
+                                    </select>
+                                </div>
+
+                                <div class="col-12 col-md-2 d-flex align-items-end">
+                                    <button type="button" class="btn btn-outline-secondary btn-sm w-100" id="btnLimpiarFiltrosPaquete">
+                                        Limpiar
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="alert alert-info d-none" id="sinResultadosPaquetes">
+                                No hay paquetes que coincidan con los filtros seleccionados.
+                            </div>
+
+                            <div class="row g-3" id="contenedorPaquetes">
                                 @foreach (var p in paquetesDisponibles)
                                 {
                                     var isCurrent = paqueteActual != null && paqueteActual.IdPaquete == p.IdPaquete;
 
-                                    <div class="col-12 col-md-6">
+                                    <div class="col-12 col-md-6 paquete-item"
+                                         data-plan="@p.CantDias"
+                                         data-lecciones="@p.CantLecciones">
                                         <div class="cr-card-paquete paquete-select-card h-100 @(isCurrent ? "selected" : "")"
                                              data-id="@p.IdPaquete"
                                              style="cursor:pointer;">
@@ -469,9 +713,15 @@
     <script>
         document.addEventListener('DOMContentLoaded', function () {
 
-            // ====== Selección de paquete (solo si existe el modal) ======
+            // ====== Selección y filtros de paquete ======
             const cards = document.querySelectorAll('.paquete-select-card');
             const inputId = document.getElementById('idPaqueteSeleccionado');
+
+            const filtroTipoPlan = document.getElementById('filtroTipoPlanPaquete');
+            const filtroLecciones = document.getElementById('filtroLeccionesPaquete');
+            const btnLimpiarFiltros = document.getElementById('btnLimpiarFiltrosPaquete');
+            const itemsPaquete = document.querySelectorAll('.paquete-item');
+            const sinResultadosPaquetes = document.getElementById('sinResultadosPaquetes');
 
             if (cards && cards.length && inputId) {
                 cards.forEach(c => {
@@ -480,6 +730,64 @@
                         c.classList.add('selected');
                         inputId.value = c.getAttribute('data-id') || '';
                     });
+                });
+            }
+
+            function aplicarFiltrosPaquetes() {
+                const plan = filtroTipoPlan ? filtroTipoPlan.value : '';
+                const lecciones = filtroLecciones ? filtroLecciones.value : '';
+
+                let visibles = 0;
+
+                itemsPaquete.forEach(item => {
+                    const itemPlan = item.getAttribute('data-plan') || '';
+                    const itemLecciones = item.getAttribute('data-lecciones') || '';
+
+                    const cumplePlan = !plan || itemPlan === plan;
+                    const cumpleLecciones = !lecciones || itemLecciones === lecciones;
+
+                    const visible = cumplePlan && cumpleLecciones;
+
+                    item.classList.toggle('d-none', !visible);
+
+                    if (visible) {
+                        visibles++;
+                    }
+                });
+
+                if (sinResultadosPaquetes) {
+                    sinResultadosPaquetes.classList.toggle('d-none', visibles > 0);
+                }
+
+                // Si el paquete seleccionado queda oculto por el filtro, se limpia la selección
+                const seleccionado = document.querySelector('.paquete-select-card.selected');
+                if (seleccionado) {
+                    const itemSeleccionado = seleccionado.closest('.paquete-item');
+
+                    if (itemSeleccionado && itemSeleccionado.classList.contains('d-none')) {
+                        seleccionado.classList.remove('selected');
+
+                        if (inputId) {
+                            inputId.value = '';
+                        }
+                    }
+                }
+            }
+
+            if (filtroTipoPlan) {
+                filtroTipoPlan.addEventListener('change', aplicarFiltrosPaquetes);
+            }
+
+            if (filtroLecciones) {
+                filtroLecciones.addEventListener('change', aplicarFiltrosPaquetes);
+            }
+
+            if (btnLimpiarFiltros) {
+                btnLimpiarFiltros.addEventListener('click', () => {
+                    if (filtroTipoPlan) filtroTipoPlan.value = '';
+                    if (filtroLecciones) filtroLecciones.value = '';
+
+                    aplicarFiltrosPaquetes();
                 });
             }
 

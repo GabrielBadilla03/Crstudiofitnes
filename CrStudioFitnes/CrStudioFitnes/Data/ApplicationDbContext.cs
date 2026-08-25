@@ -31,17 +31,34 @@ namespace CrStudioFitnes.Data
         {
             base.OnModelCreating(modelBuilder);
 
-            // -------- ApplicationUser
+            // =====================================================
+            // ApplicationUser
+            // =====================================================
+
             modelBuilder.Entity<ApplicationUser>()
                 .HasIndex(u => u.Cedula)
                 .IsUnique();
 
-            // -------- Paquete
+            // =====================================================
+            // Paquete
+            // =====================================================
+
             modelBuilder.Entity<Paquete>()
                 .Property(p => p.CantDias)
-                .HasConversion<string>(); // enum -> texto
+                .HasConversion<string>();
 
-            // -------- PaqueteUsuario
+            modelBuilder.Entity<Paquete>()
+                .Property(p => p.Pago)
+                .HasPrecision(10, 2);
+
+            modelBuilder.Entity<Paquete>()
+                .Property(p => p.PagoPorUsuario)
+                .HasPrecision(10, 2);
+
+            // =====================================================
+            // PaqueteUsuario
+            // =====================================================
+
             modelBuilder.Entity<PaqueteUsuario>()
                 .HasOne(pu => pu.Paquete)
                 .WithMany(p => p.PaquetesUsuario)
@@ -56,13 +73,16 @@ namespace CrStudioFitnes.Data
 
             modelBuilder.Entity<PaqueteUsuario>()
                 .Property(pu => pu.FechaInicio)
-                .HasColumnType("date"); // corrige anotación
+                .HasColumnType("date");
 
             modelBuilder.Entity<PaqueteUsuario>()
                 .Property(pu => pu.FechaFin)
-                .HasColumnType("date"); // corrige anotación
+                .HasColumnType("date");
 
-            // -------- PagoPaquete / Detalle
+            // =====================================================
+            // PagoPaquete
+            // =====================================================
+
             modelBuilder.Entity<PagoPaquete>()
                 .HasOne(pp => pp.Usuario)
                 .WithMany(u => u.PagosPaquetes)
@@ -73,9 +93,35 @@ namespace CrStudioFitnes.Data
                 .Property(p => p.Monto)
                 .HasPrecision(10, 2);
 
+            modelBuilder.Entity<PagoPaquete>()
+                .Property(p => p.Activo)
+                .HasDefaultValue(true);
+
+            // =====================================================
+            // PagoPaqueteAbono
+            // =====================================================
+
+            modelBuilder.Entity<PagoPaqueteAbono>(entity =>
+            {
+                // Se conserva el nombre actual de la tabla.
+                entity.ToTable("PagoPaqueteAbono");
+
+                entity.HasOne(a => a.PagoPaquete)
+                    .WithMany(p => p.Abonos)
+                    .HasForeignKey(a => a.IdPagoPaquete)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.Property(a => a.Monto)
+                    .HasPrecision(10, 2);
+            });
+
+            // =====================================================
+            // PagoPaqueteDetalle
+            // =====================================================
+
             modelBuilder.Entity<PagoPaqueteDetalle>()
                 .Property(d => d.CantDias)
-                .HasConversion<string>(); // enum -> texto
+                .HasConversion<string>();
 
             modelBuilder.Entity<PagoPaqueteDetalle>()
                 .Property(d => d.Pago)
@@ -83,20 +129,35 @@ namespace CrStudioFitnes.Data
 
             modelBuilder.Entity<PagoPaqueteDetalle>()
                 .HasOne(d => d.PagoPaquete)
-                .WithMany(h => h.Detalles)
+                .WithMany(p => p.Detalles)
                 .HasForeignKey(d => d.IdPagoPaquete)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            // -------- Reserva (date + catálogo de horas)
+            // =====================================================
+            // Reserva
+            // =====================================================
+
             modelBuilder.Entity<Reserva>()
                 .Property(r => r.Fecha)
                 .HasColumnType("date");
 
             modelBuilder.Entity<Reserva>()
+                .Property(r => r.Activa)
+                .HasDefaultValue(true);
+
+            // Usuario para quien se hace la reserva.
+            modelBuilder.Entity<Reserva>()
                 .HasOne(r => r.Usuario)
                 .WithMany(u => u.Reservas)
                 .HasForeignKey(r => r.IdUsuario)
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Usuario que registró la reserva.
+            modelBuilder.Entity<Reserva>()
+                .HasOne(r => r.UsuarioReserva)
+                .WithMany(u => u.ReservasCreadas)
+                .HasForeignKey(r => r.IdUsuarioReserva)
+                .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<Reserva>()
                 .HasOne(r => r.HoraReserva)
@@ -105,13 +166,24 @@ namespace CrStudioFitnes.Data
                 .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<Reserva>()
-                .HasIndex(r => new { r.IdUsuario, r.Fecha, r.IdHora })
-                .IsUnique();
+                .HasIndex(r => new
+                {
+                    r.IdUsuario,
+                    r.Fecha,
+                    r.IdHora
+                });
 
             modelBuilder.Entity<Reserva>()
-                .HasIndex(r => new { r.Fecha, r.IdHora });
+                .HasIndex(r => new
+                {
+                    r.Fecha,
+                    r.IdHora
+                });
 
-            // -------- HoraReserva
+            // =====================================================
+            // HoraReserva
+            // =====================================================
+
             modelBuilder.Entity<HoraReserva>()
                 .Property(h => h.Hora)
                 .HasColumnType("time(0)");
@@ -120,7 +192,10 @@ namespace CrStudioFitnes.Data
                 .HasIndex(h => h.Hora)
                 .IsUnique();
 
-            // -------- Historial / Pesaje / Cuerpo / PesajeCuerpo
+            // =====================================================
+            // Historial
+            // =====================================================
+
             modelBuilder.Entity<Historial>()
                 .HasOne(h => h.Usuario)
                 .WithMany(u => u.Historiales)
@@ -128,9 +203,20 @@ namespace CrStudioFitnes.Data
                 .OnDelete(DeleteBehavior.Cascade);
 
             modelBuilder.Entity<Historial>()
-                .Property(h => h.FechaInicio).HasColumnType("date"); // corrige anotación
+                .Property(h => h.FechaInicio)
+                .HasColumnType("date");
+
             modelBuilder.Entity<Historial>()
-                .Property(h => h.FechaFin).HasColumnType("date");    // corrige anotación
+                .Property(h => h.FechaFin)
+                .HasColumnType("date");
+
+            modelBuilder.Entity<Historial>()
+                .Property(h => h.Frecuencia)
+                .HasConversion<string>();
+
+            // =====================================================
+            // Pesaje
+            // =====================================================
 
             modelBuilder.Entity<Pesaje>()
                 .HasOne(p => p.Historial)
@@ -140,14 +226,26 @@ namespace CrStudioFitnes.Data
 
             modelBuilder.Entity<Pesaje>()
                 .Property(p => p.Fecha)
-                .HasColumnType("date"); // corrige anotación
+                .HasColumnType("date");
+
+            // =====================================================
+            // Cuerpo
+            // =====================================================
 
             modelBuilder.Entity<Cuerpo>()
                 .HasIndex(c => c.Nombre)
                 .IsUnique();
 
+            // =====================================================
+            // PesajeCuerpo
+            // =====================================================
+
             modelBuilder.Entity<PesajeCuerpo>()
-                .HasKey(pc => new { pc.IdPesaje, pc.IdCuerpo });
+                .HasKey(pc => new
+                {
+                    pc.IdPesaje,
+                    pc.IdCuerpo
+                });
 
             modelBuilder.Entity<PesajeCuerpo>()
                 .HasOne(pc => pc.Pesaje)
@@ -155,49 +253,56 @@ namespace CrStudioFitnes.Data
                 .HasForeignKey(pc => pc.IdPesaje)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            modelBuilder.Entity<Historial>()
-                .Property(h => h.Frecuencia)
-                .HasConversion<string>();
-
             modelBuilder.Entity<PesajeCuerpo>()
                 .HasOne(pc => pc.Cuerpo)
                 .WithMany(c => c.Pesajes)
                 .HasForeignKey(pc => pc.IdCuerpo)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            modelBuilder.Entity<BloqueoHorario>(e =>
+            // =====================================================
+            // BloqueoHorario
+            // =====================================================
+
+            modelBuilder.Entity<BloqueoHorario>(entity =>
             {
-                e.ToTable("BloqueosHorarios");
+                entity.ToTable("BloqueosHorarios");
 
-                // Relación opcional con HoraReserva
-                e.HasOne(b => b.HoraReserva)
-                 .WithMany(h => h.BloqueosHorarios)
-                 .HasForeignKey(b => b.IdHora)
-                 .IsRequired(false)
-                 .OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(b => b.HoraReserva)
+                    .WithMany(h => h.BloqueosHorarios)
+                    .HasForeignKey(b => b.IdHora)
+                    .IsRequired(false)
+                    .OnDelete(DeleteBehavior.Restrict);
 
-                // Regla: al menos uno debe venir (Fecha o IdHora). Prohíbe ambos NULL.
-                modelBuilder.Entity<BloqueoHorario>()
-                    .ToTable(tb => tb.HasCheckConstraint(
+                entity.ToTable(tableBuilder =>
+                    tableBuilder.HasCheckConstraint(
                         "CK_BloqueosHorarios_FechaOrHora",
-                        "[Fecha] IS NOT NULL OR [IdHora] IS NOT NULL"
-                    ));
+                        "[Fecha] IS NOT NULL OR [IdHora] IS NOT NULL"));
 
-                // Evitar duplicados (SQL Server: índices filtrados)    
-                e.HasIndex(x => x.IdHora)
-                  .IsUnique()
-                  .HasFilter("[Activo] = 1 AND [Fecha] IS NULL AND [IdHora] IS NOT NULL");
+                entity.HasIndex(x => x.IdHora)
+                    .IsUnique()
+                    .HasFilter(
+                        "[Activo] = 1 " +
+                        "AND [Fecha] IS NULL " +
+                        "AND [IdHora] IS NOT NULL");
 
-                e.HasIndex(x => x.Fecha)
-                 .IsUnique()
-                 .HasFilter("[Activo] = 1 AND [Fecha] IS NOT NULL AND [IdHora] IS NULL");
+                entity.HasIndex(x => x.Fecha)
+                    .IsUnique()
+                    .HasFilter(
+                        "[Activo] = 1 " +
+                        "AND [Fecha] IS NOT NULL " +
+                        "AND [IdHora] IS NULL");
 
-                e.HasIndex(x => new { x.Fecha, x.IdHora })
-                 .IsUnique()
-                 .HasFilter("[Activo] = 1 AND [Fecha] IS NOT NULL AND [IdHora] IS NOT NULL");
-
+                entity.HasIndex(x => new
+                {
+                    x.Fecha,
+                    x.IdHora
+                })
+                    .IsUnique()
+                    .HasFilter(
+                        "[Activo] = 1 " +
+                        "AND [Fecha] IS NOT NULL " +
+                        "AND [IdHora] IS NOT NULL");
             });
         }
-
     }
 }

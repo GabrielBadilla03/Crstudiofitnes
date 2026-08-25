@@ -1,4 +1,4 @@
-﻿@using SIGE.Helpers
+@using SIGE.Helpers
 @model PaginatedList<CrStudioFitnes.Models.Paquete>
 
 @{
@@ -78,7 +78,7 @@
                                            name="soloActivos"
                                            value="true"
                                            @(currentSoloActivos ? "checked" : "") />
-                                    <label class="form-check-label" for="soloActivos">Activos</label>
+                                    <label class="form-check-label" for="soloActivos">Visibles</label>
                                 </div>
                             </div>
 
@@ -99,6 +99,10 @@
                         }
                     </form>
 
+                    @if (TempData["Ok"] != null)
+                    {
+                        <div class="alert alert-success">@TempData["Ok"]</div>
+                    }
 
                     @if (Model == null || !Model.Any())
                     {
@@ -134,12 +138,11 @@
                                                 <div class="mt-1">
                                                     @if (item.Activo)
                                                     {
-                                                        <span class="badge bg-success">Activo</span>
+                                                        <span class="badge bg-success">Visible</span>
                                                     }
                                                     else
                                                     {
-
-                                                        <span class="badge bg-secondary">Inactivo</span>
+                                                        <span class="badge bg-secondary">Oculto</span>
                                                     }
                                                 </div>
                                             </div>
@@ -147,30 +150,33 @@
                                     }
                                     else
                                     {
-                                        <div class="cr-card-paquete h-100">
-                                            <div class="cr-card-paquete-body">
-                                                <div class="cr-card-title">@nombre</div>
+                                        <a asp-action="Details"
+                                           asp-route-id="@item.IdPaquete"
+                                           class="text-decoration-none d-block h-100">
+                                            <div class="cr-card-paquete h-100">
+                                                <div class="cr-card-paquete-body">
+                                                    <div class="cr-card-title">@nombre</div>
 
-                                                <div class="cr-card-subtitle">
-                                                    @item.CantDias<br />
-                                                    @item.CantLecciones lecciones
-                                                </div>
+                                                    <div class="cr-card-subtitle">
+                                                        @item.CantDias<br />
+                                                        @item.CantLecciones lecciones
+                                                    </div>
 
-                                                <div class="cr-card-price">₡@item.Pago.ToString("N0")</div>
+                                                    <div class="cr-card-price">₡@item.Pago.ToString("N0")</div>
 
-                                                <div class="mt-1">
-                                                    @if (item.Activo)
-                                                    {
-                                                        <span class="badge bg-success">Activo</span>
-                                                    }
-                                                    else
-                                                    {
-
-                                                        <span class="badge bg-secondary">Inactivo</span>
-                                                    }
+                                                    <div class="mt-1">
+                                                        @if (item.Activo)
+                                                        {
+                                                            <span class="badge bg-success">Activo</span>
+                                                        }
+                                                        else
+                                                        {
+                                                            <span class="badge bg-secondary">Inactivo</span>
+                                                        }
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
+                                        </a>
                                     }
 
                                 </div>
@@ -238,6 +244,7 @@
 
                 </div>
                 <div class="modal-footer d-flex flex-column flex-sm-row gap-2">
+                    <a id="modalDetailsLink" class="btn btn-outline-primary w-100">Detalles</a>
                     <a id="modalEditLink" class="btn btn-primary w-100">Editar</a>
                     <a id="modalDeleteLink" class="btn btn-outline-danger w-100">Borrar</a>
                 </div>
@@ -254,9 +261,11 @@
                 const cards = document.querySelectorAll('.cr-card-paquete-click');
                 const modalElement = document.getElementById('paqueteModal');
                 const modalNombre = document.getElementById('modalPaqueteNombre');
+                const detailsLink = document.getElementById('modalDetailsLink');
                 const editLink = document.getElementById('modalEditLink');
                 const deleteLink = document.getElementById('modalDeleteLink');
 
+                const detailsBaseUrl = '@Url.Action("Details", "Paquetes")';
                 const editBaseUrl = '@Url.Action("Edit", "Paquetes")';
                 const deleteBaseUrl = '@Url.Action("Delete", "Paquetes")';
 
@@ -268,6 +277,7 @@
                         const nombre = card.getAttribute('data-nombre') || 'Paquete';
 
                         modalNombre.textContent = nombre;
+                        detailsLink.href = detailsBaseUrl + '/' + id;
                         editLink.href = editBaseUrl + '/' + id;
                         deleteLink.href = deleteBaseUrl + '/' + id;
 

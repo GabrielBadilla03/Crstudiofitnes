@@ -1,4 +1,4 @@
-﻿@model CrStudioFitnes.Models.Paquete
+@model CrStudioFitnes.Models.Paquete
 
 @{
     ViewData["Title"] = "Editar Paquete";
@@ -10,60 +10,99 @@
             <div class="card shadow-sm cr-card">
                 <div class="card-body p-4 p-md-5">
 
-                    <!-- Encabezado con mismos estilos de colores que el Create -->
                     <div class="text-center">
                         <h1 class="h3 mb-1">@ViewData["Title"]</h1>
-                        <p class="text-muted mb-4">Modifique los datos del paquete seleccionado.</p>
+                        <p class="text-muted mb-4">
+                            Modifique los datos del paquete seleccionado.
+                        </p>
                     </div>
 
-                    <form asp-action="Edit" novalidate>
+                    <form asp-action="Edit" method="post" novalidate>
                         <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
                         <input type="hidden" asp-for="IdPaquete" />
 
                         <div class="row g-3">
-                            <!-- Columna izquierda -->
-                            <div class="col-md-6">
-
-                                <div class="form-floating mb-3">
-                                    <input asp-for="Detalle" class="form-control" placeholder="Detalle" />
-                                    <label asp-for="Detalle">Nombre del Paquete</label>
+                            <div class="col-12">
+                                <div class="form-floating">
+                                    <input asp-for="Detalle"
+                                           class="form-control"
+                                           placeholder="Nombre del paquete"
+                                           maxlength="200" />
+                                    <label asp-for="Detalle">Nombre del paquete</label>
                                     <span asp-validation-for="Detalle" class="text-danger"></span>
                                 </div>
-
-                                <div class="form-floating mb-3">
-                                    <input asp-for="Pago"
-                                           class="form-control"
-                                           asp-format="{0:0}"
-                                           placeholder="Monto" />
-                                    <label asp-for="Pago">Monto</label>
-                                    <span asp-validation-for="Pago" class="text-danger"></span>
-                                </div>
-
                             </div>
 
-                            <!-- Columna derecha -->
                             <div class="col-md-6">
-
-                                <div class="form-floating mb-3">
-                                    <select asp-for="CantDias" class="form-select" asp-items="ViewBag.CantDiasList">
+                                <div class="form-floating">
+                                    <select asp-for="CantDias"
+                                            class="form-select"
+                                            asp-items="ViewBag.CantDiasList">
                                         <option value="">Seleccione el tipo</option>
                                     </select>
-                                    <label asp-for="CantDias">Tipo de Plan</label>
+                                    <label asp-for="CantDias">Tipo de plan</label>
                                     <span asp-validation-for="CantDias" class="text-danger"></span>
                                 </div>
+                            </div>
 
-                                <div class="form-floating mb-3">
+                            <div class="col-md-6">
+                                <div class="form-floating">
                                     <input asp-for="CantLecciones"
                                            class="form-control"
-                                           placeholder="Cantidad de lecciones"
                                            type="number"
-                                           min="0"
-                                           oninput="if (this.value < 0) this.value = 0;" />
-                                    <label asp-for="CantLecciones">Cantidad de Lecciones</label>
+                                           min="1"
+                                           max="1000"
+                                           step="1"
+                                           placeholder="Cantidad total de lecciones" />
+                                    <label asp-for="CantLecciones">Cantidad total de lecciones</label>
                                     <span asp-validation-for="CantLecciones" class="text-danger"></span>
                                 </div>
+                            </div>
 
-                                <div class="form-check form-switch mb-3" style="margin-left: 15px;">
+                            <div class="col-md-6">
+                                <div class="form-floating">
+                                    <input asp-for="Pago"
+                                           class="form-control"
+                                           type="number"
+                                           min="0.01"
+                                           max="1000000"
+                                           step="0.01"
+                                           placeholder="Monto total del paquete" />
+                                    <label asp-for="Pago">Monto total del paquete</label>
+                                    <span asp-validation-for="Pago" class="text-danger"></span>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="form-floating">
+                                    <input asp-for="CantLeccionesPorUsuario"
+                                           class="form-control"
+                                           type="number"
+                                           min="1"
+                                           max="1000"
+                                           step="1"
+                                           placeholder="Lecciones por usuario" />
+                                    <label asp-for="CantLeccionesPorUsuario">Lecciones por usuario</label>
+                                    <span asp-validation-for="CantLeccionesPorUsuario" class="text-danger"></span>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="form-floating">
+                                    <input asp-for="PagoPorUsuario"
+                                           class="form-control"
+                                           type="number"
+                                           min="0.01"
+                                           max="1000000"
+                                           step="0.01"
+                                           placeholder="Monto por usuario" />
+                                    <label asp-for="PagoPorUsuario">Monto por usuario</label>
+                                    <span asp-validation-for="PagoPorUsuario" class="text-danger"></span>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6 d-flex align-items-center">
+                                <div class="form-check form-switch ms-2">
                                     <input class="form-check-input"
                                            type="checkbox"
                                            asp-for="Activo"
@@ -75,10 +114,13 @@
                                 </div>
                             </div>
 
-                            <!-- Botones con mismos estilos de colores -->
-                            <div class="col-12 d-flex justify-content-between mt-3">
-                                <a asp-action="Index" class="btn btn-outline-secondary">Volver a la lista</a>
-                                <button type="submit" class="btn btn-primary">Guardar cambios</button>
+                            <div class="col-12 d-flex justify-content-between mt-4">
+                                <a asp-action="Index" class="btn btn-outline-secondary">
+                                    Volver a la lista
+                                </a>
+                                <button type="submit" class="btn btn-primary">
+                                    Guardar cambios
+                                </button>
                             </div>
                         </div>
                     </form>

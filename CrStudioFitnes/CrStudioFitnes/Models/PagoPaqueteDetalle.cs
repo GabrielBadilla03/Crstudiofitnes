@@ -25,6 +25,7 @@ namespace CrStudioFitnes.Models
         public string? Detalle { get; set; }
 
         // Nav
+        [ForeignKey(nameof(IdPagoPaquete))]
         public PagoPaquete PagoPaquete { get; set; } = null!;
     }
 }

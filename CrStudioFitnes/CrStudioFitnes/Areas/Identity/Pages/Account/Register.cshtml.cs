@@ -152,6 +152,8 @@ namespace CrStudioFitnes.Areas.Identity.Pages.Account
             user.TelefonoEmergencia = Input.TelefonoEmergencia;
             user.LesionOperacion = Input.LesionOperacion;
             user.Patologia = Input.Patologia;
+            user.CantidadFamilia = null;
+            user.Familiar = false;
 
             user.EmailConfirmed = true;               // ? SIEMPRE confirmado
             user.NormalizedEmail = Input.Email?.Trim().ToUpperInvariant();

@@ -9,6 +9,9 @@ using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
+//comando para publicar 
+//dotnet publish "C:\Proyectos\Crstudiofitnes\CrStudioFitnes\CrStudioFitnes\CrStudioFitnes.csproj" -c Release -f net8.0 -o "C:\Servicios\Cvstudio" --self-contained false
+
 // =============================================
 //  DB
 // =============================================
@@ -52,6 +55,13 @@ builder.Services
     .AddDefaultIdentity<ApplicationUser>(options =>
     {
         options.SignIn.RequireConfirmedAccount = true;
+
+        options.Password.RequireDigit = true;
+        options.Password.RequireLowercase = true;
+        options.Password.RequireUppercase = false;
+        options.Password.RequireNonAlphanumeric = false; // quita carácter especial
+        options.Password.RequiredLength = 6;
+        options.Password.RequiredUniqueChars = 1;
     })
     .AddRoles<IdentityRole>()
     .AddEntityFrameworkStores<ApplicationDbContext>();

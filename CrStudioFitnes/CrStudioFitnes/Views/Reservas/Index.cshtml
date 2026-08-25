@@ -3,47 +3,250 @@
 
 @{
     ViewData["Title"] = "Reservas";
-    var cultura = CultureInfo.GetCultureInfo("es-CR");
 
-    // navegación
+    var cultura = CultureInfo.GetCultureInfo("es-CR");
     var current = new DateTime(Model.Year, Model.Month, 1);
     var prev = current.AddMonths(-1);
     var next = current.AddMonths(1);
 
     string[] dias = new[] { "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom" };
+
+    bool esAdministrador = User.IsInRole("Administrador");
+    bool puedeConsultarHora = esAdministrador || User.IsInRole("Entrenador");
+    bool puedeReservarPropio = User.IsInRole("Usuario");
 }
+
+<form id="formCancelarReservaToken" style="display:none;">
+    @Html.AntiForgeryToken()
+</form>
+
+<style>
+    /* =========================================================
+               Ajustes locales de color para la vista de reservas.
+               Utiliza la paleta definida en site.css:
+               --red, --red-hover, --bg-page, --bg-card, --bg-soft,
+               --text, --muted y --border.
+               ========================================================= */
+
+    /* Botones principales y botones de los modales */
+    .btn-primary {
+        background: var(--red) !important;
+        border-color: var(--red) !important;
+        color: var(--text) !important;
+    }
+
+        .btn-primary:hover,
+        .btn-primary:focus,
+        .btn-primary:active,
+        .btn-primary.active {
+            background: var(--red-hover) !important;
+            border-color: var(--red-hover) !important;
+            color: var(--text) !important;
+        }
+
+        .btn-primary:disabled,
+        .btn-primary.disabled {
+            background: var(--red) !important;
+            border-color: var(--red) !important;
+            color: var(--text) !important;
+            opacity: .65 !important;
+        }
+
+    .btn-outline-primary {
+        color: var(--red) !important;
+        border-color: var(--red) !important;
+        background: transparent !important;
+    }
+
+        .btn-outline-primary:hover,
+        .btn-outline-primary:focus,
+        .btn-outline-primary:active,
+        .btn-outline-primary.active {
+            color: var(--text) !important;
+            background: var(--red) !important;
+            border-color: var(--red) !important;
+        }
+
+        .btn-outline-primary:disabled,
+        .btn-outline-primary.disabled {
+            color: var(--red) !important;
+            border-color: var(--red) !important;
+            background: transparent !important;
+            opacity: .65 !important;
+        }
+
+    /* Textos y badges que Bootstrap normalmente pinta azules */
+    .text-primary {
+        color: var(--red) !important;
+    }
+
+    .badge.bg-primary,
+    .bg-primary {
+        background-color: var(--red) !important;
+        color: var(--text) !important;
+    }
+
+    /* Aviso del usuario seleccionado para reserva administrativa */
+    .cr-admin-reserva-alert {
+        background: rgba(254, 1, 0, .08) !important;
+        border: 1px solid var(--red) !important;
+        color: var(--text) !important;
+    }
+
+        .cr-admin-reserva-alert .text-muted {
+            color: var(--muted) !important;
+        }
+
+        .cr-admin-reserva-alert .btn {
+            color: var(--red) !important;
+            border-color: var(--red) !important;
+            background: transparent !important;
+        }
+
+            .cr-admin-reserva-alert .btn:hover,
+            .cr-admin-reserva-alert .btn:focus {
+                color: var(--text) !important;
+                background: var(--red) !important;
+                border-color: var(--red) !important;
+            }
+
+    /* Resultados de búsqueda de usuarios en modo oscuro */
+    .cr-user-result-item {
+        background: var(--bg-page) !important;
+        color: var(--text) !important;
+        border-color: var(--border) !important;
+    }
+
+        .cr-user-result-item:hover,
+        .cr-user-result-item:focus,
+        .cr-user-result-item:active {
+            background: var(--bg-soft) !important;
+            color: var(--text) !important;
+        }
+
+        .cr-user-result-item .text-muted {
+            color: var(--muted) !important;
+        }
+
+    /* Resúmenes informativos sin fondo azul */
+    #consultaUsuarioSeleccionado,
+    #consultaUsuarioResumen {
+        background: var(--bg-card) !important;
+        color: var(--text) !important;
+        border: 1px solid var(--border) !important;
+    }
+</style>
 
 <div class="container-fluid py-3">
     <div class="row justify-content-center">
         <div class="col-12 col-xxl-10">
-
             <div class="card shadow-sm cr-card">
                 <div class="card-body p-3 p-md-4">
 
-                    <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
-                        <div class="text-center flex-grow-1 w-100">
+                    <div class="mb-3">
+                        <div class="text-center mb-3">
                             <h1 class="h3 mb-1">Reservas</h1>
-                            <p class="text-muted mb-0">Seleccioná un día y luego una hora disponible.</p>
+                            <p class="text-muted mb-0">
+                                Seleccioná un día y luego una hora disponible.
+                            </p>
                         </div>
 
-                        <div class="d-flex gap-2 ms-auto">
-                            <a class="btn btn-outline-secondary"
-                               asp-action="Index"
-                               asp-route-year="@prev.Year"
-                               asp-route-month="@prev.Month">
-                                ← @cultura.DateTimeFormat.GetMonthName(prev.Month)
-                            </a>
+                        <!-- Botones principales -->
+                        <div class="row g-2 mb-3">
 
-                            <div class="btn btn-outline-light disabled">
-                                @Model.MonthLabel
+                            @if (puedeReservarPropio || esAdministrador)
+                            {
+                                <div class="col-12 col-sm">
+                                    <button type="button"
+                                            class="btn btn-outline-primary w-100 h-100"
+                                            id="btnMisReservas">
+                                        Mis reservas
+                                    </button>
+                                </div>
+                            }
+
+                            @if (esAdministrador)
+                            {
+                                <div class="col-12 col-sm">
+                                    <button type="button"
+                                            class="btn btn-outline-primary w-100 h-100"
+                                            id="btnReservarPorUsuario">
+                                        Reservar por usuario
+                                    </button>
+                                </div>
+
+                                <div class="col-12 col-sm">
+                                    <button type="button"
+                                            class="btn btn-outline-primary w-100 h-100"
+                                            id="btnConsultarUsuario">
+                                        Consultar usuario
+                                    </button>
+                                </div>
+                            }
+
+                            @if (puedeConsultarHora)
+                            {
+                                <div class="col-12 col-sm">
+                                    <button type="button"
+                                            class="btn btn-outline-primary w-100 h-100"
+                                            id="btnConsultarDia">
+                                        Consultar reservas del día
+                                    </button>
+                                </div>
+                            }
+
+                        </div>
+
+                        @if (esAdministrador)
+                        {
+                            <div id="adminReservaUsuarioBanner"
+                                 class="alert cr-admin-reserva-alert d-none mb-3">
+                                <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2">
+                                    <div>
+                                        <div class="fw-semibold">Reserva administrativa activa</div>
+                                        <div id="adminReservaUsuarioTexto" class="small"></div>
+                                    </div>
+
+                                    <button type="button"
+                                            class="btn btn-sm btn-outline-secondary"
+                                            id="btnQuitarUsuarioReserva">
+                                        Dejar de reservar para este usuario
+                                    </button>
+                                </div>
+                            </div>
+                        }
+
+                        <!-- Navegación del calendario -->
+                        <div class="row g-2 align-items-stretch">
+                            <div class="col-4">
+                                <a class="btn btn-outline-secondary w-100 h-100
+                                    d-flex align-items-center justify-content-center
+                                    text-nowrap px-1"
+                                   asp-action="Index"
+                                   asp-route-year="@prev.Year"
+                                   asp-route-month="@prev.Month">
+                                    ← @cultura.DateTimeFormat.GetMonthName(prev.Month)
+                                </a>
                             </div>
 
-                            <a class="btn btn-outline-secondary"
-                               asp-action="Index"
-                               asp-route-year="@next.Year"
-                               asp-route-month="@next.Month">
-                                @cultura.DateTimeFormat.GetMonthName(next.Month) →
-                            </a>
+                            <div class="col-4">
+                                <div class="btn btn-outline-light disabled w-100 h-100
+                                    d-flex align-items-center justify-content-center
+                                    text-nowrap px-1">
+                                    @Model.MonthLabel
+                                </div>
+                            </div>
+
+                            <div class="col-4">
+                                <a class="btn btn-outline-secondary w-100 h-100
+                                    d-flex align-items-center justify-content-center
+                                    text-nowrap px-1"
+                                   asp-action="Index"
+                                   asp-route-year="@next.Year"
+                                   asp-route-month="@next.Month">
+                                    @cultura.DateTimeFormat.GetMonthName(next.Month) →
+                                </a>
+                            </div>
                         </div>
                     </div>
 
@@ -51,6 +254,7 @@
                     {
                         <div class="alert alert-danger">@TempData["Error"]</div>
                     }
+
                     @if (TempData["Ok"] != null)
                     {
                         <div class="alert alert-info">@TempData["Ok"]</div>
@@ -74,7 +278,6 @@
                                         @for (int dow = 0; dow < 7; dow++)
                                         {
                                             var cell = Model.Days[week * 7 + dow];
-
                                             var iso = cell.Date.ToString("yyyy-MM-dd");
                                             var dayNumber = cell.Date.Day;
 
@@ -87,15 +290,13 @@
                                                 <button type="button"
                                                         class="@classes"
                                                         data-date="@iso"
-                                                        @(cell.IsBlockedDay ? "disabled" : "")>
+                                                    @(cell.IsBlockedDay ? "disabled" : "")>
                                                     <div class="cr-day-top">
                                                         <span class="cr-day-num">@dayNumber</span>
                                                     </div>
 
-                                                    @* Sin texto de bloqueado. Esto es solo para mantener altura consistente *@
                                                     <div class="cr-day-bottom"></div>
                                                 </button>
-
                                             </td>
                                         }
                                     </tr>
@@ -105,17 +306,18 @@
                     </div>
 
                     <div class="text-muted mt-2" style="font-size:.9rem;">
-                        Tip: el número verde es cuántas reservas existen ese día.
+                        Las reservas canceladas no consumen cupo y no aparecen como activas.
                     </div>
 
                 </div>
             </div>
-
         </div>
     </div>
 </div>
 
-<!-- MODAL HORAS -->
+<!-- ========================================================= -->
+<!-- MODAL: HORAS -->
+<!-- ========================================================= -->
 <div class="modal fade" id="horasModal" tabindex="-1" aria-labelledby="horasModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content cr-card">
@@ -127,53 +329,65 @@
             <div class="modal-body">
                 <div class="text-center mb-2">
                     <div class="fw-semibold" id="modalFechaTxt"></div>
-                    <div class="text-muted small" id="modalAyudaTxt">Elegí una hora disponible.</div>
+                    <div class="text-muted small" id="modalAyudaTxt">
+                        Elegí una hora disponible.
+                    </div>
+                    <div class="small text-primary mt-1 d-none" id="modalUsuarioObjetivoTxt"></div>
                 </div>
 
-                <div id="modalHorasContainer" class="row g-2 mt-2">
-                    <!-- aquí se renderizan botones -->
-                </div>
-
+                <div id="modalHorasContainer" class="row g-2 mt-2"></div>
                 <div id="modalMsg" class="text-center text-muted small mt-3"></div>
-
             </div>
 
-            @{
-                var puedeConsultar = User.IsInRole("Administrador") || User.IsInRole("Entrenador");
-            }
-
             <div class="modal-footer d-flex flex-column flex-sm-row gap-2">
-                <form id="formReservar" method="post" asp-action="CrearDesdeCalendario" class="w-100">
+                <form id="formReservar"
+                      method="post"
+                      asp-action="CrearDesdeCalendario"
+                      class="w-100 @(puedeReservarPropio || esAdministrador ? "" : "d-none")">
                     @Html.AntiForgeryToken()
+
                     <input type="hidden" name="date" id="inputDate" />
                     <input type="hidden" name="idHora" id="inputHora" />
-                    <button type="submit" id="btnReservar" class="btn btn-primary w-100" disabled>
+                    <input type="hidden"
+                           name="idUsuarioObjetivo"
+                           id="inputUsuarioObjetivo" />
+
+                    <button type="submit"
+                            id="btnReservar"
+                            class="btn btn-primary w-100"
+                            disabled>
                         Reservar
                     </button>
                 </form>
 
-                @if (puedeConsultar)
+                @if (puedeConsultarHora)
                 {
-                    <button type="button" id="btnConsultar" class="btn btn-outline-primary w-100" disabled>
-                        Consultar reservas
+                    <button type="button"
+                            id="btnConsultar"
+                            class="btn btn-outline-primary w-100"
+                            disabled>
+                        Consultar reservas activas
                     </button>
                 }
 
-                <button type="button" class="btn btn-outline-secondary w-100" data-bs-dismiss="modal">
-                    Cancelar
+                <button type="button"
+                        class="btn btn-outline-secondary w-100"
+                        data-bs-dismiss="modal">
+                    Cerrar
                 </button>
-
             </div>
         </div>
     </div>
 </div>
 
-<!-- MODAL RESERVAS (se abre encima del modal de horas) -->
+<!-- ========================================================= -->
+<!-- MODAL: RESERVAS ACTIVAS DE UNA HORA -->
+<!-- ========================================================= -->
 <div class="modal fade" id="reservasModal" tabindex="-1" aria-labelledby="reservasModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
         <div class="modal-content cr-card">
             <div class="modal-header">
-                <h5 class="modal-title" id="reservasModalLabel">Reservas</h5>
+                <h5 class="modal-title" id="reservasModalLabel">Reservas activas</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
             </div>
 
@@ -188,7 +402,7 @@
                 </div>
 
                 <div id="reservasEmpty" class="text-center text-muted py-4 d-none">
-                    No hay reservas para esta hora.
+                    No hay reservas activas para esta hora.
                 </div>
 
                 <div class="table-responsive d-none" id="reservasTableWrap">
@@ -196,12 +410,12 @@
                         <thead>
                             <tr>
                                 <th>Nombre</th>
+                                <th>Cédula</th>
                                 <th>Email</th>
                                 <th>Teléfono</th>
                             </tr>
                         </thead>
-                        <tbody id="reservasTbody">
-                        </tbody>
+                        <tbody id="reservasTbody"></tbody>
                     </table>
                 </div>
 
@@ -209,18 +423,422 @@
             </div>
 
             <div class="modal-footer">
-                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cerrar</button>
+                <button type="button"
+                        class="btn btn-outline-secondary"
+                        data-bs-dismiss="modal">
+                    Cerrar
+                </button>
             </div>
         </div>
     </div>
 </div>
 
+@if (puedeConsultarHora)
+{
+    <!-- ===================================================== -->
+    <!-- MODAL: CONSULTAR TODAS LAS RESERVAS DE UN DÍA -->
+    <!-- ===================================================== -->
+    <div class="modal fade" id="consultarDiaModal" tabindex="-1" aria-labelledby="consultarDiaModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable">
+            <div class="modal-content cr-card">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="consultarDiaModalLabel">
+                        Reservas del día
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+
+                <div class="modal-body">
+                    <div class="row g-2 align-items-end mb-3">
+                        <div class="col-12 col-md-8">
+                            <label for="fechaConsultaDia" class="form-label">
+                                Día que deseás consultar
+                            </label>
+                            <input type="date"
+                                   id="fechaConsultaDia"
+                                   class="form-control"
+                                   value="@DateTime.Today.ToString("yyyy-MM-dd")" />
+                        </div>
+
+                        <div class="col-12 col-md-4">
+                            <button type="button"
+                                    class="btn btn-primary w-100"
+                                    id="btnEjecutarConsultaDia">
+                                Consultar
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <div class="fw-semibold" id="consultaDiaSubtitulo">
+                            Seleccioná un día.
+                        </div>
+                        <span class="badge bg-secondary" id="consultaDiaTotal">0</span>
+                    </div>
+
+                    <div id="consultaDiaLoading" class="text-center text-muted py-4 d-none">
+                        Consultando reservas...
+                    </div>
+
+                    <div id="consultaDiaEmpty" class="text-center text-muted py-4 d-none">
+                        No hay reservas activas para el día seleccionado.
+                    </div>
+
+                    <div id="consultaDiaGrupos"></div>
+
+                    <div id="consultaDiaError" class="alert alert-danger d-none mt-3"></div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button"
+                            class="btn btn-outline-secondary"
+                            data-bs-dismiss="modal">
+                        Cerrar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (puedeReservarPropio || esAdministrador)
+{
+    <!-- ===================================================== -->
+    <!-- MODAL: RESERVAS DEL USUARIO -->
+    <!-- ===================================================== -->
+    <div class="modal fade" id="misReservasModal" tabindex="-1" aria-labelledby="misReservasModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable">
+            <div class="modal-content cr-card">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="misReservasModalLabel">Mis reservas</h5>
+
+                    <button type="button"
+                            class="btn btn-sm btn-outline-primary ms-auto me-2"
+                            id="btnAlternarReservasAnteriores">
+                        Ver reservas anteriores
+                    </button>
+
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+
+                <div class="modal-body">
+                    <div class="d-flex align-items-center justify-content-between mb-2 gap-2">
+                        <div class="fw-semibold" id="misReservasSubtitulo">
+                            Reservas actuales y próximas
+                        </div>
+                        <span class="badge bg-secondary" id="misReservasTotal">0</span>
+                    </div>
+
+                    <div id="misReservasLoading" class="text-center text-muted py-4">
+                        Cargando reservas...
+                    </div>
+
+                    <div id="misReservasEmpty" class="text-center text-muted py-4 d-none">
+                        No se encontraron reservas.
+                    </div>
+
+                    <div class="table-responsive d-none" id="misReservasTableWrap">
+                        <table class="table table-sm align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Hora</th>
+                                    <th>Estado</th>
+                                    <th>Motivo cancelación</th>
+                                    <th class="text-end">Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody id="misReservasTbody"></tbody>
+                        </table>
+                    </div>
+
+                    <div id="misReservasError" class="alert alert-danger d-none mt-3"></div>
+                    <div id="misReservasOk" class="alert alert-success d-none mt-3"></div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button"
+                            class="btn btn-outline-secondary"
+                            data-bs-dismiss="modal">
+                        Cerrar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===================================================== -->
+    <!-- MODAL: CONFIRMAR CANCELACIÓN -->
+    <!-- ===================================================== -->
+    <div class="modal fade" id="cancelarReservaModal" tabindex="-1" aria-labelledby="cancelarReservaModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content cr-card">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="cancelarReservaModalLabel">
+                        Cancelar reserva
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+
+                <div class="modal-body">
+                    <div id="cancelarReservaDescripcion" class="mb-3"></div>
+
+                    <label for="motivoCancelacion" class="form-label">
+                        Motivo de cancelación
+                    </label>
+                    <textarea id="motivoCancelacion"
+                              class="form-control"
+                              rows="4"
+                              maxlength="300"
+                              placeholder="Escribí el motivo..."
+                              required></textarea>
+                    <div class="form-text">Máximo 300 caracteres.</div>
+
+                    <div id="cancelarReservaError" class="alert alert-danger d-none mt-3"></div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button"
+                            class="btn btn-outline-secondary"
+                            data-bs-dismiss="modal">
+                        Volver
+                    </button>
+                    <button type="button"
+                            class="btn btn-danger"
+                            id="btnConfirmarCancelacion">
+                        Confirmar cancelación
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (esAdministrador)
+{
+    <!-- ===================================================== -->
+    <!-- MODAL: BUSCAR USUARIO -->
+    <!-- ===================================================== -->
+    <div class="modal fade"
+         id="buscarUsuarioModal"
+         tabindex="-1"
+         aria-labelledby="buscarUsuarioModalLabel"
+         aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content cr-card">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="buscarUsuarioModalLabel">
+                        Buscar usuario
+                    </h5>
+                    <button type="button"
+                            class="btn-close"
+                            data-bs-dismiss="modal"
+                            aria-label="Cerrar"></button>
+                </div>
+
+                <div class="modal-body">
+                    <label for="terminoBusquedaUsuario" class="form-label">
+                        Nombre, correo o cédula
+                    </label>
+
+                    <div class="input-group">
+                        <input type="text"
+                               id="terminoBusquedaUsuario"
+                               class="form-control"
+                               maxlength="150"
+                               autocomplete="off"
+                               placeholder="Ej: Gabriel, correo@ejemplo.com o 208660384" />
+
+                        <button type="button"
+                                class="btn btn-primary"
+                                id="btnEjecutarBusquedaUsuario">
+                            Buscar
+                        </button>
+                    </div>
+
+                    <div id="buscarUsuarioMsg"
+                         class="text-muted small mt-2"></div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button"
+                            class="btn btn-outline-secondary"
+                            data-bs-dismiss="modal">
+                        Cerrar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===================================================== -->
+    <!-- MODAL: RESULTADOS DE LA BÚSQUEDA -->
+    <!-- ===================================================== -->
+    <div class="modal fade"
+         id="resultadosUsuarioModal"
+         tabindex="-1"
+         aria-labelledby="resultadosUsuarioModalLabel"
+         aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+            <div class="modal-content cr-card">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="resultadosUsuarioModalLabel">
+                        Seleccionar usuario
+                    </h5>
+                    <button type="button"
+                            class="btn-close"
+                            data-bs-dismiss="modal"
+                            aria-label="Cerrar"></button>
+                </div>
+
+                <div class="modal-body">
+                    <div id="resultadosUsuarioResumen"
+                         class="text-muted small mb-3"></div>
+
+                    <div id="resultadosBusquedaUsuarios"
+                         class="list-group"></div>
+                </div>
+
+                <div class="modal-footer d-flex justify-content-between">
+                    <button type="button"
+                            class="btn btn-outline-secondary"
+                            id="btnVolverBusquedaUsuario">
+                        Volver a buscar
+                    </button>
+
+                    <button type="button"
+                            class="btn btn-outline-secondary"
+                            data-bs-dismiss="modal">
+                        Cerrar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===================================================== -->
+    <!-- MODAL: CONSULTAR RESERVAS DEL USUARIO SELECCIONADO -->
+    <!-- ===================================================== -->
+    <div class="modal fade"
+         id="consultarUsuarioModal"
+         tabindex="-1"
+         aria-labelledby="consultarUsuarioModalLabel"
+         aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable">
+            <div class="modal-content cr-card">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="consultarUsuarioModalLabel">
+                        Consultar reservas de un usuario
+                    </h5>
+                    <button type="button"
+                            class="btn-close"
+                            data-bs-dismiss="modal"
+                            aria-label="Cerrar"></button>
+                </div>
+
+                <div class="modal-body">
+                    <div id="consultaUsuarioSeleccionado"
+                         class="alert alert-info mb-3"></div>
+
+                    <div class="row g-3 align-items-end">
+                        <div class="col-12 col-md-5">
+                            <label for="fechaInicioConsultaUsuario" class="form-label">
+                                Fecha inicial
+                            </label>
+                            <input type="date"
+                                   id="fechaInicioConsultaUsuario"
+                                   class="form-control" />
+                        </div>
+
+                        <div class="col-12 col-md-5">
+                            <label for="fechaFinConsultaUsuario" class="form-label">
+                                Fecha final
+                            </label>
+                            <input type="date"
+                                   id="fechaFinConsultaUsuario"
+                                   class="form-control" />
+                        </div>
+
+                        <div class="col-12 col-md-2">
+                            <button type="button"
+                                    class="btn btn-primary w-100"
+                                    id="btnEjecutarConsultaUsuario">
+                                Consultar
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="consultaUsuarioError"
+                         class="alert alert-danger d-none mt-3"></div>
+
+                    <div id="consultaUsuarioLoading"
+                         class="text-center text-muted py-4 d-none">
+                        Consultando reservas...
+                    </div>
+
+                    <div id="consultaUsuarioResumen"
+                         class="alert alert-info d-none mt-3"></div>
+
+                    <div id="consultaUsuarioEmpty"
+                         class="text-center text-muted py-4 d-none">
+                        No se encontraron reservas en el rango seleccionado.
+                    </div>
+
+                    <div class="table-responsive d-none mt-3"
+                         id="consultaUsuarioTableWrap">
+                        <table class="table table-sm align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Hora</th>
+                                    <th>Estado</th>
+                                    <th>Motivo cancelación</th>
+                                    <th>Registrada por</th>
+                                </tr>
+                            </thead>
+                            <tbody id="consultaUsuarioTbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button"
+                            class="btn btn-outline-primary"
+                            id="btnCambiarUsuarioConsulta">
+                        Cambiar usuario
+                    </button>
+
+                    <button type="button"
+                            class="btn btn-outline-secondary"
+                            data-bs-dismiss="modal">
+                        Cerrar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
 
 @section Scripts {
     <script>
         document.addEventListener('DOMContentLoaded', function () {
+            const esAdministrador = @((esAdministrador).ToString().ToLowerInvariant());
+            const puedeConsultarHora = @((puedeConsultarHora).ToString().ToLowerInvariant());
+            const puedeReservarPropio = @((puedeReservarPropio).ToString().ToLowerInvariant());
 
-            // ✅ stacking (recomendado)
+            const urlHoras = '@Url.Action("GetHorasDisponibles", "Reservas")';
+            const urlConsultarHora = '@Url.Action("GetReservasPorHora", "Reservas")';
+            const urlConsultarDia = '@Url.Action("GetReservasPorDia", "Reservas")';
+            const urlCrearPropia = '@Url.Action("CrearDesdeCalendario", "Reservas")';
+            const urlCrearAdmin = '@Url.Action("CrearReservaAdministrador", "Reservas")';
+            const urlMisReservas = '@Url.Action("GetMisReservas", "Reservas")';
+            const urlCancelarReserva = '@Url.Action("CancelarMiReserva", "Reservas")';
+            const urlBuscarUsuarios = '@Url.Action("BuscarUsuarios", "Reservas")';
+            const urlConsultarUsuario = '@Url.Action("GetReservasUsuario", "Reservas")';
+
+            // =====================================================
+            // Stack de modales
+            // =====================================================
             document.addEventListener('show.bs.modal', function (event) {
                 const openModals = document.querySelectorAll('.modal.show').length;
                 const zIndex = 1050 + (openModals * 20);
@@ -229,6 +847,7 @@
                 setTimeout(() => {
                     const backdrops = document.querySelectorAll('.modal-backdrop:not(.modal-stack)');
                     const lastBackdrop = backdrops[backdrops.length - 1];
+
                     if (lastBackdrop) {
                         lastBackdrop.style.zIndex = zIndex - 1;
                         lastBackdrop.classList.add('modal-stack');
@@ -242,26 +861,133 @@
                 }
             });
 
+            // =====================================================
+            // Calendario y modal de horas
+            // =====================================================
             const dayButtons = document.querySelectorAll('.cr-day-btn:not([disabled])');
-            const modalEl = document.getElementById('horasModal');
-            const bsModal = new bootstrap.Modal(modalEl);
+            const horasModalEl = document.getElementById('horasModal');
+            const bsHorasModal = horasModalEl ? new bootstrap.Modal(horasModalEl) : null;
 
             const fechaTxt = document.getElementById('modalFechaTxt');
             const ayudaTxt = document.getElementById('modalAyudaTxt');
-            const container = document.getElementById('modalHorasContainer');
-            const msg = document.getElementById('modalMsg');
+            const usuarioObjetivoTxt = document.getElementById('modalUsuarioObjetivoTxt');
+            const horasContainer = document.getElementById('modalHorasContainer');
+            const horasMsg = document.getElementById('modalMsg');
 
+            const formReservar = document.getElementById('formReservar');
             const inputDate = document.getElementById('inputDate');
             const inputHora = document.getElementById('inputHora');
+            const inputUsuarioObjetivo = document.getElementById('inputUsuarioObjetivo');
             const btnReservar = document.getElementById('btnReservar');
-
-            // ✅ Admin/Entrenador
-            const puedeConsultar = @((User.IsInRole("Administrador") || User.IsInRole("Entrenador")).ToString().ToLower());
             const btnConsultar = document.getElementById('btnConsultar');
 
-            // ✅ Modal Reservas
+            let selectedHoraLabel = '';
+            const claveUsuarioReservaAdmin =
+                'CrStudioFitnes.Reservas.UsuarioReservaAdmin';
+            let usuarioReservaAdmin = null;
+
+            function cargarUsuarioReservaAdminGuardado() {
+                if (!esAdministrador)
+                    return null;
+
+                try {
+                    const valorGuardado = sessionStorage.getItem(
+                        claveUsuarioReservaAdmin
+                    );
+
+                    if (!valorGuardado)
+                        return null;
+
+                    const usuario = JSON.parse(valorGuardado);
+
+                    if (!usuario?.idUsuario) {
+                        sessionStorage.removeItem(claveUsuarioReservaAdmin);
+                        return null;
+                    }
+
+                    return usuario;
+                } catch {
+                    return null;
+                }
+            }
+
+            function guardarUsuarioReservaAdmin() {
+                if (!esAdministrador || !usuarioReservaAdmin?.idUsuario)
+                    return;
+
+                try {
+                    sessionStorage.setItem(
+                        claveUsuarioReservaAdmin,
+                        JSON.stringify(usuarioReservaAdmin)
+                    );
+                } catch {
+                    // Si el navegador bloquea sessionStorage, la reserva sigue funcionando
+                    // durante la carga actual, aunque no podrá restaurarse después del POST.
+                }
+            }
+
+            function eliminarUsuarioReservaAdminGuardado() {
+                try {
+                    sessionStorage.removeItem(claveUsuarioReservaAdmin);
+                } catch {
+                    // No se requiere ninguna acción adicional.
+                }
+            }
+
+            function resetSeleccionHora() {
+                if (inputHora) inputHora.value = '';
+                selectedHoraLabel = '';
+
+                if (btnReservar) btnReservar.disabled = true;
+                if (btnConsultar) btnConsultar.disabled = true;
+
+                horasContainer?.querySelectorAll('button[data-id]')
+                    .forEach(x => x.classList.remove('active'));
+            }
+
+            function puedeReservarEnModoActual() {
+                return puedeReservarPropio || (esAdministrador && usuarioReservaAdmin !== null);
+            }
+
+            function actualizarModoReserva() {
+                if (!formReservar || !inputUsuarioObjetivo || !btnReservar)
+                    return;
+
+                if (esAdministrador && usuarioReservaAdmin) {
+                    formReservar.action = urlCrearAdmin;
+                    inputUsuarioObjetivo.value = usuarioReservaAdmin.idUsuario;
+                    btnReservar.textContent = `Reservar para ${usuarioReservaAdmin.nombre}`;
+
+                    usuarioObjetivoTxt.textContent =
+                        `Usuario: ${usuarioReservaAdmin.nombre} | Cédula: ${usuarioReservaAdmin.cedula}`;
+                    usuarioObjetivoTxt.classList.remove('d-none');
+                } else {
+                    formReservar.action = urlCrearPropia;
+                    inputUsuarioObjetivo.value = '';
+                    btnReservar.textContent = 'Reservar';
+                    usuarioObjetivoTxt.textContent = '';
+                    usuarioObjetivoTxt.classList.add('d-none');
+                }
+
+                resetSeleccionHora();
+            }
+
+            formReservar?.addEventListener('submit', function (event) {
+                if (!inputDate?.value || !inputHora?.value || !puedeReservarEnModoActual()) {
+                    event.preventDefault();
+                    horasMsg.textContent = esAdministrador && !puedeReservarPropio
+                        ? 'Primero seleccioná el usuario para quien se hará la reserva.'
+                        : 'Seleccioná una fecha y una hora disponible.';
+                }
+            });
+
+            // =====================================================
+            // Consultar reservas activas por hora
+            // =====================================================
             const reservasModalEl = document.getElementById('reservasModal');
-            const bsReservasModal = reservasModalEl ? new bootstrap.Modal(reservasModalEl) : null;
+            const bsReservasModal = reservasModalEl
+                ? new bootstrap.Modal(reservasModalEl)
+                : null;
 
             const reservasModalLabel = document.getElementById('reservasModalLabel');
             const reservasSubTitle = document.getElementById('reservasSubTitle');
@@ -272,61 +998,53 @@
             const reservasTbody = document.getElementById('reservasTbody');
             const reservasError = document.getElementById('reservasError');
 
-            let selectedHoraLabel = ''; // para mostrar en el modal de reservas
-
-            function resetSelection() {
-                inputHora.value = '';
-                selectedHoraLabel = '';
-                btnReservar.disabled = true;
-                if (btnConsultar) btnConsultar.disabled = true;
-                container.querySelectorAll('button[data-id]').forEach(x => x.classList.remove('active'));
-            }
-
             function setReservasUIState(state) {
-                // state: 'loading' | 'empty' | 'table' | 'error'
-                reservasLoading.classList.add('d-none');
-                reservasEmpty.classList.add('d-none');
-                reservasTableWrap.classList.add('d-none');
-                reservasError.classList.add('d-none');
+                reservasLoading?.classList.add('d-none');
+                reservasEmpty?.classList.add('d-none');
+                reservasTableWrap?.classList.add('d-none');
+                reservasError?.classList.add('d-none');
 
-                if (state === 'loading') reservasLoading.classList.remove('d-none');
-                if (state === 'empty') reservasEmpty.classList.remove('d-none');
-                if (state === 'table') reservasTableWrap.classList.remove('d-none');
-                if (state === 'error') reservasError.classList.remove('d-none');
+                if (state === 'loading') reservasLoading?.classList.remove('d-none');
+                if (state === 'empty') reservasEmpty?.classList.remove('d-none');
+                if (state === 'table') reservasTableWrap?.classList.remove('d-none');
+                if (state === 'error') reservasError?.classList.remove('d-none');
             }
 
             async function consultarReservasModal() {
-                if (!puedeConsultar || !bsReservasModal) return;
+                if (!puedeConsultarHora || !bsReservasModal)
+                    return;
 
-                const iso = inputDate.value;
-                const idHora = inputHora.value;
+                const iso = inputDate?.value || '';
+                const idHora = inputHora?.value || '';
 
-                if (!iso || !idHora) return;
+                if (!iso || !idHora)
+                    return;
 
-                // Abrir modal arriba y mostrar loading
-                reservasModalLabel.textContent = 'Reservas';
-                reservasSubTitle.textContent = `Fecha: ${iso} | Hora: ${selectedHoraLabel || idHora}`;
+                reservasModalLabel.textContent = 'Reservas activas';
+                reservasSubTitle.textContent =
+                    `Fecha: ${iso} | Hora: ${selectedHoraLabel || idHora}`;
                 reservasTotal.textContent = '0';
                 reservasTbody.innerHTML = '';
                 reservasError.textContent = '';
                 setReservasUIState('loading');
-
                 bsReservasModal.show();
 
                 try {
-                    const url = '/Reservas/GetReservasPorHora?date=' + encodeURIComponent(iso) + '&idHora=' + encodeURIComponent(idHora);
+                    const url = urlConsultarHora
+                        + '?date=' + encodeURIComponent(iso)
+                        + '&idHora=' + encodeURIComponent(idHora);
+
                     const res = await fetch(url);
-                    if (!res.ok) throw new Error('No se pudieron consultar las reservas.');
+                    const data = await leerJsonSeguro(res);
 
-                    const data = await res.json();
+                    if (!res.ok) {
+                        throw new Error(data.message || 'No se pudieron consultar las reservas.');
+                    }
 
-                    const total = data.total || 0;
-                    const horaEtiqueta = data.horaEtiqueta || selectedHoraLabel || '';
                     const reservas = data.reservas || [];
-
-                    reservasSubTitle.textContent = `Fecha: ${data.date || iso} | Hora: ${horaEtiqueta}`;
-                    reservasTotal.textContent = total.toString();
-
+                    reservasSubTitle.textContent =
+                        `Fecha: ${data.date || iso} | Hora: ${data.horaEtiqueta || selectedHoraLabel}`;
+                    reservasTotal.textContent = (data.total || 0).toString();
                     reservasTbody.innerHTML = '';
 
                     if (reservas.length === 0) {
@@ -337,69 +1055,902 @@
                     reservas.forEach(r => {
                         const tr = document.createElement('tr');
 
-                        const tdNombre = document.createElement('td');
-                        tdNombre.textContent = r.nombre || 'Usuario';
-
-                        const tdEmail = document.createElement('td');
-                        tdEmail.textContent = r.email || '';
-
-                        const tdTel = document.createElement('td');
-                        tdTel.textContent = r.telefono || '';
-
-                        tr.appendChild(tdNombre);
-                        tr.appendChild(tdEmail);
-                        tr.appendChild(tdTel);
+                        agregarCelda(tr, r.nombre || 'Usuario');
+                        agregarCelda(tr, r.cedula || '');
+                        agregarCelda(tr, r.email || '');
+                        agregarCelda(tr, r.telefono || '');
 
                         reservasTbody.appendChild(tr);
                     });
 
                     setReservasUIState('table');
-
                 } catch (e) {
-                    reservasError.textContent = (e && e.message) ? e.message : 'Error consultando reservas.';
+                    reservasError.textContent = mensajeError(e, 'Error consultando reservas.');
                     setReservasUIState('error');
                 }
             }
 
-            if (btnConsultar) {
-                btnConsultar.addEventListener('click', consultarReservasModal);
+            btnConsultar?.addEventListener('click', consultarReservasModal);
+
+            // =====================================================
+            // Consultar todas las reservas activas de un día
+            // =====================================================
+            const btnConsultarDia = document.getElementById('btnConsultarDia');
+            const consultarDiaModalEl = document.getElementById('consultarDiaModal');
+            const bsConsultarDiaModal = consultarDiaModalEl
+                ? new bootstrap.Modal(consultarDiaModalEl)
+                : null;
+
+            const fechaConsultaDia = document.getElementById('fechaConsultaDia');
+            const btnEjecutarConsultaDia = document.getElementById('btnEjecutarConsultaDia');
+            const consultaDiaSubtitulo = document.getElementById('consultaDiaSubtitulo');
+            const consultaDiaTotal = document.getElementById('consultaDiaTotal');
+            const consultaDiaLoading = document.getElementById('consultaDiaLoading');
+            const consultaDiaEmpty = document.getElementById('consultaDiaEmpty');
+            const consultaDiaGrupos = document.getElementById('consultaDiaGrupos');
+            const consultaDiaError = document.getElementById('consultaDiaError');
+
+            function limpiarConsultaDia() {
+                consultaDiaLoading?.classList.add('d-none');
+                consultaDiaEmpty?.classList.add('d-none');
+                consultaDiaError?.classList.add('d-none');
+
+                if (consultaDiaTotal) consultaDiaTotal.textContent = '0';
+                if (consultaDiaSubtitulo) consultaDiaSubtitulo.textContent = 'Consultando...';
+                if (consultaDiaGrupos) consultaDiaGrupos.innerHTML = '';
+                if (consultaDiaError) consultaDiaError.textContent = '';
             }
 
-            // ============================
-            // Cargar horas al elegir día
-            // ============================
+            async function consultarReservasDia() {
+                if (!puedeConsultarHora || !fechaConsultaDia)
+                    return;
+
+                const iso = fechaConsultaDia.value || '';
+
+                if (!iso) {
+                    consultaDiaError.textContent = 'Seleccioná el día que deseás consultar.';
+                    consultaDiaError.classList.remove('d-none');
+                    return;
+                }
+
+                limpiarConsultaDia();
+                consultaDiaLoading?.classList.remove('d-none');
+
+                try {
+                    const res = await fetch(
+                        urlConsultarDia + '?date=' + encodeURIComponent(iso)
+                    );
+                    const data = await leerJsonSeguro(res);
+
+                    if (!res.ok) {
+                        throw new Error(
+                            data.message || 'No se pudieron consultar las reservas del día.'
+                        );
+                    }
+
+                    const grupos = data.grupos || [];
+
+                    consultaDiaSubtitulo.textContent =
+                        data.fechaTexto || data.date || iso;
+                    consultaDiaTotal.textContent = (data.total || 0).toString();
+
+                    if (grupos.length === 0) {
+                        consultaDiaEmpty?.classList.remove('d-none');
+                        return;
+                    }
+
+                    grupos.forEach(grupo => {
+                        const card = document.createElement('div');
+                        card.className = 'card cr-card mb-3';
+
+                        const header = document.createElement('div');
+                        header.className =
+                            'card-header d-flex align-items-center justify-content-between gap-2';
+
+                        const hora = document.createElement('div');
+                        hora.className = 'fw-semibold';
+                        hora.textContent = grupo.hora || 'Hora';
+
+                        const total = document.createElement('span');
+                        total.className = 'badge bg-primary';
+                        total.textContent = `${grupo.total || 0} reserva(s)`;
+
+                        header.appendChild(hora);
+                        header.appendChild(total);
+                        card.appendChild(header);
+
+                        const body = document.createElement('div');
+                        body.className = 'card-body p-0';
+
+                        const responsive = document.createElement('div');
+                        responsive.className = 'table-responsive';
+
+                        const table = document.createElement('table');
+                        table.className = 'table table-sm align-middle mb-0';
+
+                        const thead = document.createElement('thead');
+                        const headerRow = document.createElement('tr');
+
+                        ['Nombre', 'Cédula', 'Email', 'Teléfono'].forEach(texto => {
+                            const th = document.createElement('th');
+                            th.textContent = texto;
+                            headerRow.appendChild(th);
+                        });
+
+                        thead.appendChild(headerRow);
+                        table.appendChild(thead);
+
+                        const tbody = document.createElement('tbody');
+
+                        (grupo.reservas || []).forEach(reserva => {
+                            const tr = document.createElement('tr');
+                            agregarCelda(tr, reserva.nombre || 'Usuario');
+                            agregarCelda(tr, reserva.cedula || '');
+                            agregarCelda(tr, reserva.email || '');
+                            agregarCelda(tr, reserva.telefono || '');
+                            tbody.appendChild(tr);
+                        });
+
+                        table.appendChild(tbody);
+                        responsive.appendChild(table);
+                        body.appendChild(responsive);
+                        card.appendChild(body);
+                        consultaDiaGrupos.appendChild(card);
+                    });
+                } catch (e) {
+                    consultaDiaError.textContent = mensajeError(
+                        e,
+                        'Error consultando las reservas del día.'
+                    );
+                    consultaDiaError.classList.remove('d-none');
+                } finally {
+                    consultaDiaLoading?.classList.add('d-none');
+                }
+            }
+
+            btnConsultarDia?.addEventListener('click', function () {
+                if (fechaConsultaDia && !fechaConsultaDia.value) {
+                    fechaConsultaDia.value = fechaIsoLocal(new Date());
+                }
+
+                limpiarConsultaDia();
+                bsConsultarDiaModal?.show();
+                consultarReservasDia();
+            });
+
+            btnEjecutarConsultaDia?.addEventListener('click', consultarReservasDia);
+
+            fechaConsultaDia?.addEventListener('keydown', function (event) {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    consultarReservasDia();
+                }
+            });
+
+
+            // =====================================================
+            // Reservas propias o del usuario seleccionado y cancelación
+            // =====================================================
+            const btnMisReservas = document.getElementById('btnMisReservas');
+            const misReservasModalEl = document.getElementById('misReservasModal');
+            const bsMisReservasModal = misReservasModalEl
+                ? new bootstrap.Modal(misReservasModalEl)
+                : null;
+
+            const misReservasModalLabel = document.getElementById('misReservasModalLabel');
+            const misReservasSubtitulo = document.getElementById('misReservasSubtitulo');
+            const btnAlternarReservasAnteriores =
+                document.getElementById('btnAlternarReservasAnteriores');
+            const misReservasTotal = document.getElementById('misReservasTotal');
+            const misReservasLoading = document.getElementById('misReservasLoading');
+            const misReservasEmpty = document.getElementById('misReservasEmpty');
+            const misReservasTableWrap = document.getElementById('misReservasTableWrap');
+            const misReservasTbody = document.getElementById('misReservasTbody');
+            const misReservasError = document.getElementById('misReservasError');
+            const misReservasOk = document.getElementById('misReservasOk');
+
+            const cancelarReservaModalEl = document.getElementById('cancelarReservaModal');
+            const bsCancelarReservaModal = cancelarReservaModalEl
+                ? new bootstrap.Modal(cancelarReservaModalEl)
+                : null;
+
+            const cancelarReservaDescripcion = document.getElementById('cancelarReservaDescripcion');
+            const motivoCancelacion = document.getElementById('motivoCancelacion');
+            const cancelarReservaError = document.getElementById('cancelarReservaError');
+            const btnConfirmarCancelacion = document.getElementById('btnConfirmarCancelacion');
+
+            const tokenCancelar = document.querySelector(
+                '#formCancelarReservaToken input[name="__RequestVerificationToken"]'
+            )?.value || '';
+
+            let reservaPendienteCancelar = null;
+            let mostrandoReservasAnteriores = false;
+
+            function setMisReservasUIState(state) {
+                misReservasLoading?.classList.add('d-none');
+                misReservasEmpty?.classList.add('d-none');
+                misReservasTableWrap?.classList.add('d-none');
+                misReservasError?.classList.add('d-none');
+
+                if (state === 'loading') misReservasLoading?.classList.remove('d-none');
+                if (state === 'empty') misReservasEmpty?.classList.remove('d-none');
+                if (state === 'table') misReservasTableWrap?.classList.remove('d-none');
+                if (state === 'error') misReservasError?.classList.remove('d-none');
+            }
+
+            function construirUrlReservasUsuario(anteriores) {
+                let url = urlMisReservas
+                    + '?anteriores=' + encodeURIComponent(anteriores ? 'true' : 'false');
+
+                if (esAdministrador && usuarioReservaAdmin) {
+                    url += '&idUsuarioObjetivo='
+                        + encodeURIComponent(usuarioReservaAdmin.idUsuario);
+                }
+
+                return url;
+            }
+
+            async function cargarMisReservas(
+                anteriores = mostrandoReservasAnteriores,
+                successMessage = '') {
+
+                if (!bsMisReservasModal)
+                    return;
+
+                mostrandoReservasAnteriores = anteriores;
+
+                misReservasTotal.textContent = '0';
+                misReservasTbody.innerHTML = '';
+                misReservasError.textContent = '';
+                misReservasOk.textContent = successMessage || '';
+                misReservasOk.classList.toggle('d-none', !successMessage);
+                misReservasEmpty.textContent = anteriores
+                    ? 'No se encontraron reservas anteriores.'
+                    : 'No se encontraron reservas actuales o próximas.';
+
+                btnAlternarReservasAnteriores.textContent = anteriores
+                    ? 'Ver reservas actuales'
+                    : 'Ver reservas anteriores';
+
+                setMisReservasUIState('loading');
+                bsMisReservasModal.show();
+
+                try {
+                    const res = await fetch(
+                        construirUrlReservasUsuario(anteriores)
+                    );
+                    const data = await leerJsonSeguro(res);
+
+                    if (!res.ok) {
+                        throw new Error(data.message || 'No se pudieron cargar las reservas.');
+                    }
+
+                    const usuario = data.usuario || {};
+                    const nombreUsuario = usuario.nombre || 'Usuario';
+                    const reservas = data.reservas || [];
+
+                    misReservasModalLabel.textContent = esAdministrador
+                        ? `Reservas de ${nombreUsuario}`
+                        : 'Mis reservas';
+
+                    misReservasSubtitulo.textContent =
+                        `${anteriores ? 'Reservas anteriores' : 'Reservas actuales y próximas'}`
+                        + (esAdministrador
+                            ? ` | ${nombreUsuario} | Cédula: ${usuario.cedula || ''}`
+                            : '');
+
+                    misReservasTotal.textContent = (data.total || 0).toString();
+                    misReservasTbody.innerHTML = '';
+
+                    if (reservas.length === 0) {
+                        setMisReservasUIState('empty');
+                        return;
+                    }
+
+                    reservas.forEach(r => {
+                        const tr = document.createElement('tr');
+
+                        agregarCelda(tr, r.fechaTexto || r.fecha || '');
+                        agregarCelda(tr, r.hora || '');
+
+                        const tdEstado = document.createElement('td');
+                        const badge = document.createElement('span');
+
+                        if (!r.activa) {
+                            badge.className = 'badge bg-danger';
+                        } else if (r.yaPaso) {
+                            badge.className = 'badge bg-secondary';
+                        } else if (r.puedeCancelar) {
+                            badge.className = 'badge bg-success';
+                        } else {
+                            badge.className = 'badge bg-warning text-dark';
+                        }
+
+                        badge.textContent = r.estado || '';
+                        tdEstado.appendChild(badge);
+                        tr.appendChild(tdEstado);
+
+                        agregarCelda(
+                            tr,
+                            r.motivoCancelacion || '—'
+                        );
+
+                        const tdAccion = document.createElement('td');
+                        tdAccion.className = 'text-end';
+
+                        if (r.puedeCancelar) {
+                            const btn = document.createElement('button');
+                            btn.type = 'button';
+                            btn.className = 'btn btn-sm btn-outline-danger';
+                            btn.textContent = 'Cancelar reserva';
+
+                            btn.addEventListener('click', function () {
+                                abrirCancelacion(r);
+                            });
+
+                            tdAccion.appendChild(btn);
+                        } else {
+                            const texto = document.createElement('span');
+                            texto.className = 'text-muted small';
+                            texto.textContent = r.yaPaso
+                                ? 'Finalizada'
+                                : r.activa
+                                    ? 'No cancelable'
+                                    : 'Cancelada';
+                            tdAccion.appendChild(texto);
+                        }
+
+                        tr.appendChild(tdAccion);
+                        misReservasTbody.appendChild(tr);
+                    });
+
+                    setMisReservasUIState('table');
+                } catch (e) {
+                    misReservasError.textContent = mensajeError(
+                        e,
+                        'Error cargando reservas.'
+                    );
+                    setMisReservasUIState('error');
+                }
+            }
+
+            function abrirCancelacion(reserva) {
+                if (!bsCancelarReservaModal)
+                    return;
+
+                reservaPendienteCancelar = reserva;
+                motivoCancelacion.value = '';
+                cancelarReservaError.textContent = '';
+                cancelarReservaError.classList.add('d-none');
+                cancelarReservaDescripcion.textContent =
+                    `Vas a cancelar la reserva del ${reserva.fechaTexto} a las ${reserva.hora}. `
+                    + 'Al confirmarla se devolverá 1 lección al usuario.';
+
+                bsCancelarReservaModal.show();
+
+                setTimeout(() => motivoCancelacion.focus(), 250);
+            }
+
+            btnConfirmarCancelacion?.addEventListener('click', async function () {
+                if (!reservaPendienteCancelar)
+                    return;
+
+                const motivo = motivoCancelacion.value.trim();
+
+                if (!motivo) {
+                    cancelarReservaError.textContent =
+                        'Debés indicar el motivo de la cancelación.';
+                    cancelarReservaError.classList.remove('d-none');
+                    motivoCancelacion.focus();
+                    return;
+                }
+
+                btnConfirmarCancelacion.disabled = true;
+                cancelarReservaError.classList.add('d-none');
+
+                try {
+                    const body = new URLSearchParams();
+                    body.append('__RequestVerificationToken', tokenCancelar);
+                    body.append('idReserva', reservaPendienteCancelar.idReserva);
+                    body.append('motivoCancelacion', motivo);
+
+                    const res = await fetch(urlCancelarReserva, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+                        },
+                        body: body.toString()
+                    });
+
+                    const data = await leerJsonSeguro(res);
+
+                    if (!res.ok || !data.ok) {
+                        throw new Error(data.message || 'No se pudo cancelar la reserva.');
+                    }
+
+                    bsCancelarReservaModal.hide();
+                    reservaPendienteCancelar = null;
+
+                    await cargarMisReservas(
+                        mostrandoReservasAnteriores,
+                        data.message || 'Reserva cancelada correctamente.'
+                    );
+                } catch (e) {
+                    cancelarReservaError.textContent = mensajeError(
+                        e,
+                        'Error cancelando la reserva.'
+                    );
+                    cancelarReservaError.classList.remove('d-none');
+                } finally {
+                    btnConfirmarCancelacion.disabled = false;
+                }
+            });
+
+            btnMisReservas?.addEventListener('click', function () {
+                mostrandoReservasAnteriores = false;
+                cargarMisReservas(false);
+            });
+
+            btnAlternarReservasAnteriores?.addEventListener('click', function () {
+                cargarMisReservas(!mostrandoReservasAnteriores);
+            });
+
+            // =====================================================
+            // Administrador: búsqueda flexible y selección de usuario
+            // =====================================================
+            const btnReservarPorUsuario = document.getElementById('btnReservarPorUsuario');
+            const btnConsultarUsuario = document.getElementById('btnConsultarUsuario');
+
+            const buscarUsuarioModalEl = document.getElementById('buscarUsuarioModal');
+            const bsBuscarUsuarioModal = buscarUsuarioModalEl
+                ? new bootstrap.Modal(buscarUsuarioModalEl)
+                : null;
+
+            const resultadosUsuarioModalEl = document.getElementById('resultadosUsuarioModal');
+            const bsResultadosUsuarioModal = resultadosUsuarioModalEl
+                ? new bootstrap.Modal(resultadosUsuarioModalEl)
+                : null;
+
+            const buscarUsuarioModalLabel = document.getElementById('buscarUsuarioModalLabel');
+            const terminoBusquedaUsuario = document.getElementById('terminoBusquedaUsuario');
+            const btnEjecutarBusquedaUsuario = document.getElementById('btnEjecutarBusquedaUsuario');
+            const buscarUsuarioMsg = document.getElementById('buscarUsuarioMsg');
+
+            const resultadosUsuarioModalLabel = document.getElementById('resultadosUsuarioModalLabel');
+            const resultadosUsuarioResumen = document.getElementById('resultadosUsuarioResumen');
+            const resultadosBusquedaUsuarios = document.getElementById('resultadosBusquedaUsuarios');
+            const btnVolverBusquedaUsuario = document.getElementById('btnVolverBusquedaUsuario');
+
+            const adminReservaUsuarioBanner = document.getElementById('adminReservaUsuarioBanner');
+            const adminReservaUsuarioTexto = document.getElementById('adminReservaUsuarioTexto');
+            const btnQuitarUsuarioReserva = document.getElementById('btnQuitarUsuarioReserva');
+
+            const consultarUsuarioModalEl = document.getElementById('consultarUsuarioModal');
+            const bsConsultarUsuarioModal = consultarUsuarioModalEl
+                ? new bootstrap.Modal(consultarUsuarioModalEl)
+                : null;
+
+            const consultaUsuarioSeleccionado = document.getElementById('consultaUsuarioSeleccionado');
+            const fechaInicioConsultaUsuario = document.getElementById('fechaInicioConsultaUsuario');
+            const fechaFinConsultaUsuario = document.getElementById('fechaFinConsultaUsuario');
+            const btnEjecutarConsultaUsuario = document.getElementById('btnEjecutarConsultaUsuario');
+            const btnCambiarUsuarioConsulta = document.getElementById('btnCambiarUsuarioConsulta');
+            const consultaUsuarioError = document.getElementById('consultaUsuarioError');
+            const consultaUsuarioLoading = document.getElementById('consultaUsuarioLoading');
+            const consultaUsuarioResumen = document.getElementById('consultaUsuarioResumen');
+            const consultaUsuarioEmpty = document.getElementById('consultaUsuarioEmpty');
+            const consultaUsuarioTableWrap = document.getElementById('consultaUsuarioTableWrap');
+            const consultaUsuarioTbody = document.getElementById('consultaUsuarioTbody');
+
+            let modoBusquedaUsuario = '';
+            let usuarioConsultaAdmin = null;
+
+            inicializarFechasConsulta();
+
+            btnReservarPorUsuario?.addEventListener('click', function () {
+                abrirBusquedaUsuario('reservar');
+            });
+
+            btnConsultarUsuario?.addEventListener('click', function () {
+                abrirBusquedaUsuario('consultar');
+            });
+
+            function abrirBusquedaUsuario(modo) {
+                modoBusquedaUsuario = modo;
+                terminoBusquedaUsuario.value = '';
+                buscarUsuarioMsg.textContent = '';
+
+                buscarUsuarioModalLabel.textContent = modo === 'reservar'
+                    ? 'Buscar usuario para reservar'
+                    : 'Buscar usuario para consultar';
+
+                bsBuscarUsuarioModal?.show();
+                setTimeout(() => terminoBusquedaUsuario?.focus(), 250);
+            }
+
+            terminoBusquedaUsuario?.addEventListener('keydown', function (event) {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    buscarUsuariosFlexibles();
+                }
+            });
+
+            btnEjecutarBusquedaUsuario?.addEventListener('click', buscarUsuariosFlexibles);
+
+            async function buscarUsuariosFlexibles() {
+                const termino = terminoBusquedaUsuario?.value.trim() || '';
+
+                if (termino.length < 2) {
+                    buscarUsuarioMsg.textContent =
+                        'Ingresá al menos 2 caracteres del nombre, correo o cédula.';
+                    terminoBusquedaUsuario?.focus();
+                    return;
+                }
+
+                buscarUsuarioMsg.textContent = 'Buscando...';
+                btnEjecutarBusquedaUsuario.disabled = true;
+
+                try {
+                    const res = await fetch(
+                        urlBuscarUsuarios + '?termino=' + encodeURIComponent(termino)
+                    );
+
+                    const data = await leerJsonSeguro(res);
+
+                    if (!res.ok) {
+                        throw new Error(data.message || 'No se pudo buscar el usuario.');
+                    }
+
+                    const usuarios = data.usuarios || [];
+
+                    if (usuarios.length === 0) {
+                        buscarUsuarioMsg.textContent =
+                            'No se encontraron usuarios con ese nombre, correo o cédula.';
+                        return;
+                    }
+
+                    cargarResultadosUsuarios(usuarios, termino);
+                    bsBuscarUsuarioModal?.hide();
+
+                    setTimeout(() => {
+                        bsResultadosUsuarioModal?.show();
+                    }, 250);
+                } catch (e) {
+                    buscarUsuarioMsg.textContent =
+                        mensajeError(e, 'Error buscando usuarios.');
+                } finally {
+                    btnEjecutarBusquedaUsuario.disabled = false;
+                }
+            }
+
+            function cargarResultadosUsuarios(usuarios, termino) {
+                resultadosBusquedaUsuarios.innerHTML = '';
+
+                resultadosUsuarioModalLabel.textContent =
+                    modoBusquedaUsuario === 'reservar'
+                        ? 'Seleccionar usuario para reservar'
+                        : 'Seleccionar usuario para consultar';
+
+                resultadosUsuarioResumen.textContent =
+                    `Resultados para "${termino}": ${usuarios.length} usuario(s).`;
+
+                usuarios.forEach(usuario => {
+                    const button = document.createElement('button');
+                    button.type = 'button';
+                    button.className =
+                        'list-group-item list-group-item-action py-3 cr-user-result-item';
+
+                    const fila = document.createElement('div');
+                    fila.className =
+                        'd-flex flex-column flex-md-row justify-content-between gap-2';
+
+                    const datos = document.createElement('div');
+
+                    const titulo = document.createElement('div');
+                    titulo.className = 'fw-semibold';
+                    titulo.textContent = usuario.nombre || 'Usuario';
+
+                    const identificacion = document.createElement('div');
+                    identificacion.className = 'small text-muted';
+                    identificacion.textContent =
+                        `Cédula: ${usuario.cedula || '—'}`
+                        + ` | Correo: ${usuario.email || '—'}`;
+
+                    const telefono = document.createElement('div');
+                    telefono.className = 'small text-muted';
+                    telefono.textContent =
+                        `Teléfono: ${usuario.telefono || '—'}`
+                        + (usuario.familiar
+                            ? ` | Plan familiar (${usuario.cantidadFamilia || 1})`
+                            : '');
+
+                    const accion = document.createElement('span');
+                    accion.className = 'badge bg-primary align-self-md-center';
+                    accion.textContent = modoBusquedaUsuario === 'reservar'
+                        ? 'Seleccionar para reservar'
+                        : 'Seleccionar para consultar';
+
+                    datos.appendChild(titulo);
+                    datos.appendChild(identificacion);
+                    datos.appendChild(telefono);
+
+                    fila.appendChild(datos);
+                    fila.appendChild(accion);
+                    button.appendChild(fila);
+
+                    button.addEventListener('click', function () {
+                        if (modoBusquedaUsuario === 'reservar') {
+                            seleccionarUsuarioReserva(usuario);
+                            bsResultadosUsuarioModal?.hide();
+                        } else {
+                            seleccionarUsuarioConsulta(usuario);
+                        }
+                    });
+
+                    resultadosBusquedaUsuarios.appendChild(button);
+                });
+            }
+
+            btnVolverBusquedaUsuario?.addEventListener('click', function () {
+                bsResultadosUsuarioModal?.hide();
+
+                setTimeout(() => {
+                    bsBuscarUsuarioModal?.show();
+                    setTimeout(() => terminoBusquedaUsuario?.focus(), 200);
+                }, 250);
+            });
+
+            function actualizarUsuarioReservaAdminUI() {
+                if (!esAdministrador)
+                    return;
+
+                if (usuarioReservaAdmin) {
+                    if (adminReservaUsuarioTexto) {
+                        adminReservaUsuarioTexto.textContent =
+                            `${usuarioReservaAdmin.nombre || 'Usuario'}`
+                            + ` | Cédula: ${usuarioReservaAdmin.cedula || '—'}`
+                            + ` | Correo: ${usuarioReservaAdmin.email || '—'}`;
+                    }
+
+                    adminReservaUsuarioBanner?.classList.remove('d-none');
+
+                    if (btnMisReservas) {
+                        btnMisReservas.disabled = false;
+                        btnMisReservas.textContent =
+                            `Ver reservas de ${usuarioReservaAdmin.nombre || 'usuario'}`;
+                    }
+                } else {
+                    if (adminReservaUsuarioTexto)
+                        adminReservaUsuarioTexto.textContent = '';
+
+                    adminReservaUsuarioBanner?.classList.add('d-none');
+
+                    if (btnMisReservas) {
+                        btnMisReservas.disabled = false;
+                        btnMisReservas.textContent = 'Mis reservas';
+                    }
+                }
+            }
+
+            function seleccionarUsuarioReserva(usuario) {
+                usuarioReservaAdmin = usuario;
+                guardarUsuarioReservaAdmin();
+                actualizarUsuarioReservaAdminUI();
+
+                mostrandoReservasAnteriores = false;
+                actualizarModoReserva();
+            }
+
+            btnQuitarUsuarioReserva?.addEventListener('click', function () {
+                usuarioReservaAdmin = null;
+                eliminarUsuarioReservaAdminGuardado();
+                actualizarUsuarioReservaAdminUI();
+
+                mostrandoReservasAnteriores = false;
+                actualizarModoReserva();
+            });
+
+            function seleccionarUsuarioConsulta(usuario) {
+                usuarioConsultaAdmin = usuario;
+                limpiarResultadoConsultaUsuario();
+
+                consultaUsuarioSeleccionado.textContent =
+                    `${usuario.nombre || 'Usuario'}`
+                    + ` | Cédula: ${usuario.cedula || '—'}`
+                    + ` | Correo: ${usuario.email || '—'}`;
+
+                bsResultadosUsuarioModal?.hide();
+
+                setTimeout(() => {
+                    bsConsultarUsuarioModal?.show();
+                }, 250);
+            }
+
+            btnCambiarUsuarioConsulta?.addEventListener('click', function () {
+                bsConsultarUsuarioModal?.hide();
+
+                setTimeout(() => {
+                    abrirBusquedaUsuario('consultar');
+                }, 250);
+            });
+
+            btnEjecutarConsultaUsuario?.addEventListener(
+                'click',
+                consultarReservasUsuario
+            );
+
+            async function consultarReservasUsuario() {
+                if (!usuarioConsultaAdmin?.idUsuario) {
+                    consultaUsuarioError.textContent =
+                        'Primero seleccioná el usuario que deseás consultar.';
+                    consultaUsuarioError.classList.remove('d-none');
+                    return;
+                }
+
+                const inicio = fechaInicioConsultaUsuario?.value || '';
+                const fin = fechaFinConsultaUsuario?.value || '';
+
+                limpiarResultadoConsultaUsuario();
+                consultaUsuarioLoading.classList.remove('d-none');
+
+                try {
+                    const url = urlConsultarUsuario
+                        + '?idUsuario='
+                        + encodeURIComponent(usuarioConsultaAdmin.idUsuario)
+                        + '&fechaInicio='
+                        + encodeURIComponent(inicio)
+                        + '&fechaFin='
+                        + encodeURIComponent(fin);
+
+                    const res = await fetch(url);
+                    const data = await leerJsonSeguro(res);
+
+                    if (!res.ok) {
+                        throw new Error(
+                            data.message || 'No se pudieron consultar las reservas.'
+                        );
+                    }
+
+                    const usuario = data.usuario || {};
+                    const reservas = data.reservas || [];
+
+                    consultaUsuarioResumen.textContent =
+                        `${usuario.nombre || 'Usuario'}`
+                        + ` | Cédula: ${usuario.cedula || '—'}`
+                        + ` | Correo: ${usuario.email || '—'}`
+                        + ` | Reservas encontradas: ${data.total || 0}`;
+
+                    consultaUsuarioResumen.classList.remove('d-none');
+
+                    if (reservas.length === 0) {
+                        consultaUsuarioEmpty.classList.remove('d-none');
+                        return;
+                    }
+
+                    reservas.forEach(r => {
+                        const tr = document.createElement('tr');
+
+                        agregarCelda(tr, r.fechaTexto || r.fecha || '');
+                        agregarCelda(tr, r.hora || '');
+
+                        const tdEstado = document.createElement('td');
+                        const badge = document.createElement('span');
+
+                        badge.className = !r.activa
+                            ? 'badge bg-danger'
+                            : r.yaPaso
+                                ? 'badge bg-secondary'
+                                : 'badge bg-success';
+
+                        badge.textContent =
+                            r.estado || (r.activa ? 'Activa' : 'Cancelada');
+
+                        tdEstado.appendChild(badge);
+                        tr.appendChild(tdEstado);
+
+                        agregarCelda(tr, r.motivoCancelacion || '—');
+                        agregarCelda(
+                            tr,
+                            r.registradaPorMismoUsuario
+                                ? `${r.registradaPor || 'Usuario'} (mismo usuario)`
+                                : r.registradaPor || ''
+                        );
+
+                        consultaUsuarioTbody.appendChild(tr);
+                    });
+
+                    consultaUsuarioTableWrap.classList.remove('d-none');
+                } catch (e) {
+                    consultaUsuarioError.textContent =
+                        mensajeError(e, 'Error consultando reservas.');
+                    consultaUsuarioError.classList.remove('d-none');
+                } finally {
+                    consultaUsuarioLoading.classList.add('d-none');
+                }
+            }
+
+            function inicializarFechasConsulta() {
+                if (!fechaInicioConsultaUsuario || !fechaFinConsultaUsuario)
+                    return;
+
+                const hoy = new Date();
+                const fin = new Date();
+                fin.setMonth(fin.getMonth() + 1);
+
+                fechaInicioConsultaUsuario.value = fechaIsoLocal(hoy);
+                fechaFinConsultaUsuario.value = fechaIsoLocal(fin);
+            }
+
+            function limpiarResultadoConsultaUsuario() {
+                consultaUsuarioError?.classList.add('d-none');
+                consultaUsuarioLoading?.classList.add('d-none');
+                consultaUsuarioResumen?.classList.add('d-none');
+                consultaUsuarioEmpty?.classList.add('d-none');
+                consultaUsuarioTableWrap?.classList.add('d-none');
+
+                if (consultaUsuarioError)
+                    consultaUsuarioError.textContent = '';
+
+                if (consultaUsuarioResumen)
+                    consultaUsuarioResumen.textContent = '';
+
+                if (consultaUsuarioTbody)
+                    consultaUsuarioTbody.innerHTML = '';
+            }
+
+            // =====================================================
+            // Elegir día y cargar horas
+            // =====================================================
             dayButtons.forEach(btn => {
-                btn.addEventListener('click', async () => {
-                    document.querySelectorAll('.cr-day-btn').forEach(x => x.classList.remove('active'));
+                btn.addEventListener('click', async function () {
+                    document.querySelectorAll('.cr-day-btn')
+                        .forEach(x => x.classList.remove('active'));
                     btn.classList.add('active');
 
                     const iso = btn.getAttribute('data-date');
                     inputDate.value = iso;
-                    resetSelection();
+                    resetSeleccionHora();
 
-                    const parts = iso.split('-'); // yyyy-mm-dd
-                    const d = new Date(parts[0], parts[1] - 1, parts[2]);
-                    fechaTxt.textContent = d.toLocaleDateString('es-CR', {
-                        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+                    const parts = iso.split('-');
+                    const fechaLocal = new Date(parts[0], parts[1] - 1, parts[2]);
+
+                    fechaTxt.textContent = fechaLocal.toLocaleDateString('es-CR', {
+                        weekday: 'long',
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
                     });
 
                     ayudaTxt.textContent = 'Cargando horas...';
-                    msg.textContent = '';
-                    container.innerHTML = '';
-
-                    bsModal.show();
+                    horasMsg.textContent = '';
+                    horasContainer.innerHTML = '';
+                    actualizarModoReserva();
+                    bsHorasModal?.show();
 
                     try {
-                        const res = await fetch('/Reservas/GetHorasDisponibles?date=' + encodeURIComponent(iso));
-                        if (!res.ok) throw new Error('Error consultando horas.');
-                        const data = await res.json();
+                        let url = urlHoras + '?date=' + encodeURIComponent(iso);
+
+                        if (esAdministrador && usuarioReservaAdmin) {
+                            url += '&idUsuarioObjetivo='
+                                + encodeURIComponent(usuarioReservaAdmin.idUsuario);
+                        }
+
+                        const res = await fetch(url);
+                        const data = await leerJsonSeguro(res);
+
+                        if (!res.ok) {
+                            throw new Error(data.message || 'Error consultando horas.');
+                        }
 
                         ayudaTxt.textContent = 'Elegí una hora disponible.';
-                        resetSelection();
+                        resetSeleccionHora();
 
                         const horas = data.horas || [];
+
                         if (horas.length === 0) {
-                            msg.textContent = 'No hay horas disponibles para este día.';
+                            horasMsg.textContent = data.blockedDay
+                                ? 'Este día está bloqueado.'
+                                : 'No hay horas disponibles para este día.';
                             return;
                         }
 
@@ -407,55 +1958,112 @@
                             const col = document.createElement('div');
                             col.className = 'col-6';
 
-                            const b = document.createElement('button');
-                            b.type = 'button';
+                            const buttonHora = document.createElement('button');
+                            buttonHora.type = 'button';
+                            buttonHora.className = 'btn w-100 cr-hour-btn '
+                                + (h.disponible
+                                    ? 'btn-outline-light'
+                                    : 'btn-outline-secondary');
 
-                            const baseClass = h.disponible ? 'btn-outline-light' : 'btn-outline-secondary';
-                            b.className = 'btn w-100 cr-hour-btn ' + baseClass;
+                            const reservasUsuario = h.misReservas || 0;
+                            const limiteUsuario = h.limiteUsuario || 1;
+                            const cuposDisponibles = h.cuposDisponibles || 0;
 
-                            b.textContent = h.etiqueta;
-                            b.setAttribute('data-id', h.idHora);
+                            buttonHora.textContent = h.etiqueta;
 
-                            if (!h.disponible) b.classList.add('cr-hour-disabled');
-
-                            // ✅ si NO es admin/entrenador: mantener comportamiento original
-                            if (!puedeConsultar) {
-                                if (h.esMia) {
-                                    b.classList.add('cr-hour-mine');
-                                    b.disabled = true;
-                                    b.title = 'Ya reservaste esta hora';
-                                } else {
-                                    b.disabled = !h.disponible;
-                                }
-                            } else {
-                                // ✅ admin/entrenador puede seleccionar para consultar (aunque esté llena/bloqueada)
-                                b.disabled = false;
+                            if (reservasUsuario > 0) {
+                                buttonHora.textContent +=
+                                    ` (${reservasUsuario}/${limiteUsuario})`;
                             }
 
-                            b.addEventListener('click', () => {
-                                container.querySelectorAll('button[data-id]').forEach(x => x.classList.remove('active'));
-                                b.classList.add('active');
+                            buttonHora.setAttribute('data-id', h.idHora);
+
+                            if (!h.disponible) {
+                                buttonHora.classList.add('cr-hour-disabled');
+                            }
+
+                            if (h.esMia) {
+                                buttonHora.classList.add('cr-hour-mine');
+
+                                buttonHora.title = h.disponible
+                                    ? `El usuario tiene ${reservasUsuario} reserva(s) en esta hora. `
+                                        + `Puede reservar hasta ${limiteUsuario}. `
+                                        + `Cupos disponibles: ${cuposDisponibles}.`
+                                    : 'El usuario alcanzó su límite o la hora está llena.';
+                            }
+
+                            // Usuario normal: no puede pulsar horas no disponibles.
+                            // Administrador/entrenador: puede pulsarlas para consultarlas.
+                            buttonHora.disabled = !puedeConsultarHora && !h.disponible;
+
+                            buttonHora.addEventListener('click', function () {
+                                horasContainer.querySelectorAll('button[data-id]')
+                                    .forEach(x => x.classList.remove('active'));
+                                buttonHora.classList.add('active');
 
                                 inputHora.value = h.idHora;
-                                selectedHoraLabel = h.etiqueta;
+                                selectedHoraLabel = h.etiqueta || buttonHora.textContent || '';
 
-                                // reservar solo si realmente disponible y no es mía
-                                btnReservar.disabled = !(h.disponible && !h.esMia);
+                                if (btnReservar) {
+                                    btnReservar.disabled =
+                                        !h.disponible || !puedeReservarEnModoActual();
+                                }
 
-                                if (btnConsultar) btnConsultar.disabled = false;
+                                if (btnConsultar) {
+                                    btnConsultar.disabled = false;
+                                }
                             });
 
-                            col.appendChild(b);
-                            container.appendChild(col);
+                            col.appendChild(buttonHora);
+                            horasContainer.appendChild(col);
                         });
-
                     } catch (e) {
                         ayudaTxt.textContent = 'Error';
-                        msg.textContent = (e && e.message) ? e.message : 'Error al cargar horas.';
+                        horasMsg.textContent = mensajeError(e, 'Error al cargar horas.');
                     }
                 });
             });
+
+            // =====================================================
+            // Helpers de JavaScript
+            // =====================================================
+            function agregarCelda(tr, texto) {
+                const td = document.createElement('td');
+                td.textContent = texto ?? '';
+                tr.appendChild(td);
+                return td;
+            }
+
+            async function leerJsonSeguro(response) {
+                const text = await response.text();
+
+                if (!text)
+                    return {};
+
+                try {
+                    return JSON.parse(text);
+                } catch {
+                    return { message: text };
+                }
+            }
+
+            function mensajeError(error, fallback) {
+                return error && error.message ? error.message : fallback;
+            }
+
+            function fechaIsoLocal(fecha) {
+                const year = fecha.getFullYear();
+                const month = String(fecha.getMonth() + 1).padStart(2, '0');
+                const day = String(fecha.getDate()).padStart(2, '0');
+                return `${year}-${month}-${day}`;
+            }
+
+            if (esAdministrador) {
+                usuarioReservaAdmin = cargarUsuarioReservaAdminGuardado();
+                actualizarUsuarioReservaAdminUI();
+            }
+
+            actualizarModoReserva();
         });
     </script>
-
 }

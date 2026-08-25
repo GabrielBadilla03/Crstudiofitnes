@@ -1,4 +1,4 @@
-﻿using CrStudioFitnes.Data;
+using CrStudioFitnes.Data;
 using CrStudioFitnes.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -81,7 +81,6 @@ namespace CrStudioFitnes.Controllers
             // paquetes para el modal (ya lo tenías)
             ViewBag.PaquetesDisponibles = await _db.Paquetes
                 .AsNoTracking()
-                .Where(p => p.Activo)
                 .OrderBy(p => p.CantDias)
                 .ThenBy(p => p.Pago)
                 .ToListAsync();
@@ -194,11 +193,11 @@ namespace CrStudioFitnes.Controllers
 
             var paquete = await _db.Paquetes
                 .AsNoTracking()
-                .FirstOrDefaultAsync(p => p.IdPaquete == idPaquete && p.Activo);
+                .FirstOrDefaultAsync(p => p.IdPaquete == idPaquete);
 
             if (paquete == null)
             {
-                TempData["ErrorPaquete"] = "El paquete seleccionado no existe o está inactivo.";
+                TempData["ErrorPaquete"] = "El paquete seleccionado no existe.";
                 return RedirectToAction(nameof(Details), new { id = idUsuario });
             }
 
@@ -233,17 +232,45 @@ namespace CrStudioFitnes.Controllers
             return RedirectToAction(nameof(Details), new { id = idUsuario });
         }
 
-        // POST: ApplicationUser/PagarPaquete
-        // ✅ Registra pago + copia detalle del paquete + AHORA sí aplica lecciones y fechas.
         [HttpPost]
         [ValidateAntiForgeryToken]
         [Authorize(Roles = "Gestor de Pagos,Administrador")]
-        public async Task<IActionResult> PagarPaquete(string idUsuario)
+        public async Task<IActionResult> PagarPaquete(string idUsuario, string tipoPago, DateTime? fechaPago)
         {
             if (string.IsNullOrWhiteSpace(idUsuario))
                 return NotFound();
 
-            // Traer el PaqueteUsuario actual con el Paquete
+            tipoPago = (tipoPago ?? string.Empty).Trim().ToUpperInvariant();
+
+            if (tipoPago != "CONTADO" && tipoPago != "CREDITO")
+            {
+                TempData["ErrorPago"] = "Debe seleccionar un tipo de pago válido: contado o crédito.";
+                return RedirectToAction(nameof(Details), new { id = idUsuario });
+            }
+
+            if (!fechaPago.HasValue)
+            {
+                TempData["ErrorPago"] = "Debe seleccionar la fecha de pago.";
+                return RedirectToAction(nameof(Details), new { id = idUsuario });
+            }
+
+            var fecha = fechaPago.Value.Date;
+
+            // ✅ No permitir pagar otro paquete si tiene deuda pendiente
+            // ✅ Buscar si tiene un pago pendiente.
+            // Si no tiene pagos anteriores, pagoPendiente queda null y se deja continuar.
+            var pagoPendiente = await _db.PagosPaquete
+                .AsNoTracking()
+                .Where(p => p.IdUsuario == idUsuario && p.Activo && p.Monto > 0)
+                .OrderByDescending(p => p.Fecha)
+                .FirstOrDefaultAsync();
+
+            if (pagoPendiente != null)
+            {
+                TempData["ErrorPago"] = "Este usuario tiene un pago pendiente. No se puede registrar otro pago hasta cancelar la deuda actual.";
+                return RedirectToAction(nameof(Details), new { id = idUsuario });
+            }
+
             var pu = await _db.PaquetesUsuario
                 .Include(x => x.Paquete)
                 .Where(x => x.IdUsuario == idUsuario)
@@ -257,61 +284,140 @@ namespace CrStudioFitnes.Controllers
             }
 
             var p = pu.Paquete;
-            var hoy = DateTime.Today;
 
-            // 1) Guardar pago + detalle (snapshot del paquete)
+            // Se utilizan los valores por usuario. El respaldo con los valores totales
+            // permite trabajar con paquetes antiguos que todavía no los tengan definidos.
+            var montoOriginalPaquete = p.PagoPorUsuario > 0
+                ? p.PagoPorUsuario
+                : p.Pago;
+
+            var leccionesUsuario = p.CantLeccionesPorUsuario > 0
+                ? p.CantLeccionesPorUsuario
+                : p.CantLecciones;
+
+            if (montoOriginalPaquete <= 0)
+            {
+                TempData["ErrorPago"] = "El monto del paquete debe ser mayor a 0.";
+                return RedirectToAction(nameof(Details), new { id = idUsuario });
+            }
+
+            if (leccionesUsuario <= 0)
+            {
+                TempData["ErrorPago"] = "La cantidad de lecciones del paquete debe ser mayor a 0.";
+                return RedirectToAction(nameof(Details), new { id = idUsuario });
+            }
+
+            var esContado = tipoPago == "CONTADO";
+
             var pago = new PagoPaquete
             {
                 IdUsuario = idUsuario,
-                Fecha = DateTime.Now,
-                Monto = p.Pago
+                Fecha = fecha,
+                TipoPago = tipoPago,
+                Activo = true,
+                MotivoAnulacion = null,
+
+                // CONTADO: queda en 0 porque se cancela completo con abono.
+                // CREDITO: queda el monto original porque queda pendiente.
+                Monto = esContado ? 0m : montoOriginalPaquete
             };
 
+            // El pago normal conserva el detalle completo del paquete asignado.
+            // De esta forma el historial mantiene el plan, lecciones, monto y detalle.
             pago.Detalles.Add(new PagoPaqueteDetalle
             {
                 CantDias = p.CantDias,
-                CantLecciones = p.CantLecciones,
-                Pago = p.Pago,
+                CantLecciones = leccionesUsuario,
+                Pago = montoOriginalPaquete,
                 Detalle = p.Detalle
             });
 
+            // Solo si es CONTADO se registra abono automático por el total del paquete.
+            if (esContado)
+            {
+                pago.Abonos.Add(new PagoPaqueteAbono
+                {
+                    Fecha = fecha,
+                    Monto = montoOriginalPaquete
+                });
+            }
+
             _db.PagosPaquete.Add(pago);
 
-            // 2) Aplicar paquete al usuario
-            pu.CantLecciones = p.CantLecciones;
-            pu.FechaInicio = hoy;
-            pu.FechaFin = CalcularFechaFin(hoy, p.CantDias);
+            // Aplicar paquete al usuario usando la fecha digitada.
+            pu.CantLecciones = leccionesUsuario;
+            pu.FechaInicio = fecha;
+            pu.FechaFin = CalcularFechaFin(fecha, p.CantDias);
 
-            // No hace falta Update(pu) si ya viene trackeado, pero no estorba.
             _db.PaquetesUsuario.Update(pu);
 
             await _db.SaveChangesAsync();
 
-            TempData["OkPago"] = "Pago registrado. Lecciones y fechas actualizadas.";
+            TempData["OkPago"] = esContado
+                ? "Pago contado registrado correctamente. Se agregó un abono por el total del paquete."
+                : "Pago a crédito registrado correctamente.";
+
             return RedirectToAction(nameof(Details), new { id = idUsuario });
         }
 
-        private static DateTime CalcularFechaFin(DateTime inicio, TipoPlanDias tipo)
+        private static DateTime CalcularFechaFin(DateTime fechaPago, TipoPlanDias tipo)
         {
-            // inclusivo
+            fechaPago = fechaPago.Date;
+
             return tipo switch
             {
-                TipoPlanDias.Diario => inicio,
-                TipoPlanDias.Semanal => inicio.AddDays(6),
-                TipoPlanDias.Quincenal => inicio.AddDays(14),
-                TipoPlanDias.Mensual => inicio.AddMonths(1).AddDays(-1),
-                _ => inicio
+                // Ejemplo: inicia 14 y termina 15.
+                // Son 2 fechas incluidas: 14 y 15.
+                TipoPlanDias.Diario => fechaPago.AddDays(1),
+
+                // Ejemplo: lunes a lunes.
+                // Son 8 fechas incluidas, pero 7 días de diferencia.
+                TipoPlanDias.Semanal => fechaPago.AddDays(7),
+
+                // Se conserva la lógica actual de la quincena.
+                // Ejemplos:
+                // 15 -> 30
+                // 30 en un mes de 31 -> 15 del siguiente mes.
+                TipoPlanDias.Quincenal => SumarDiasSinContarDia31(fechaPago, 15),
+
+                // Conserva el mismo número de día del siguiente mes.
+                // Ejemplo: 15/07 -> 15/08.
+                // Si el día no existe, toma el último día disponible:
+                // 31/01 -> 28/02 o 29/02.
+                TipoPlanDias.Mensual => fechaPago.AddMonths(1),
+
+                _ => fechaPago
             };
         }
 
-        // GET: ApplicationUser/HistorialPagos/{id}
+      
+
+        private static DateTime SumarDiasSinContarDia31(DateTime fechaPago, int dias)
+        {
+            var resultado = fechaPago.Date;
+            var diasSumados = 0;
+
+            while (diasSumados < dias)
+            {
+                resultado = resultado.AddDays(1);
+
+                // Se ignora el día 31 para que:
+                // 30 en mes de 31 + 15 días = 15 del siguiente mes
+                if (resultado.Day == 31)
+                    continue;
+
+                diasSumados++;
+            }
+
+            return resultado;
+        }
+
         [Authorize(Roles = "Gestor de Pagos,Administrador,Usuario")]
         public async Task<IActionResult> HistorialPagos(string id)
         {
             if (string.IsNullOrWhiteSpace(id))
                 return NotFound();
 
-            // Solo para mostrar nombre del usuario en la vista (opcional)
             var user = await _userManager.Users
                 .AsNoTracking()
                 .FirstOrDefaultAsync(u => u.Id == id);
@@ -327,10 +433,299 @@ namespace CrStudioFitnes.Controllers
                 .Where(p => p.IdUsuario == id)
                 .Include(p => p.Usuario)
                 .Include(p => p.Detalles)
+                .Include(p => p.Abonos)
                 .OrderByDescending(p => p.Fecha)
+                .ThenByDescending(p => p.IdPagoPaquete)
                 .ToListAsync();
 
             return View(pagos);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Gestor de Pagos,Administrador")]
+        public async Task<IActionResult> AgregarAbonoPaquete(int idPagoPaquete, DateTime? fechaAbono, decimal montoAbono)
+        {
+            if (idPagoPaquete <= 0)
+                return NotFound();
+
+            if (!fechaAbono.HasValue)
+            {
+                TempData["ErrorAbono"] = "Debe seleccionar la fecha del abono.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            if (montoAbono <= 0)
+            {
+                TempData["ErrorAbono"] = "El monto del abono debe ser mayor a 0.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            var pago = await _db.PagosPaquete
+                .Include(p => p.Abonos)
+                .FirstOrDefaultAsync(p => p.IdPagoPaquete == idPagoPaquete);
+
+            if (pago == null)
+                return NotFound();
+
+            if (!pago.Activo)
+            {
+                TempData["ErrorAbono"] = "No se pueden registrar abonos en un pago anulado.";
+                return RedirectToAction(nameof(HistorialPagos), new { id = pago.IdUsuario });
+            }
+
+            if (pago.Monto <= 0)
+            {
+                TempData["OkAbono"] = "Este paquete ya fue totalmente pagado.";
+                return RedirectToAction(nameof(HistorialPagos), new { id = pago.IdUsuario });
+            }
+
+            if (montoAbono > pago.Monto)
+            {
+                TempData["ErrorAbono"] = $"El abono no puede ser mayor al restante por pagar. Restante actual: {pago.Monto:N2}.";
+                return RedirectToAction(nameof(HistorialPagos), new { id = pago.IdUsuario });
+            }
+
+            pago.Abonos.Add(new PagoPaqueteAbono
+            {
+                Fecha = fechaAbono.Value.Date,
+                Monto = montoAbono
+            });
+
+            pago.Monto -= montoAbono;
+
+            if (pago.Monto < 0)
+                pago.Monto = 0;
+
+            await _db.SaveChangesAsync();
+
+            TempData["OkAbono"] = pago.Monto == 0
+                ? "Abono registrado correctamente. El paquete ya fue totalmente pagado."
+                : "Abono registrado correctamente.";
+
+            return RedirectToAction(nameof(HistorialPagos), new { id = pago.IdUsuario });
+        }
+
+        // =====================================================
+        // AGREGAR LECCIONES SIN CAMBIAR PAQUETE NI FECHAS
+        // =====================================================
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Gestor de Pagos,Administrador")]
+        public async Task<IActionResult> AgregarLeccionesPago(
+            string idUsuario,
+            int cantLecciones,
+            decimal monto)
+        {
+            if (string.IsNullOrWhiteSpace(idUsuario))
+                return NotFound();
+
+            if (cantLecciones <= 0 || cantLecciones > 1000)
+            {
+                TempData["ErrorLecciones"] = "La cantidad de lecciones debe estar entre 1 y 1000.";
+                return RedirectToAction(nameof(HistorialPagos), new { id = idUsuario });
+            }
+
+            if (monto <= 0 || monto > 1000000)
+            {
+                TempData["ErrorLecciones"] = "El monto debe ser mayor a 0 y no puede superar 1 000 000.";
+                return RedirectToAction(nameof(HistorialPagos), new { id = idUsuario });
+            }
+
+            var usuarioExiste = await _db.Users
+                .AsNoTracking()
+                .AnyAsync(u => u.Id == idUsuario);
+
+            if (!usuarioExiste)
+                return NotFound();
+
+            var strategy = _db.Database.CreateExecutionStrategy();
+
+            try
+            {
+                await strategy.ExecuteAsync(async () =>
+                {
+                    await using var tx = await _db.Database.BeginTransactionAsync(
+                        System.Data.IsolationLevel.Serializable);
+
+                    // Se mantiene exactamente el mismo paquete y las mismas fechas.
+                    var paqueteUsuario = await _db.PaquetesUsuario
+                        .Where(pu => pu.IdUsuario == idUsuario)
+                        .OrderByDescending(pu => pu.FechaFin)
+                        .ThenByDescending(pu => pu.IdPaqueteUsuario)
+                        .FirstOrDefaultAsync();
+
+                    if (paqueteUsuario == null)
+                        throw new InvalidOperationException(
+                            "El usuario no tiene un paquete asignado para agregarle lecciones.");
+
+                    if (paqueteUsuario.CantLecciones + cantLecciones > 1000)
+                        throw new InvalidOperationException(
+                            "La cantidad total de lecciones del usuario no puede superar 1000.");
+
+                    var fechaRegistro = DateTime.Now;
+
+                    var pago = new PagoPaquete
+                    {
+                        IdUsuario = idUsuario,
+                        Fecha = fechaRegistro,
+                        TipoPago = "CONTADO",
+                        Monto = 0m,
+                        Activo = true,
+                        MotivoAnulacion = null
+                    };
+
+                    // Este detalle representa únicamente lecciones adicionales.
+                    // No reemplaza ni modifica el detalle histórico de los pagos normales.
+                    pago.Detalles.Add(new PagoPaqueteDetalle
+                    {
+                        CantDias = TipoPlanDias.ClasesExtra,
+                        CantLecciones = cantLecciones,
+                        Pago = monto,
+                        Detalle = "Clases extra"
+                    });
+
+                    // Como el monto digitado se recibe completo, se registra como abono.
+                    pago.Abonos.Add(new PagoPaqueteAbono
+                    {
+                        Fecha = fechaRegistro,
+                        Monto = monto
+                    });
+
+                    paqueteUsuario.CantLecciones += cantLecciones;
+
+                    _db.PagosPaquete.Add(pago);
+                    _db.PaquetesUsuario.Update(paqueteUsuario);
+
+                    await _db.SaveChangesAsync();
+                    await tx.CommitAsync();
+                });
+            }
+            catch (InvalidOperationException ex)
+            {
+                TempData["ErrorLecciones"] = ex.Message;
+                return RedirectToAction(nameof(HistorialPagos), new { id = idUsuario });
+            }
+            catch
+            {
+                TempData["ErrorLecciones"] = "Ocurrió un error agregando las lecciones.";
+                return RedirectToAction(nameof(HistorialPagos), new { id = idUsuario });
+            }
+
+            TempData["OkLecciones"] =
+                $"Se agregaron {cantLecciones} lección(es) y se registró el pago correctamente.";
+
+            return RedirectToAction(nameof(HistorialPagos), new { id = idUsuario });
+        }
+
+        // =====================================================
+        // ANULAR PAGO SIN ELIMINAR EL REGISTRO
+        // =====================================================
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Gestor de Pagos,Administrador")]
+        public async Task<IActionResult> AnularPagoPaquete(
+            int idPagoPaquete,
+            string? motivoAnulacion)
+        {
+            if (idPagoPaquete <= 0)
+                return NotFound();
+
+            motivoAnulacion = motivoAnulacion?.Trim();
+
+            if (string.IsNullOrWhiteSpace(motivoAnulacion))
+            {
+                TempData["ErrorAnulacion"] = "Debe indicar el motivo de la anulación.";
+
+                var idUsuarioPago = await _db.PagosPaquete
+                    .AsNoTracking()
+                    .Where(p => p.IdPagoPaquete == idPagoPaquete)
+                    .Select(p => p.IdUsuario)
+                    .FirstOrDefaultAsync();
+
+                return string.IsNullOrWhiteSpace(idUsuarioPago)
+                    ? NotFound()
+                    : RedirectToAction(nameof(HistorialPagos), new { id = idUsuarioPago });
+            }
+
+            if (motivoAnulacion.Length > 300)
+            {
+                TempData["ErrorAnulacion"] =
+                    "El motivo de anulación no puede superar los 300 caracteres.";
+
+                var idUsuarioPago = await _db.PagosPaquete
+                    .AsNoTracking()
+                    .Where(p => p.IdPagoPaquete == idPagoPaquete)
+                    .Select(p => p.IdUsuario)
+                    .FirstOrDefaultAsync();
+
+                return string.IsNullOrWhiteSpace(idUsuarioPago)
+                    ? NotFound()
+                    : RedirectToAction(nameof(HistorialPagos), new { id = idUsuarioPago });
+            }
+
+            string? idUsuario = null;
+            var strategy = _db.Database.CreateExecutionStrategy();
+
+            try
+            {
+                await strategy.ExecuteAsync(async () =>
+                {
+                    await using var tx = await _db.Database.BeginTransactionAsync(
+                        System.Data.IsolationLevel.Serializable);
+
+                    var pago = await _db.PagosPaquete
+                        .FirstOrDefaultAsync(p => p.IdPagoPaquete == idPagoPaquete);
+
+                    if (pago == null)
+                        throw new KeyNotFoundException("No se encontró el pago.");
+
+                    idUsuario = pago.IdUsuario;
+
+                    if (!pago.Activo)
+                        throw new InvalidOperationException("Este pago ya se encuentra anulado.");
+
+                    pago.Activo = false;
+                    pago.MotivoAnulacion = motivoAnulacion;
+
+                    // El sistema trabaja con el vínculo de paquete más reciente del usuario.
+                    // Se conservan el paquete y las fechas; únicamente se ponen las lecciones en 0.
+                    var paqueteUsuario = await _db.PaquetesUsuario
+                        .Where(pu => pu.IdUsuario == pago.IdUsuario)
+                        .OrderByDescending(pu => pu.FechaFin)
+                        .ThenByDescending(pu => pu.IdPaqueteUsuario)
+                        .FirstOrDefaultAsync();
+
+                    if (paqueteUsuario != null)
+                        paqueteUsuario.CantLecciones = 0;
+
+                    await _db.SaveChangesAsync();
+                    await tx.CommitAsync();
+                });
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound();
+            }
+            catch (InvalidOperationException ex)
+            {
+                TempData["ErrorAnulacion"] = ex.Message;
+                return string.IsNullOrWhiteSpace(idUsuario)
+                    ? RedirectToAction(nameof(Index))
+                    : RedirectToAction(nameof(HistorialPagos), new { id = idUsuario });
+            }
+            catch
+            {
+                TempData["ErrorAnulacion"] = "Ocurrió un error anulando el pago.";
+                return string.IsNullOrWhiteSpace(idUsuario)
+                    ? RedirectToAction(nameof(Index))
+                    : RedirectToAction(nameof(HistorialPagos), new { id = idUsuario });
+            }
+
+            TempData["OkAnulacion"] =
+                "Pago anulado correctamente. Las lecciones actuales del usuario se colocaron en 0.";
+
+            return RedirectToAction(nameof(HistorialPagos), new { id = idUsuario });
         }
 
         [Authorize(Roles = "Administrador")]
@@ -446,11 +841,54 @@ namespace CrStudioFitnes.Controllers
                 .AsNoTracking()
                 .Where(p => p.IdUsuario == userId)
                 .Include(p => p.Detalles)
+                .Include(p => p.Abonos)
                 .OrderByDescending(p => p.Fecha)
+                .ThenByDescending(p => p.IdPagoPaquete)
                 .Take(80)
                 .ToListAsync();
 
             return PartialView("_MiHistorialPagosPartial", pagos);
+        }
+
+        [Authorize(Roles = "Administrador")]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ActualizarFamiliar(string idUsuario, bool familiar, int? cantidadFamilia)
+        {
+            if (string.IsNullOrWhiteSpace(idUsuario))
+                return NotFound();
+
+            var user = await _userManager.FindByIdAsync(idUsuario);
+            if (user == null)
+                return NotFound();
+
+            if (cantidadFamilia.HasValue && cantidadFamilia.Value < 0)
+            {
+                TempData["ErrorFamiliar"] = "La cantidad familiar no puede ser negativa.";
+                return RedirectToAction(nameof(Details), new { id = idUsuario });
+            }
+
+            user.Familiar = familiar;
+
+            if (familiar)
+            {
+                user.CantidadFamilia = cantidadFamilia;
+            }
+            else
+            {
+                user.CantidadFamilia = null;
+            }
+
+            var result = await _userManager.UpdateAsync(user);
+
+            if (!result.Succeeded)
+            {
+                TempData["ErrorFamiliar"] = string.Join(" | ", result.Errors.Select(e => e.Description));
+                return RedirectToAction(nameof(Details), new { id = idUsuario });
+            }
+
+            TempData["OkFamiliar"] = "Configuración familiar actualizada correctamente.";
+            return RedirectToAction(nameof(Details), new { id = idUsuario });
         }
 
         [Authorize]

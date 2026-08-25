@@ -1,0 +1,108 @@
+@model CrStudioFitnes.Models.Paquete
+
+@{
+    ViewData["Title"] = "Detalles del Paquete";
+    bool canManage = ViewData["CanManage"] is bool value && value;
+    string nombre = !string.IsNullOrWhiteSpace(Model.Detalle)
+        ? Model.Detalle
+        : "Paquete sin nombre";
+}
+
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-9">
+            <div class="card shadow-sm cr-card">
+                <div class="card-body p-4 p-md-5">
+
+                    <div class="text-center mb-4">
+                        <h1 class="h3 mb-1">@ViewData["Title"]</h1>
+                        <p class="text-muted mb-0">@nombre</p>
+                    </div>
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="border rounded p-3 h-100">
+                                <div class="text-muted small">Nombre del paquete</div>
+                                <div class="fw-semibold">@nombre</div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="border rounded p-3 h-100">
+                                <div class="text-muted small">Tipo de plan</div>
+                                <div class="fw-semibold">@Model.CantDias</div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="border rounded p-3 h-100">
+                                <div class="text-muted small">Cantidad total de lecciones</div>
+                                <div class="fw-semibold">@Model.CantLecciones</div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="border rounded p-3 h-100">
+                                <div class="text-muted small">Monto total del paquete</div>
+                                <div class="fw-semibold">₡@Model.Pago.ToString("N2")</div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="border rounded p-3 h-100">
+                                <div class="text-muted small">Lecciones por usuario</div>
+                                <div class="fw-semibold">@Model.CantLeccionesPorUsuario</div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="border rounded p-3 h-100">
+                                <div class="text-muted small">Monto por usuario</div>
+                                <div class="fw-semibold">₡@Model.PagoPorUsuario.ToString("N2")</div>
+                            </div>
+                        </div>
+
+                        <div class="col-12">
+                            <div class="border rounded p-3">
+                                <div class="text-muted small">Estado en el catálogo</div>
+                                <div class="mt-1">
+                                    @if (Model.Activo)
+                                    {
+                                        <span class="badge bg-success">Visible</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary">Oculto</span>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex flex-column flex-sm-row justify-content-between gap-2 mt-4">
+                        <a asp-action="Index" class="btn btn-outline-secondary">
+                            Volver a la lista
+                        </a>
+
+                        @if (canManage)
+                        {
+                            <div class="d-flex flex-column flex-sm-row gap-2">
+                                <a asp-action="Edit"
+                                   asp-route-id="@Model.IdPaquete"
+                                   class="btn btn-primary">
+                                    Editar
+                                </a>
+                                <a asp-action="Delete"
+                                   asp-route-id="@Model.IdPaquete"
+                                   class="btn btn-outline-danger">
+                                    Eliminar
+                                </a>
+                            </div>
+                        }
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

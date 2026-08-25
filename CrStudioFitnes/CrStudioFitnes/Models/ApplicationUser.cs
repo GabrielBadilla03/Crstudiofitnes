@@ -26,9 +26,15 @@ namespace CrStudioFitnes.Models
         [StringLength(120)]
         public string? Patologia { get; set; }
 
+        public bool Familiar { get; set; } = false;
+
+        public int? CantidadFamilia { get; set; }
+
         // Navegación
         public ICollection<Historial> Historiales { get; set; } = new List<Historial>();
         public ICollection<Reserva> Reservas { get; set; } = new List<Reserva>();
+        // Reservas que este usuario registró
+        public ICollection<Reserva> ReservasCreadas { get; set; } = new List<Reserva>();
         public ICollection<PaqueteUsuario> PaquetesUsuario { get; set; } = new List<PaqueteUsuario>();
         public ICollection<PagoPaquete> PagosPaquetes { get; set; } = new List<PagoPaquete>();
     }
