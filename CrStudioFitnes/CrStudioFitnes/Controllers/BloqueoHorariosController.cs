@@ -4,10 +4,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace CrStudioFitnes.Controllers
 {
@@ -21,154 +17,276 @@ namespace CrStudioFitnes.Controllers
             _context = context;
         }
 
-        // GET: BloqueoHorarios
         public async Task<IActionResult> Index()
         {
             var data = await _context.BloqueosHorarios
                 .AsNoTracking()
                 .Where(b => b.Activo)
                 .Include(b => b.HoraReserva)
+                .OrderBy(b => b.Fecha)
+                .ThenBy(b => b.HoraReserva != null
+                    ? b.HoraReserva.Hora
+                    : TimeSpan.Zero)
                 .ToListAsync();
 
             return View(data);
         }
 
-
-        // GET: BloqueoHorarios/Create
-        public IActionResult Create()
+        public async Task<IActionResult> Create()
         {
-            ViewData["IdHora"] = new SelectList(
-                _context.HorasReserva
-                    .AsNoTracking()
-                    .Where(h => h.Activo)
-                    .OrderBy(h => h.Hora),
-                "IdHora",
-                "Etiqueta"
-            );
-
-            return View();
+            await CargarHorasAsync();
+            return View(new BloqueoHorario { Activo = true });
         }
 
-        // POST: BloqueoHorarios/Create
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("IdBloqueoHorario,Fecha,IdHora,Motivo,Activo")] BloqueoHorario bloqueoHorario)
+        public async Task<IActionResult> Create(
+            [Bind("IdBloqueoHorario,Fecha,IdHora,Motivo,Activo")]
+            BloqueoHorario bloqueoHorario)
         {
-            if (ModelState.IsValid)
-            {
-                _context.Add(bloqueoHorario);
-                await _context.SaveChangesAsync();
-                return RedirectToAction(nameof(Index));
-            }
+            NormalizarBloqueo(bloqueoHorario);
 
-            ViewData["IdHora"] = new SelectList(
-                _context.HorasReserva
-                    .AsNoTracking()
-                    .Where(h => h.Activo)
-                    .OrderBy(h => h.Hora),
-                "IdHora",
-                "Etiqueta",
-                bloqueoHorario.IdHora
-            );
-
-            return View(bloqueoHorario);
-        }
-
-        // GET: BloqueoHorarios/Edit/5
-        public async Task<IActionResult> Edit(int? id)
-        {
-            if (id == null) return NotFound();
-
-            var bloqueoHorario = await _context.BloqueosHorarios.FindAsync(id);
-            if (bloqueoHorario == null) return NotFound();
-
-            var horas = await _context.HorasReserva
-                .AsNoTracking()
-                .Where(h => h.Activo || h.IdHora == bloqueoHorario.IdHora) // ✅ incluye la seleccionada aunque esté inactiva
-                .OrderBy(h => h.Hora)
-                .ToListAsync();
-
-            ViewData["IdHora"] = new SelectList(horas, "IdHora", "Etiqueta", bloqueoHorario.IdHora);
-
-            return View(bloqueoHorario);
-        }
-
-        // POST: BloqueoHorarios/Edit/5
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("IdBloqueoHorario,Fecha,IdHora,Motivo,Activo")] BloqueoHorario bloqueoHorario)
-        {
-            if (id != bloqueoHorario.IdBloqueoHorario) return NotFound();
+            await ValidarBloqueoAsync(
+                bloqueoHorario,
+                excluirId: null);
 
             if (ModelState.IsValid)
             {
+                bloqueoHorario.Activo = true;
+
                 try
                 {
-                    _context.Update(bloqueoHorario);
+                    _context.BloqueosHorarios.Add(bloqueoHorario);
                     await _context.SaveChangesAsync();
+
+                    TempData["Ok"] = "Bloqueo creado correctamente.";
+                    return RedirectToAction(nameof(Index));
+                }
+                catch (DbUpdateException)
+                {
+                    ModelState.AddModelError(
+                        string.Empty,
+                        "No se pudo guardar el bloqueo. Ya existe un bloqueo activo equivalente o los datos entran en conflicto.");
+                }
+            }
+
+            await CargarHorasAsync(bloqueoHorario.IdHora);
+            return View(bloqueoHorario);
+        }
+
+        public async Task<IActionResult> Edit(int? id)
+        {
+            if (id == null)
+                return NotFound();
+
+            var bloqueoHorario = await _context.BloqueosHorarios
+                .FirstOrDefaultAsync(b => b.IdBloqueoHorario == id.Value);
+
+            if (bloqueoHorario == null)
+                return NotFound();
+
+            await CargarHorasAsync(
+                bloqueoHorario.IdHora,
+                incluirHoraId: bloqueoHorario.IdHora);
+
+            return View(bloqueoHorario);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Edit(
+            int id,
+            [Bind("IdBloqueoHorario,Fecha,IdHora,Motivo,Activo")]
+            BloqueoHorario bloqueoHorario)
+        {
+            if (id != bloqueoHorario.IdBloqueoHorario)
+                return NotFound();
+
+            NormalizarBloqueo(bloqueoHorario);
+
+            await ValidarBloqueoAsync(
+                bloqueoHorario,
+                excluirId: bloqueoHorario.IdBloqueoHorario);
+
+            if (ModelState.IsValid)
+            {
+                var existente = await _context.BloqueosHorarios
+                    .FirstOrDefaultAsync(
+                        b => b.IdBloqueoHorario == id);
+
+                if (existente == null)
+                    return NotFound();
+
+                existente.Fecha = bloqueoHorario.Fecha;
+                existente.IdHora = bloqueoHorario.IdHora;
+                existente.Motivo = bloqueoHorario.Motivo;
+                existente.Activo = bloqueoHorario.Activo;
+
+                try
+                {
+                    await _context.SaveChangesAsync();
+
+                    TempData["Ok"] = "Bloqueo actualizado correctamente.";
+                    return RedirectToAction(nameof(Index));
                 }
                 catch (DbUpdateConcurrencyException)
                 {
-                    if (!BloqueoHorarioExists(bloqueoHorario.IdBloqueoHorario))
+                    if (!BloqueoHorarioExists(id))
                         return NotFound();
+
                     throw;
                 }
-
-                return RedirectToAction(nameof(Index));
+                catch (DbUpdateException)
+                {
+                    ModelState.AddModelError(
+                        string.Empty,
+                        "No se pudo guardar el bloqueo. Ya existe un bloqueo activo equivalente o los datos entran en conflicto.");
+                }
             }
 
-            var horas = await _context.HorasReserva
-                .AsNoTracking()
-                .Where(h => h.Activo || h.IdHora == bloqueoHorario.IdHora) // ✅
-                .OrderBy(h => h.Hora)
-                .ToListAsync();
-
-            ViewData["IdHora"] = new SelectList(horas, "IdHora", "Etiqueta", bloqueoHorario.IdHora);
+            await CargarHorasAsync(
+                bloqueoHorario.IdHora,
+                incluirHoraId: bloqueoHorario.IdHora);
 
             return View(bloqueoHorario);
         }
 
-        // GET: BloqueoHorarios/Delete/5
         public async Task<IActionResult> Delete(int? id)
         {
             if (id == null)
-            {
                 return NotFound();
-            }
 
             var bloqueoHorario = await _context.BloqueosHorarios
+                .AsNoTracking()
                 .Include(b => b.HoraReserva)
-                .FirstOrDefaultAsync(m => m.IdBloqueoHorario == id);
+                .FirstOrDefaultAsync(
+                    b => b.IdBloqueoHorario == id.Value);
+
             if (bloqueoHorario == null)
-            {
                 return NotFound();
-            }
 
             return View(bloqueoHorario);
         }
 
-        // POST: BloqueoHorarios/Delete/5
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
-            var bloqueoHorario = await _context.BloqueosHorarios.FindAsync(id);
-            if (bloqueoHorario != null)
+            var bloqueoHorario = await _context.BloqueosHorarios
+                .FirstOrDefaultAsync(
+                    b => b.IdBloqueoHorario == id);
+
+            if (bloqueoHorario == null)
+                return NotFound();
+
+            // Baja lógica para conservar trazabilidad.
+            bloqueoHorario.Activo = false;
+            await _context.SaveChangesAsync();
+
+            TempData["Ok"] = "Bloqueo desactivado correctamente.";
+
+            return RedirectToAction(nameof(Index));
+        }
+
+        private async Task ValidarBloqueoAsync(
+            BloqueoHorario bloqueo,
+            int? excluirId)
+        {
+            if (!bloqueo.Fecha.HasValue && !bloqueo.IdHora.HasValue)
             {
-                _context.BloqueosHorarios.Remove(bloqueoHorario);
+                ModelState.AddModelError(
+                    string.Empty,
+                    "Debés indicar una fecha, una hora o ambas.");
+                return;
             }
 
-            await _context.SaveChangesAsync();
-            return RedirectToAction(nameof(Index));
+            if (bloqueo.Fecha.HasValue)
+                bloqueo.Fecha = bloqueo.Fecha.Value.Date;
+
+            IQueryable<BloqueoHorario> query =
+                _context.BloqueosHorarios
+                    .AsNoTracking()
+                    .Where(b => b.Activo);
+
+            if (excluirId.HasValue)
+            {
+                query = query.Where(
+                    b => b.IdBloqueoHorario != excluirId.Value);
+            }
+
+            bool existe;
+
+            if (bloqueo.Fecha.HasValue && !bloqueo.IdHora.HasValue)
+            {
+                var fecha = bloqueo.Fecha.Value.Date;
+
+                existe = await query.AnyAsync(b =>
+                    b.Fecha != null
+                    && b.Fecha.Value == fecha
+                    && b.IdHora == null);
+            }
+            else if (!bloqueo.Fecha.HasValue && bloqueo.IdHora.HasValue)
+            {
+                int idHora = bloqueo.IdHora.Value;
+
+                existe = await query.AnyAsync(b =>
+                    b.Fecha == null
+                    && b.IdHora == idHora);
+            }
+            else
+            {
+                var fecha = bloqueo.Fecha!.Value.Date;
+                int idHora = bloqueo.IdHora!.Value;
+
+                existe = await query.AnyAsync(b =>
+                    b.Fecha != null
+                    && b.Fecha.Value == fecha
+                    && b.IdHora == idHora);
+            }
+
+            if (existe)
+            {
+                ModelState.AddModelError(
+                    string.Empty,
+                    "Ya existe un bloqueo activo con la misma fecha/hora.");
+            }
+        }
+
+        private static void NormalizarBloqueo(
+            BloqueoHorario bloqueo)
+        {
+            if (bloqueo.Fecha.HasValue)
+                bloqueo.Fecha = bloqueo.Fecha.Value.Date;
+
+            bloqueo.Motivo = string.IsNullOrWhiteSpace(bloqueo.Motivo)
+                ? null
+                : bloqueo.Motivo.Trim();
+        }
+
+        private async Task CargarHorasAsync(
+            int? selectedId = null,
+            int? incluirHoraId = null)
+        {
+            var horas = await _context.HorasReserva
+                .AsNoTracking()
+                .Where(h =>
+                    h.Activo
+                    || (incluirHoraId.HasValue
+                        && h.IdHora == incluirHoraId.Value))
+                .OrderBy(h => h.Hora)
+                .ToListAsync();
+
+            ViewData["IdHora"] = new SelectList(
+                horas,
+                "IdHora",
+                "Etiqueta",
+                selectedId);
         }
 
         private bool BloqueoHorarioExists(int id)
         {
-            return _context.BloqueosHorarios.Any(e => e.IdBloqueoHorario == id);
+            return _context.BloqueosHorarios
+                .Any(e => e.IdBloqueoHorario == id);
         }
     }
 }

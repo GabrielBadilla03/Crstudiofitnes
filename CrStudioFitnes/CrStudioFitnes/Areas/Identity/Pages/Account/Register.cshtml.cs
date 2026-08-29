@@ -1,26 +1,13 @@
-// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the MIT license.
 #nullable disable
 
-using System;
-using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using System.Linq;
-using System.Text;
-using System.Text.Encodings.Web;
-using System.Threading;
-using System.Threading.Tasks;
+using CrStudioFitnes.Models;
 using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Microsoft.AspNetCore.WebUtilities;
-using Microsoft.EntityFrameworkCore; // <-- para AnyAsync
-using Microsoft.Extensions.Logging;
-using CrStudioFitnes.Models;
-using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 
 namespace CrStudioFitnes.Areas.Identity.Pages.Account
 {
@@ -55,7 +42,6 @@ namespace CrStudioFitnes.Areas.Identity.Pages.Account
         public InputModel Input { get; set; }
 
         public string ReturnUrl { get; set; }
-
         public IList<AuthenticationScheme> ExternalLogins { get; set; }
 
         public class InputModel
@@ -88,13 +74,15 @@ namespace CrStudioFitnes.Areas.Identity.Pages.Account
             [Display(Name = "Patología")]
             public string Patologia { get; set; }
 
-            [Required]
-            [EmailAddress]
+            [Required, EmailAddress]
             [Display(Name = "Email")]
             public string Email { get; set; }
 
             [Required]
-            [StringLength(100, ErrorMessage = "La {0} debe tener al menos {2} y máximo {1} caracteres.", MinimumLength = 6)]
+            [StringLength(
+                100,
+                ErrorMessage = "La {0} debe tener al menos {2} y máximo {1} caracteres.",
+                MinimumLength = 6)]
             [DataType(DataType.Password)]
             [Display(Name = "Contraseña")]
             public string Password { get; set; }
@@ -108,30 +96,51 @@ namespace CrStudioFitnes.Areas.Identity.Pages.Account
         public async Task OnGetAsync(string returnUrl = null)
         {
             ReturnUrl = returnUrl;
-            ExternalLogins = (await _signInManager.GetExternalAuthenticationSchemesAsync()).ToList();
+            ExternalLogins = (await _signInManager
+                .GetExternalAuthenticationSchemesAsync())
+                .ToList();
         }
 
         public async Task<IActionResult> OnPostAsync(string returnUrl = null)
         {
             returnUrl ??= Url.Content("~/");
-            ExternalLogins = (await _signInManager.GetExternalAuthenticationSchemesAsync()).ToList();
 
-            // Normalizaciones simples
+            ExternalLogins = (await _signInManager
+                .GetExternalAuthenticationSchemesAsync())
+                .ToList();
+
             Input.Nombre = Input.Nombre?.Trim();
             Input.Apellidos = Input.Apellidos?.Trim();
-            Input.Cedula = Input.Cedula?.Trim();
-            Input.TelefonoPersonal = string.IsNullOrWhiteSpace(Input.TelefonoPersonal) ? null : Input.TelefonoPersonal.Trim();
-            Input.TelefonoEmergencia = string.IsNullOrWhiteSpace(Input.TelefonoEmergencia) ? null : Input.TelefonoEmergencia.Trim();
-            Input.LesionOperacion = string.IsNullOrWhiteSpace(Input.LesionOperacion) ? null : Input.LesionOperacion.Trim();
-            Input.Patologia = string.IsNullOrWhiteSpace(Input.Patologia) ? null : Input.Patologia.Trim();
+            Input.Cedula = NormalizarCedula(Input.Cedula);
+            Input.Email = Input.Email?.Trim();
+            Input.TelefonoPersonal = LimpiarOpcional(Input.TelefonoPersonal);
+            Input.TelefonoEmergencia = LimpiarOpcional(Input.TelefonoEmergencia);
+            Input.LesionOperacion = LimpiarOpcional(Input.LesionOperacion);
+            Input.Patologia = LimpiarOpcional(Input.Patologia);
 
-            // Validación extra: evitar cédula duplicada
-            if (!string.IsNullOrWhiteSpace(Input.Cedula))
+            if (string.IsNullOrWhiteSpace(Input.Cedula))
             {
-                var cedulaExiste = await _userManager.Users.AnyAsync(u => u.Cedula == Input.Cedula);
+                ModelState.AddModelError("Input.Cedula", "Ingresá una cédula válida.");
+            }
+            else
+            {
+                // También detecta usuarios históricos guardados con guiones,
+                // puntos o espacios.
+                var cedulaNormalizada = Input.Cedula;
+
+                var cedulaExiste = await _userManager.Users
+                    .AsNoTracking()
+                    .AnyAsync(u =>
+                        u.Cedula
+                            .Replace("-", "")
+                            .Replace(".", "")
+                            .Replace(" ", "") == cedulaNormalizada);
+
                 if (cedulaExiste)
                 {
-                    ModelState.AddModelError("Input.Cedula", "Ya existe un usuario registrado con esa cédula.");
+                    ModelState.AddModelError(
+                        "Input.Cedula",
+                        "Ya existe un usuario registrado con esa cédula.");
                 }
             }
 
@@ -140,11 +149,16 @@ namespace CrStudioFitnes.Areas.Identity.Pages.Account
 
             var user = CreateUser();
 
-            // Username + email (como viene por defecto)
-            await _userStore.SetUserNameAsync(user, Input.Email, CancellationToken.None);
-            await _emailStore.SetEmailAsync(user, Input.Email, CancellationToken.None);
+            await _userStore.SetUserNameAsync(
+                user,
+                Input.Email,
+                CancellationToken.None);
 
-            // Campos personalizados de tu ApplicationUser
+            await _emailStore.SetEmailAsync(
+                user,
+                Input.Email,
+                CancellationToken.None);
+
             user.Nombre = Input.Nombre;
             user.Apellidos = Input.Apellidos;
             user.Cedula = Input.Cedula;
@@ -155,11 +169,6 @@ namespace CrStudioFitnes.Areas.Identity.Pages.Account
             user.CantidadFamilia = null;
             user.Familiar = false;
 
-            user.EmailConfirmed = true;               // ? SIEMPRE confirmado
-            user.NormalizedEmail = Input.Email?.Trim().ToUpperInvariant();
-            user.NormalizedUserName = Input.Email?.Trim().ToUpperInvariant();
-
-            // Opcional: también llenar PhoneNumber de Identity
             if (!string.IsNullOrWhiteSpace(Input.TelefonoPersonal))
                 user.PhoneNumber = Input.TelefonoPersonal;
 
@@ -171,35 +180,58 @@ namespace CrStudioFitnes.Areas.Identity.Pages.Account
 
                 const string defaultRole = "Usuario";
 
-                // (Opcional pero recomendado) Asegurar que el rol exista
                 if (!await _roleManager.RoleExistsAsync(defaultRole))
                 {
-                    var createRole = await _roleManager.CreateAsync(new IdentityRole(defaultRole));
+                    var createRole = await _roleManager.CreateAsync(
+                        new IdentityRole(defaultRole));
+
                     if (!createRole.Succeeded)
                     {
-                        foreach (var e in createRole.Errors)
-                            ModelState.AddModelError(string.Empty, e.Description);
+                        foreach (var error in createRole.Errors)
+                            ModelState.AddModelError(string.Empty, error.Description);
 
+                        // Evitar dejar una cuenta creada sin rol si no pudo
+                        // completarse el registro.
+                        await _userManager.DeleteAsync(user);
                         return Page();
                     }
                 }
 
-                // Asignar rol por defecto
                 var addRole = await _userManager.AddToRoleAsync(user, defaultRole);
+
                 if (!addRole.Succeeded)
                 {
-                    foreach (var e in addRole.Errors)
-                        ModelState.AddModelError(string.Empty, e.Description);
+                    foreach (var error in addRole.Errors)
+                        ModelState.AddModelError(string.Empty, error.Description);
 
+                    await _userManager.DeleteAsync(user);
                     return Page();
                 }
 
-                // Loguear directo (DESPUÉS de asignar rol)
                 await _signInManager.SignInAsync(user, isPersistent: false);
                 return LocalRedirect(returnUrl);
             }
 
+            foreach (var error in result.Errors)
+                ModelState.AddModelError(string.Empty, error.Description);
+
             return Page();
+        }
+
+        private static string NormalizarCedula(string value)
+        {
+            return (value ?? string.Empty)
+                .Trim()
+                .Replace("-", "")
+                .Replace(".", "")
+                .Replace(" ", "");
+        }
+
+        private static string LimpiarOpcional(string value)
+        {
+            return string.IsNullOrWhiteSpace(value)
+                ? null
+                : value.Trim();
         }
 
         private ApplicationUser CreateUser()
@@ -210,9 +242,10 @@ namespace CrStudioFitnes.Areas.Identity.Pages.Account
             }
             catch
             {
-                throw new InvalidOperationException($"Can't create an instance of '{nameof(ApplicationUser)}'. " +
-                    $"Ensure that '{nameof(ApplicationUser)}' is not an abstract class and has a parameterless constructor, or alternatively " +
-                    $"override the register page in /Areas/Identity/Pages/Account/Register.cshtml");
+                throw new InvalidOperationException(
+                    $"Can't create an instance of '{nameof(ApplicationUser)}'. " +
+                    $"Ensure that '{nameof(ApplicationUser)}' is not an abstract class " +
+                    "and has a parameterless constructor.");
             }
         }
 
@@ -220,8 +253,10 @@ namespace CrStudioFitnes.Areas.Identity.Pages.Account
         {
             if (!_userManager.SupportsUserEmail)
             {
-                throw new NotSupportedException("The default UI requires a user store with email support.");
+                throw new NotSupportedException(
+                    "The default UI requires a user store with email support.");
             }
+
             return (IUserEmailStore<ApplicationUser>)_userStore;
         }
     }

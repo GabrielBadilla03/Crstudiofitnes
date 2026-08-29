@@ -5,16 +5,15 @@
 
     var currentIdUsuario = ViewData["CurrentIdUsuario"] as string ?? "";
     var hasUser = !string.IsNullOrWhiteSpace(currentIdUsuario);
+    bool canManage = ViewData["CanManageHistorial"] is bool value && value;
 }
 
 <div class="container py-4">
     <div class="row justify-content-center">
         <div class="col-lg-10">
-
             <div class="card shadow-sm cr-card">
                 <div class="card-body p-4 p-md-5">
 
-                    <!-- Encabezado y botón crear -->
                     <div class="d-flex flex-wrap align-items-center mb-3">
                         <div class="text-center flex-grow-1 w-100">
                             <h1 class="h3 mb-1">@ViewData["Title"]</h1>
@@ -30,7 +29,7 @@
                             </p>
                         </div>
 
-                        @if (hasUser)
+                        @if (hasUser && canManage)
                         {
                             <div class="mt-3 mt-md-0 text-center text-md-end w-100 w-md-auto ms-md-auto">
                                 <a asp-action="Create"
@@ -42,7 +41,6 @@
                         }
                     </div>
 
-                    <!-- Tabla -->
                     @if (hasUser && Model != null && Model.Any())
                     {
                         <div class="table-responsive">
@@ -62,18 +60,20 @@
                                         var freqText = item.Frecuencia?.ToString() ?? "—";
 
                                         var titulo = $"Historial {item.FechaInicio:dd/MM/yyyy}"
-                                        + (item.FechaFin.HasValue ? $" - {item.FechaFin:dd/MM/yyyy}" : "")
-                                        + $" · {freqText}";
+                                            + (item.FechaFin.HasValue
+                                                ? $" - {item.FechaFin:dd/MM/yyyy}"
+                                                : "")
+                                            + $" · {freqText}";
 
                                         <tr class="hist-row"
                                             style="cursor:pointer;"
                                             data-id="@item.IdHistorial"
                                             data-nombre="@titulo">
                                             <td>@item.FechaInicio.ToString("dd/MM/yyyy")</td>
-                                            <td>@(item.FechaFin.HasValue? item.FechaFin.Value.ToString("dd/MM/yyyy") : "—")</td>
+                                            <td>@(item.FechaFin.HasValue ? item.FechaFin.Value.ToString("dd/MM/yyyy") : "—")</td>
                                             <td>@freqText</td>
-                                            <td class="text-end">@((item.Estatura.HasValue) ? item.Estatura.Value.ToString("N2") : "—")</td>
-                                            <td class="text-end">@((item.Peso.HasValue) ? item.Peso.Value.ToString("N2") : "—")</td>
+                                            <td class="text-end">@(item.Estatura.HasValue ? item.Estatura.Value.ToString("N2") : "—")</td>
+                                            <td class="text-end">@(item.Peso.HasValue ? item.Peso.Value.ToString("N2") : "—")</td>
                                         </tr>
                                     }
                                 </tbody>
@@ -89,33 +89,52 @@
                     else
                     {
                         <div class="alert alert-warning mb-0">
-                            Entrá a Historial desde el botón <strong>Historial</strong> del modal de usuarios.
+                            Seleccioná un usuario para consultar su historial.
                         </div>
                     }
 
                 </div>
             </div>
-
         </div>
     </div>
 </div>
 
-<!-- MODAL DE ACCIONES (Detalles / Borrar) -->
-<div class="modal fade" id="historialModal" tabindex="-1" aria-labelledby="historialModalLabel" aria-hidden="true">
+<div class="modal fade"
+     id="historialModal"
+     tabindex="-1"
+     aria-labelledby="historialModalLabel"
+     aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered cr-modal-narrow">
         <div class="modal-content cr-card">
             <div class="modal-header">
-                <h5 class="modal-title" id="historialModalLabel">Acciones del historial</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                <h5 class="modal-title" id="historialModalLabel">
+                    Historial
+                </h5>
+                <button type="button"
+                        class="btn-close"
+                        data-bs-dismiss="modal"
+                        aria-label="Cerrar"></button>
             </div>
+
             <div class="modal-body">
                 <p class="mb-2 text-center">
                     <strong id="modalHistorialNombre"></strong>
                 </p>
             </div>
+
             <div class="modal-footer d-flex flex-column flex-sm-row gap-2">
-                <a id="modalDetailsLink" class="btn btn-outline-light w-100">Detalles</a>
-                <a id="modalDeleteLink" class="btn btn-outline-danger w-100">Borrar</a>
+                <a id="modalDetailsLink"
+                   class="btn btn-outline-light w-100">
+                    Detalles
+                </a>
+
+                @if (canManage)
+                {
+                    <a id="modalDeleteLink"
+                       class="btn btn-outline-danger w-100">
+                        Borrar
+                    </a>
+                }
             </div>
         </div>
     </div>
@@ -124,33 +143,33 @@
 @section Scripts {
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-
-            // ===== Modal por click en fila =====
             const modalElement = document.getElementById('historialModal');
             const modalNombre = document.getElementById('modalHistorialNombre');
             const detailsLink = document.getElementById('modalDetailsLink');
             const deleteLink = document.getElementById('modalDeleteLink');
 
-            const detailsBaseUrl = '@Url.Action("Details", "Historial")'; // /Historial/Details
-            const deleteBaseUrl = '@Url.Action("Delete", "Historial")';   // /Historial/Delete
+            const detailsBaseUrl = '@Url.Action("Details", "Historial")';
+            const deleteBaseUrl = '@Url.Action("Delete", "Historial")';
 
-            if (modalElement) {
-                const bsModal = new bootstrap.Modal(modalElement);
+            if (!modalElement) return;
 
-                document.querySelectorAll('tr.hist-row[data-id]').forEach(row => {
-                    row.addEventListener('click', () => {
-                        const id = row.getAttribute('data-id');
-                        const nombre = row.getAttribute('data-nombre') || 'Historial';
+            const bsModal = new bootstrap.Modal(modalElement);
 
-                        modalNombre.textContent = nombre;
+            document.querySelectorAll('tr.hist-row[data-id]').forEach(row => {
+                row.addEventListener('click', () => {
+                    const id = row.getAttribute('data-id');
+                    const nombre = row.getAttribute('data-nombre') || 'Historial';
 
-                        detailsLink.href = detailsBaseUrl + '/' + id;
+                    modalNombre.textContent = nombre;
+                    detailsLink.href = detailsBaseUrl + '/' + id;
+
+                    if (deleteLink) {
                         deleteLink.href = deleteBaseUrl + '/' + id;
+                    }
 
-                        bsModal.show();
-                    });
+                    bsModal.show();
                 });
-            }
+            });
         });
     </script>
 }

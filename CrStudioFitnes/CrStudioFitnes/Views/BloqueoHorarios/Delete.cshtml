@@ -2,36 +2,29 @@
 @using System.Globalization
 
 @{
-    ViewData["Title"] = "Eliminar bloqueo";
+    ViewData["Title"] = "Desactivar bloqueo";
 
-    var cultura = CultureInfo.GetCultureInfo("es-CR");
-
-    // Fecha (soporta DateTime? o DateTime)
-    string fechaTxt;
-    try
-    {
-        // Si es nullable
-        fechaTxt = Model.Fecha.HasValue
-            ? Model.Fecha.Value.ToString("dd/MM/yyyy", cultura)
+    string fechaTxt =
+        Model.Fecha.HasValue
+            ? Model.Fecha.Value.ToString(
+                "dd/MM/yyyy",
+                CultureInfo.GetCultureInfo("es-CR"))
             : "—";
-    }
-    catch
-    {
-        // Si NO es nullable
-        fechaTxt = Model.Fecha.Value.ToString("dd/MM/yyyy", cultura);
-    }
 
-    // Hora
     var horaTxt = "—";
+
     if (Model.HoraReserva != null)
     {
-        if (!string.IsNullOrWhiteSpace(Model.HoraReserva.Etiqueta))
-            horaTxt = Model.HoraReserva.Etiqueta!;
-        else
-            horaTxt = Model.HoraReserva.Hora.ToString(@"hh\:mm");
+        horaTxt =
+            !string.IsNullOrWhiteSpace(Model.HoraReserva.Etiqueta)
+                ? Model.HoraReserva.Etiqueta!
+                : Model.HoraReserva.Hora.ToString(@"hh\:mm");
     }
 
-    var motivoTxt = string.IsNullOrWhiteSpace(Model.Motivo) ? "—" : Model.Motivo;
+    var motivoTxt =
+        string.IsNullOrWhiteSpace(Model.Motivo)
+            ? "—"
+            : Model.Motivo;
 }
 
 <div class="container py-4">
@@ -41,45 +34,37 @@
                 <div class="card-body p-4 p-md-5">
 
                     <div class="text-center">
-                        <h1 class="h3 mb-3 text-danger">@ViewData["Title"]</h1>
+                        <h1 class="h3 mb-3 text-danger">
+                            @ViewData["Title"]
+                        </h1>
+
                         <p class="text-muted mb-4">
-                            ¿Está seguro de que desea eliminar este bloqueo? Esta acción no se puede deshacer.
+                            El bloqueo dejará de aplicarse, pero el registro se conservará.
                         </p>
                     </div>
 
                     <dl class="row">
-                        <dt class="col-sm-4 fw-bold">Fecha</dt>
-                        <dd class="col-sm-8">
-                            @(Model.Fecha.HasValue
-                                                        ? Model.Fecha.Value.ToString("dd/MM/yyyy", CultureInfo.GetCultureInfo("es-CR"))
-                                                        : "—")
-                        </dd>
+                        <dt class="col-sm-4 fw-bold">Fecha:</dt>
+                        <dd class="col-sm-8">@fechaTxt</dd>
 
                         <dt class="col-sm-4 fw-bold">Hora:</dt>
                         <dd class="col-sm-8">@horaTxt</dd>
 
                         <dt class="col-sm-4 fw-bold">Motivo:</dt>
                         <dd class="col-sm-8">@motivoTxt</dd>
-
-                        <dt class="col-sm-4 fw-bold">Activo?</dt>
-                        <dd class="col-sm-8">
-                            @if (Model.Activo)
-                            {
-                                <span class="badge bg-success">Sí</span>
-                            }
-                            else
-                            {
-                                <span class="badge bg-secondary">No</span>
-                            }
-                        </dd>
                     </dl>
 
-                    <!-- Formulario (NO submit directo; lo dispara el modal) -->
-                    <form id="deleteForm" asp-action="Delete" method="post" class="d-flex justify-content-between mt-4">
+                    <form id="deleteForm"
+                          asp-action="Delete"
+                          method="post"
+                          class="d-flex justify-content-between mt-4">
                         @Html.AntiForgeryToken()
-                        <input type="hidden" asp-for="IdBloqueoHorario" />
 
-                        <a asp-action="Index" class="btn btn-outline-secondary">
+                        <input type="hidden"
+                               asp-for="IdBloqueoHorario" />
+
+                        <a asp-action="Index"
+                           class="btn btn-outline-secondary">
                             Cancelar
                         </a>
 
@@ -87,31 +72,48 @@
                                 class="btn btn-danger"
                                 data-bs-toggle="modal"
                                 data-bs-target="#confirmDeleteModal">
-                            Eliminar
+                            Desactivar
                         </button>
                     </form>
 
-                    <!-- Modal de confirmación -->
-                    <div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-labelledby="confirmDeleteLabel" aria-hidden="true">
+                    <div class="modal fade"
+                         id="confirmDeleteModal"
+                         tabindex="-1"
+                         aria-labelledby="confirmDeleteLabel"
+                         aria-hidden="true">
                         <div class="modal-dialog modal-dialog-centered cr-modal-narrow">
                             <div class="modal-content cr-card border-0">
                                 <div class="modal-header bg-danger text-white">
-                                    <h5 class="modal-title" id="confirmDeleteLabel">Confirmar eliminación</h5>
-                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                                    <h5 class="modal-title"
+                                        id="confirmDeleteLabel">
+                                        Confirmar desactivación
+                                    </h5>
+
+                                    <button type="button"
+                                            class="btn-close btn-close-white"
+                                            data-bs-dismiss="modal"
+                                            aria-label="Cerrar"></button>
                                 </div>
 
                                 <div class="modal-body">
-                                    ¿Seguro que desea eliminar el bloqueo del
-                                    <strong>@fechaTxt</strong> a las <strong>@horaTxt</strong>?
-                                    <div class="small text-muted mt-2">Esta acción no se puede deshacer.</div>
+                                    ¿Seguro que desea desactivar este bloqueo?
+
+                                    <div class="small text-muted mt-2">
+                                        @fechaTxt · @horaTxt
+                                    </div>
                                 </div>
 
                                 <div class="modal-footer">
-                                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                                    <button type="button"
+                                            class="btn btn-outline-secondary"
+                                            data-bs-dismiss="modal">
                                         No, cancelar
                                     </button>
-                                    <button type="button" id="confirmDeleteBtn" class="btn btn-danger">
-                                        Sí, eliminar
+
+                                    <button type="button"
+                                            id="confirmDeleteBtn"
+                                            class="btn btn-danger">
+                                        Sí, desactivar
                                     </button>
                                 </div>
                             </div>
@@ -127,14 +129,15 @@
 @section Scripts {
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            const confirmBtn = document.getElementById('confirmDeleteBtn');
-            const form = document.getElementById('deleteForm');
+            const confirmBtn =
+                document.getElementById('confirmDeleteBtn');
 
-            if (confirmBtn && form) {
-                confirmBtn.addEventListener('click', function () {
-                    form.submit();
-                });
-            }
+            const form =
+                document.getElementById('deleteForm');
+
+            confirmBtn?.addEventListener('click', function () {
+                form?.submit();
+            });
         });
     </script>
 }

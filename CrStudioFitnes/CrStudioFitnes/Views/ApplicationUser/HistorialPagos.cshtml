@@ -5,27 +5,33 @@
 @{
     ViewData["Title"] = "Historial de pagos";
 
-    var usuarioNombre = ViewData["UsuarioNombre"]?.ToString() ?? "Usuario";
-    var usuarioId = ViewData["UsuarioId"]?.ToString();
+    var usuarioNombre =
+        ViewData["UsuarioNombre"]?.ToString() ?? "Usuario";
 
-    var pagos = Model ?? new List<PagoPaquete>();
-    var pagosActivos = pagos.Where(p => p.Activo).ToList();
+    var usuarioId =
+        ViewData["UsuarioId"]?.ToString();
 
-    var pagoMasReciente = pagos
-        .OrderByDescending(p => p.Fecha)
-        .ThenByDescending(p => p.IdPagoPaquete)
-        .FirstOrDefault();
+    var pagos =
+        Model ?? new List<PagoPaquete>();
 
-    var pagoPendiente = pagosActivos
-        .Where(p => p.Monto > 0)
-        .OrderByDescending(p => p.Fecha)
-        .ThenByDescending(p => p.IdPagoPaquete)
-        .FirstOrDefault();
+    var pagosActivos =
+        pagos.Where(p => p.Activo).ToList();
 
-    decimal totalPendiente = pagosActivos.Sum(p => p.Monto);
+    var pagoPendiente =
+        pagosActivos
+            .Where(p => p.Monto > 0)
+            .OrderByDescending(p => p.Fecha)
+            .ThenByDescending(p => p.IdPagoPaquete)
+            .FirstOrDefault();
+
+    decimal totalPendiente =
+        pagosActivos.Sum(p => p.Monto);
 
     bool canGestionarPagos =
-        User.IsInRole("Gestor de Pagos") || User.IsInRole("Administrador");
+        User.IsInRole("Gestor de Pagos")
+        || User.IsInRole("Administrador");
+
+    bool puedeVolverADetalles = canGestionarPagos;
 }
 
 @if (TempData["OkAbono"] != null)
@@ -53,7 +59,7 @@
     <div class="alert alert-danger">@TempData["ErrorAnulacion"]</div>
 }
 
-<div class="container py-4">
+<div class="container py-4 cr-pagos-page">
     <div class="row justify-content-center">
         <div class="col-lg-10">
             <div class="card shadow-sm cr-card">
@@ -61,16 +67,21 @@
 
                     <div class="text-center mb-4">
                         <h1 class="h3 mb-1">Historial de pagos</h1>
-                        <p class="text-muted mb-0">Pagos realizados a @usuarioNombre.</p>
+                        <p class="text-muted mb-0">
+                            Pagos de @usuarioNombre.
+                        </p>
                     </div>
 
-                    <div class="mb-3">
-                        <a asp-action="Details"
-                           asp-route-id="@usuarioId"
-                           class="btn btn-outline-secondary">
-                            Volver a detalles
-                        </a>
-                    </div>
+                    @if (puedeVolverADetalles)
+                    {
+                        <div class="mb-3">
+                            <a asp-action="Details"
+                               asp-route-id="@usuarioId"
+                               class="btn btn-outline-secondary cr-back-btn">
+                                Volver a detalles
+                            </a>
+                        </div>
+                    }
 
                     <div class="d-flex align-items-center justify-content-between mb-3 gap-2 flex-wrap">
                         <h5 class="mb-0">Resumen</h5>
@@ -79,14 +90,14 @@
                         {
                             <div class="d-flex gap-2 flex-wrap">
                                 <button type="button"
-                                        class="btn btn-outline-success"
+                                        class="btn btn-success cr-action-btn"
                                         data-bs-toggle="modal"
                                         data-bs-target="#modalAgregarPago">
                                     Agregar pago
                                 </button>
 
                                 <button type="button"
-                                        class="btn btn-outline-primary"
+                                        class="btn btn-primary cr-action-btn"
                                         data-bs-toggle="modal"
                                         data-bs-target="#modalAgregarLecciones">
                                     Agregar lecciones
@@ -96,27 +107,24 @@
                     </div>
 
                     <div class="row g-3 mb-4">
-                        <div class="col-12 col-md-4">
+                        <div class="col-12 col-md-6">
                             <div class="cr-resumen-box">
-                                <div class="text-muted" style="font-size:.9rem;">Total pagos</div>
-                                <div class="fw-semibold fs-5">@pagos.Count</div>
-                            </div>
-                        </div>
-
-                        <div class="col-12 col-md-4">
-                            <div class="cr-resumen-box">
-                                <div class="text-muted" style="font-size:.9rem;">Pendiente activo</div>
-                                <div class="fw-semibold fs-5">@totalPendiente.ToString("N2")</div>
-                            </div>
-                        </div>
-
-                        <div class="col-12 col-md-4">
-                            <div class="cr-resumen-box">
-                                <div class="text-muted" style="font-size:.9rem;">Último pago</div>
+                                <div class="text-muted" style="font-size:.9rem;">
+                                    Total registros
+                                </div>
                                 <div class="fw-semibold fs-5">
-                                    @(pagoMasReciente != null
-                                        ? pagoMasReciente.Fecha.ToString("dd/MM/yyyy")
-                                        : "—")
+                                    @pagos.Count
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-12 col-md-6">
+                            <div class="cr-resumen-box">
+                                <div class="text-muted" style="font-size:.9rem;">
+                                    Pendiente activo
+                                </div>
+                                <div class="fw-semibold fs-5">
+                                    ₡@totalPendiente.ToString("N2")
                                 </div>
                             </div>
                         </div>
@@ -130,163 +138,221 @@
                     }
                     else
                     {
-                        <div class="table-responsive">
-                            <table class="table table-hover align-middle">
-                                <thead>
-                                    <tr>
-                                        <th>Fecha</th>
-                                        <th>Monto restante</th>
-                                        <th>Resumen</th>
-                                        <th>Estado</th>
-                                    </tr>
-                                </thead>
+                        <div class="accordion cr-pagos-accordion"
+                             id="accordionPagos">
+                            @foreach (var pago in pagos
+                                .OrderByDescending(p => p.Fecha)
+                                .ThenByDescending(p => p.IdPagoPaquete))
+                            {
+                                var detalles =
+                                    pago.Detalles
+                                    ?? new List<PagoPaqueteDetalle>();
 
-                                <tbody>
-                                    @foreach (var pago in pagos
-                                        .OrderByDescending(p => p.Fecha)
-                                        .ThenByDescending(p => p.IdPagoPaquete))
-                                    {
-                                        var detalles = pago.Detalles ?? new List<PagoPaqueteDetalle>();
-                                        var abonos = (pago.Abonos ?? new List<PagoPaqueteAbono>())
-                                            .OrderByDescending(a => a.Fecha)
-                                            .ThenByDescending(a => a.IdPagoPaqueteAbono)
-                                            .ToList();
+                                var abonos =
+                                    (pago.Abonos
+                                    ?? new List<PagoPaqueteAbono>())
+                                    .OrderByDescending(a => a.Fecha)
+                                    .ThenByDescending(a => a.IdPagoPaqueteAbono)
+                                    .ToList();
 
-                                        var totalOriginal = detalles.Sum(d => d.Pago);
-                                        var totalAbonado = abonos.Sum(a => a.Monto);
+                                var totalOriginal =
+                                    detalles.Sum(d => d.Pago);
 
-                                        <tr data-bs-toggle="collapse"
-                                            data-bs-target="#detallePago_@pago.IdPagoPaquete"
-                                            aria-expanded="false"
-                                            aria-controls="detallePago_@pago.IdPagoPaquete"
-                                            style="cursor:pointer;">
-                                            <td>@pago.Fecha.ToString("dd/MM/yyyy HH:mm")</td>
-                                            <td>@pago.Monto.ToString("N2")</td>
-                                            <td>Pago #@pago.IdPagoPaquete</td>
-                                            <td>
+                                var totalAbonado =
+                                    abonos.Sum(a => a.Monto);
+
+                                var collapseId =
+                                    $"collapsePago_{pago.IdPagoPaquete}";
+
+                                <div class="accordion-item cr-pago-item mb-2">
+                                    <h2 class="accordion-header">
+                                        <button class="accordion-button collapsed cr-pago-button"
+                                                type="button"
+                                                data-bs-toggle="collapse"
+                                                data-bs-target="#@collapseId">
+                                            <div class="cr-pago-row">
+                                                <span class="cr-pago-numero">
+                                                    Pago #@pago.IdPagoPaquete
+                                                </span>
+
+                                                <span class="cr-pago-fecha">
+                                                    @pago.Fecha.ToString("dd/MM/yyyy")
+                                                </span>
+
+                                                <span class="cr-pago-restante">
+                                                    Restante: <strong>₡@pago.Monto.ToString("N2")</strong>
+                                                </span>
+
                                                 @if (!pago.Activo)
                                                 {
-                                                    <span class="badge bg-danger">Anulado</span>
+                                                    <span class="badge bg-danger">
+                                                        Anulado
+                                                    </span>
                                                 }
                                                 else if (pago.Monto <= 0)
                                                 {
-                                                    <span class="badge bg-success">Pagado</span>
+                                                    <span class="badge bg-success">
+                                                        Pagado
+                                                    </span>
                                                 }
                                                 else
                                                 {
-                                                    <span class="badge bg-warning text-dark">Pendiente</span>
+                                                    <span class="badge bg-warning text-dark">
+                                                        Pendiente
+                                                    </span>
                                                 }
-                                            </td>
-                                        </tr>
+                                            </div>
+                                        </button>
+                                    </h2>
 
-                                        <tr class="collapse" id="detallePago_@pago.IdPagoPaquete">
-                                            <td colspan="4">
-                                                <div class="cr-detalle-pago p-3">
-                                                    <div class="d-flex align-items-center justify-content-between mb-3 gap-2 flex-wrap">
-                                                        <h5 class="mb-0">Detalle del pago</h5>
+                                    <div id="@collapseId"
+                                         class="accordion-collapse collapse"
+                                         data-bs-parent="#accordionPagos">
+                                        <div class="accordion-body cr-pago-body">
 
-                                                        <div class="d-flex gap-2 flex-wrap">
-                                                            <button type="button"
-                                                                    class="btn btn-outline-primary btn-sm"
-                                                                    data-bs-toggle="modal"
-                                                                    data-bs-target="#modalHistorialAbonos_@pago.IdPagoPaquete">
-                                                                Ver historial de pagos
-                                                            </button>
-
-                                                            @if (canGestionarPagos && pago.Activo)
-                                                            {
-                                                                <button type="button"
-                                                                        class="btn btn-outline-danger btn-sm"
-                                                                        data-bs-toggle="modal"
-                                                                        data-bs-target="#modalAnularPago_@pago.IdPagoPaquete">
-                                                                    Anular pago
-                                                                </button>
-                                                            }
-                                                        </div>
+                                            @if (!pago.Activo)
+                                            {
+                                                <div class="alert alert-danger">
+                                                    <div class="fw-semibold">
+                                                        Este pago fue anulado.
                                                     </div>
-
-                                                    @if (!pago.Activo)
-                                                    {
-                                                        <div class="alert alert-danger">
-                                                            <div class="fw-semibold">Este pago fue anulado.</div>
-                                                            <div>
-                                                                <strong>Motivo:</strong>
-                                                                @(string.IsNullOrWhiteSpace(pago.MotivoAnulacion)
-                                                                    ? "Sin motivo registrado"
-                                                                    : pago.MotivoAnulacion)
-                                                            </div>
-                                                        </div>
-                                                    }
-
-                                                    <div class="mb-3">
-                                                        <div><strong>Número de pago:</strong> @pago.IdPagoPaquete</div>
-                                                        <div><strong>Usuario:</strong> @usuarioNombre</div>
-                                                        <div><strong>Fecha:</strong> @pago.Fecha.ToString("dd/MM/yyyy HH:mm")</div>
-                                                        <div><strong>Tipo pago:</strong> @pago.TipoPago</div>
-                                                        <div><strong>Estado:</strong> @(pago.Activo ? "Activo" : "Anulado")</div>
-                                                        <div><strong>Monto restante:</strong> @pago.Monto.ToString("N2")</div>
-                                                        <div><strong>Monto original:</strong> @totalOriginal.ToString("N2")</div>
-                                                        <div><strong>Total abonado:</strong> @totalAbonado.ToString("N2")</div>
+                                                    <div>
+                                                        <strong>Motivo:</strong>
+                                                        @(string.IsNullOrWhiteSpace(pago.MotivoAnulacion)
+                                                            ? "Sin motivo registrado"
+                                                            : pago.MotivoAnulacion)
                                                     </div>
-
-                                                    <h6 class="mb-2">Detalle registrado</h6>
-
-                                                    @if (!detalles.Any())
-                                                    {
-                                                        <div class="alert alert-info mb-0">
-                                                            Este pago no tiene detalles registrados.
-                                                        </div>
-                                                    }
-                                                    else
-                                                    {
-                                                        <div class="table-responsive">
-                                                            <table class="table table-sm align-middle mb-0">
-                                                                <thead>
-                                                                    <tr>
-                                                                        <th>Plan</th>
-                                                                        <th>Lecciones</th>
-                                                                        <th>Pago</th>
-                                                                        <th>Detalle</th>
-                                                                    </tr>
-                                                                </thead>
-                                                                <tbody>
-                                                                    @foreach (var detalle in detalles)
-                                                                    {
-                                                                        <tr>
-                                                                            <td>
-                                                                                @(detalle.CantDias == TipoPlanDias.ClasesExtra
-                                                                                    ? "Clases extra"
-                                                                                    : detalle.CantDias.ToString())
-                                                                            </td>
-                                                                            <td>
-                                                                                @(detalle.CantLecciones.HasValue
-                                                                                    ? detalle.CantLecciones.Value.ToString()
-                                                                                    : "—")
-                                                                            </td>
-                                                                            <td>@detalle.Pago.ToString("N2")</td>
-                                                                            <td>
-                                                                                @(string.IsNullOrWhiteSpace(detalle.Detalle)
-                                                                                    ? "—"
-                                                                                    : detalle.Detalle)
-                                                                            </td>
-                                                                        </tr>
-                                                                    }
-                                                                </tbody>
-                                                            </table>
-                                                        </div>
-                                                    }
                                                 </div>
-                                            </td>
-                                        </tr>
-                                    }
-                                </tbody>
-                            </table>
-                        </div>
+                                            }
 
-                        <div class="text-muted small mt-3">
-                            Tip: tocá/clickeá una fila para ver el detalle del pago.
+                                            <div class="row g-3 mb-3">
+                                                <div class="col-md-6">
+                                                    <div>
+                                                        <strong>Tipo:</strong>
+                                                        @pago.TipoPago
+                                                    </div>
+                                                    <div>
+                                                        <strong>Monto original:</strong>
+                                                        ₡@totalOriginal.ToString("N2")
+                                                    </div>
+                                                    <div>
+                                                        <strong>Total abonado:</strong>
+                                                        ₡@totalAbonado.ToString("N2")
+                                                    </div>
+                                                </div>
+
+                                                <div class="col-md-6">
+                                                    <div>
+                                                        <strong>Monto restante:</strong>
+                                                        ₡@pago.Monto.ToString("N2")
+                                                    </div>
+                                                    <div>
+                                                        <strong>Estado:</strong>
+                                                        @(pago.Activo ? "Activo" : "Anulado")
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <h6>Detalle registrado</h6>
+
+                                            @if (!detalles.Any())
+                                            {
+                                                <div class="text-muted mb-3">
+                                                    Sin detalles.
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <div class="table-responsive mb-3">
+                                                    <table class="table table-sm align-middle">
+                                                        <thead>
+                                                            <tr>
+                                                                <th>Plan</th>
+                                                                <th>Lecciones</th>
+                                                                <th>Pago</th>
+                                                                <th>Detalle</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            @foreach (var detalle in detalles)
+                                                            {
+                                                                <tr>
+                                                                    <td>
+                                                                        @(detalle.CantDias == TipoPlanDias.ClasesExtra
+                                                                            ? "Clases extra"
+                                                                            : detalle.CantDias.ToString())
+                                                                    </td>
+                                                                    <td>
+                                                                        @(detalle.CantLecciones?.ToString() ?? "—")
+                                                                    </td>
+                                                                    <td>
+                                                                        ₡@detalle.Pago.ToString("N2")
+                                                                    </td>
+                                                                    <td>
+                                                                        @(string.IsNullOrWhiteSpace(detalle.Detalle)
+                                                                            ? "—"
+                                                                            : detalle.Detalle)
+                                                                    </td>
+                                                                </tr>
+                                                            }
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            }
+
+                                            <h6>Abonos</h6>
+
+                                            @if (!abonos.Any())
+                                            {
+                                                <div class="text-muted">
+                                                    Sin abonos registrados.
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <div class="table-responsive">
+                                                    <table class="table table-sm align-middle">
+                                                        <thead>
+                                                            <tr>
+                                                                <th>Fecha</th>
+                                                                <th>Monto</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            @foreach (var abono in abonos)
+                                                            {
+                                                                <tr>
+                                                                    <td>
+                                                                        @abono.Fecha.ToString("dd/MM/yyyy")
+                                                                    </td>
+                                                                    <td>
+                                                                        ₡@abono.Monto.ToString("N2")
+                                                                    </td>
+                                                                </tr>
+                                                            }
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            }
+
+                                            @if (canGestionarPagos && pago.Activo)
+                                            {
+                                                <div class="mt-3">
+                                                    <button type="button"
+                                                            class="btn btn-outline-danger btn-sm"
+                                                            data-bs-toggle="modal"
+                                                            data-bs-target="#modalAnularPago_@pago.IdPagoPaquete">
+                                                        Anular pago
+                                                    </button>
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            }
                         </div>
                     }
+
                 </div>
             </div>
         </div>
@@ -295,13 +361,18 @@
 
 @if (canGestionarPagos)
 {
-    <!-- MODAL: AGREGAR ABONO A DEUDA ACTIVA -->
-    <div class="modal fade" id="modalAgregarPago" tabindex="-1" aria-hidden="true">
+    <div class="modal fade"
+         id="modalAgregarPago"
+         tabindex="-1"
+         aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content cr-card">
                 <div class="modal-header">
                     <h5 class="modal-title">Agregar pago</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                    <button type="button"
+                            class="btn-close"
+                            data-bs-dismiss="modal"
+                            aria-label="Cerrar"></button>
                 </div>
 
                 @if (pagoPendiente == null)
@@ -311,6 +382,7 @@
                             No hay un pago activo con monto pendiente.
                         </div>
                     </div>
+
                     <div class="modal-footer">
                         <button type="button"
                                 class="btn btn-outline-secondary w-100"
@@ -321,20 +393,32 @@
                 }
                 else
                 {
-                    <form asp-action="AgregarAbonoPaquete" method="post">
+                    <form asp-action="AgregarAbonoPaquete"
+                          method="post">
                         @Html.AntiForgeryToken()
+
                         <input type="hidden"
                                name="idPagoPaquete"
                                value="@pagoPendiente.IdPagoPaquete" />
 
                         <div class="modal-body">
                             <div class="mb-3">
-                                <div class="text-muted" style="font-size:.9rem;">Restante por pagar</div>
-                                <div class="fw-semibold fs-4">@pagoPendiente.Monto.ToString("N2")</div>
+                                <div class="text-muted"
+                                     style="font-size:.9rem;">
+                                    Restante por pagar
+                                </div>
+
+                                <div class="fw-semibold fs-4">
+                                    ₡@pagoPendiente.Monto.ToString("N2")
+                                </div>
                             </div>
 
                             <div class="mb-3">
-                                <label for="fechaAbono" class="form-label">Fecha del pago</label>
+                                <label for="fechaAbono"
+                                       class="form-label">
+                                    Fecha del pago
+                                </label>
+
                                 <input type="date"
                                        class="form-control"
                                        id="fechaAbono"
@@ -344,7 +428,11 @@
                             </div>
 
                             <div class="mb-3">
-                                <label for="montoAbono" class="form-label">Monto a pagar</label>
+                                <label for="montoAbono"
+                                       class="form-label">
+                                    Monto a pagar
+                                </label>
+
                                 <input type="number"
                                        class="form-control"
                                        id="montoAbono"
@@ -357,9 +445,11 @@
                         </div>
 
                         <div class="modal-footer d-flex gap-2">
-                            <button type="submit" class="btn btn-success w-100">
+                            <button type="submit"
+                                    class="btn btn-success w-100">
                                 Guardar pago
                             </button>
+
                             <button type="button"
                                     class="btn btn-outline-secondary w-100"
                                     data-bs-dismiss="modal">
@@ -372,27 +462,43 @@
         </div>
     </div>
 
-    <!-- MODAL: AGREGAR LECCIONES Y REGISTRAR PAGO -->
-    <div class="modal fade" id="modalAgregarLecciones" tabindex="-1" aria-hidden="true">
+    <div class="modal fade"
+         id="modalAgregarLecciones"
+         tabindex="-1"
+         aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content cr-card">
                 <div class="modal-header">
-                    <h5 class="modal-title">Agregar lecciones</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                    <h5 class="modal-title">
+                        Agregar lecciones
+                    </h5>
+
+                    <button type="button"
+                            class="btn-close"
+                            data-bs-dismiss="modal"
+                            aria-label="Cerrar"></button>
                 </div>
 
-                <form asp-action="AgregarLeccionesPago" method="post">
+                <form asp-action="AgregarLeccionesPago"
+                      method="post">
                     @Html.AntiForgeryToken()
-                    <input type="hidden" name="idUsuario" value="@usuarioId" />
+
+                    <input type="hidden"
+                           name="idUsuario"
+                           value="@usuarioId" />
 
                     <div class="modal-body">
                         <p class="text-muted">
-                            Se conservarán el paquete asignado y sus fechas actuales. Solo se sumarán
-                            las lecciones y se registrará el pago.
+                            Se conservarán el paquete asignado y sus fechas actuales.
+                            Solo se sumarán las lecciones y se registrará el pago.
                         </p>
 
                         <div class="mb-3">
-                            <label for="cantLecciones" class="form-label">Lecciones a agregar</label>
+                            <label for="cantLecciones"
+                                   class="form-label">
+                                Lecciones a agregar
+                            </label>
+
                             <input type="number"
                                    class="form-control"
                                    id="cantLecciones"
@@ -403,7 +509,11 @@
                         </div>
 
                         <div class="mb-3">
-                            <label for="montoLecciones" class="form-label">Monto pagado</label>
+                            <label for="montoLecciones"
+                                   class="form-label">
+                                Monto pagado
+                            </label>
+
                             <input type="number"
                                    class="form-control"
                                    id="montoLecciones"
@@ -416,9 +526,11 @@
                     </div>
 
                     <div class="modal-footer d-flex gap-2">
-                        <button type="submit" class="btn btn-primary w-100">
+                        <button type="submit"
+                                class="btn btn-primary w-100">
                             Agregar lecciones
                         </button>
+
                         <button type="button"
                                 class="btn btn-outline-secondary w-100"
                                 data-bs-dismiss="modal">
@@ -435,101 +547,8 @@
     .OrderByDescending(p => p.Fecha)
     .ThenByDescending(p => p.IdPagoPaquete))
 {
-    var abonosModal = (pago.Abonos ?? new List<PagoPaqueteAbono>())
-        .OrderByDescending(a => a.Fecha)
-        .ThenByDescending(a => a.IdPagoPaqueteAbono)
-        .ToList();
-
-    var totalAbonadoModal = abonosModal.Sum(a => a.Monto);
-
-    <!-- MODAL: HISTORIAL DE ABONOS -->
-    <div class="modal fade"
-         id="modalHistorialAbonos_@pago.IdPagoPaquete"
-         tabindex="-1"
-         aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered modal-lg">
-            <div class="modal-content cr-card">
-                <div class="modal-header">
-                    <div>
-                        <h5 class="modal-title mb-0">Historial de pagos</h5>
-                        <div class="text-muted small">
-                            Pago #@pago.IdPagoPaquete - @pago.Fecha.ToString("dd/MM/yyyy")
-                        </div>
-                    </div>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-                </div>
-
-                <div class="modal-body">
-                    @if (!pago.Activo)
-                    {
-                        <div class="alert alert-danger">
-                            Pago anulado:
-                            @(string.IsNullOrWhiteSpace(pago.MotivoAnulacion)
-                                ? "Sin motivo registrado"
-                                : pago.MotivoAnulacion)
-                        </div>
-                    }
-
-                    <div class="row g-3 mb-3">
-                        <div class="col-12 col-md-6">
-                            <div class="cr-resumen-box">
-                                <div class="text-muted" style="font-size:.9rem;">Total abonado</div>
-                                <div class="fw-semibold fs-5">@totalAbonadoModal.ToString("N2")</div>
-                            </div>
-                        </div>
-
-                        <div class="col-12 col-md-6">
-                            <div class="cr-resumen-box">
-                                <div class="text-muted" style="font-size:.9rem;">Restante registrado</div>
-                                <div class="fw-semibold fs-5">@pago.Monto.ToString("N2")</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    @if (!abonosModal.Any())
-                    {
-                        <div class="alert alert-info mb-0">
-                            Este pago no tiene abonos registrados.
-                        </div>
-                    }
-                    else
-                    {
-                        <div class="table-responsive">
-                            <table class="table table-sm align-middle">
-                                <thead>
-                                    <tr>
-                                        <th>Fecha</th>
-                                        <th>Monto</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach (var abono in abonosModal)
-                                    {
-                                        <tr>
-                                            <td>@abono.Fecha.ToString("dd/MM/yyyy HH:mm")</td>
-                                            <td>@abono.Monto.ToString("N2")</td>
-                                        </tr>
-                                    }
-                                </tbody>
-                            </table>
-                        </div>
-                    }
-                </div>
-
-                <div class="modal-footer">
-                    <button type="button"
-                            class="btn btn-outline-secondary w-100"
-                            data-bs-dismiss="modal">
-                        Cerrar
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
     @if (canGestionarPagos && pago.Activo)
     {
-        <!-- MODAL: ANULAR PAGO -->
         <div class="modal fade"
              id="modalAnularPago_@pago.IdPagoPaquete"
              tabindex="-1"
@@ -537,40 +556,58 @@
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content cr-card border-danger">
                     <div class="modal-header">
-                        <h5 class="modal-title">Anular pago #@pago.IdPagoPaquete</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                        <h5 class="modal-title">
+                            Anular pago #@pago.IdPagoPaquete
+                        </h5>
+
+                        <button type="button"
+                                class="btn-close"
+                                data-bs-dismiss="modal"
+                                aria-label="Cerrar"></button>
                     </div>
 
-                    <form asp-action="AnularPagoPaquete" method="post">
+                    <form asp-action="AnularPagoPaquete"
+                          method="post">
                         @Html.AntiForgeryToken()
+
                         <input type="hidden"
                                name="idPagoPaquete"
                                value="@pago.IdPagoPaquete" />
 
                         <div class="modal-body">
                             <div class="alert alert-warning">
-                                El pago seguirá apareciendo como anulado y las lecciones actuales
-                                del usuario se colocarán en 0.
+                                El pago seguirá apareciendo como anulado.
+                                <strong>
+                                    Las lecciones del usuario no se modificarán automáticamente.
+                                </strong>
+                                Esto evita afectar por error un paquete posterior.
                             </div>
 
                             <div class="mb-3">
-                                <label for="motivoAnulacion_@pago.IdPagoPaquete" class="form-label">
+                                <label for="motivoAnulacion_@pago.IdPagoPaquete"
+                                       class="form-label">
                                     Motivo de anulación
                                 </label>
+
                                 <textarea class="form-control"
                                           id="motivoAnulacion_@pago.IdPagoPaquete"
                                           name="motivoAnulacion"
                                           rows="4"
                                           maxlength="300"
                                           required></textarea>
-                                <div class="form-text">Máximo 300 caracteres.</div>
+
+                                <div class="form-text">
+                                    Máximo 300 caracteres.
+                                </div>
                             </div>
                         </div>
 
                         <div class="modal-footer d-flex gap-2">
-                            <button type="submit" class="btn btn-danger w-100">
+                            <button type="submit"
+                                    class="btn btn-danger w-100">
                                 Confirmar anulación
                             </button>
+
                             <button type="button"
                                     class="btn btn-outline-secondary w-100"
                                     data-bs-dismiss="modal">
@@ -585,15 +622,191 @@
 }
 
 <style>
-    .cr-resumen-box {
-        border: 1px solid rgba(255,255,255,.16);
-        border-radius: .5rem;
-        padding: .85rem 1rem;
-        background: rgba(255,255,255,.04);
+    /* =========================================================
+           HISTORIAL DE PAGOS
+           Estilos locales: no afectan otras pantallas del proyecto.
+           ========================================================= */
+
+    .cr-pagos-page .cr-resumen-box {
+        min-height: 82px;
+        border: 1px solid rgba(255,255,255,.18);
+        border-radius: .65rem;
+        padding: 1rem;
+        background: rgba(255,255,255,.045);
+        color: var(--text);
     }
 
-    .cr-detalle-pago {
-        border-radius: .5rem;
-        background: rgba(255,255,255,.04);
+    .cr-pagos-page .cr-action-btn {
+        min-width: 145px;
+        font-weight: 600;
+    }
+
+    .cr-pagos-page .cr-back-btn {
+        color: var(--text) !important;
+        border-color: rgba(255,255,255,.35) !important;
+    }
+
+        .cr-pagos-page .cr-back-btn:hover {
+            color: var(--text) !important;
+            background: rgba(255,255,255,.08) !important;
+            border-color: rgba(255,255,255,.55) !important;
+            text-decoration: none;
+        }
+
+    /* Quitar los colores claros que Bootstrap pone por defecto
+           en accordion y usar la paleta oscura del proyecto. */
+    .cr-pagos-accordion {
+        --bs-accordion-bg: transparent;
+        --bs-accordion-color: var(--text);
+        --bs-accordion-border-color: rgba(255,255,255,.18);
+        --bs-accordion-btn-color: var(--text);
+        --bs-accordion-btn-bg: rgba(0,0,0,.10);
+        --bs-accordion-active-color: var(--text);
+        --bs-accordion-active-bg: rgba(255,255,255,.055);
+    }
+
+        .cr-pagos-accordion .cr-pago-item {
+            overflow: hidden;
+            background: rgba(0,0,0,.10) !important;
+            color: var(--text) !important;
+            border: 1px solid rgba(255,255,255,.20) !important;
+            border-radius: .6rem !important;
+        }
+
+        .cr-pagos-accordion .cr-pago-button {
+            min-height: 58px;
+            padding: .9rem 1.15rem;
+            color: var(--text) !important;
+            background: rgba(0,0,0,.10) !important;
+            border: 0 !important;
+            box-shadow: none !important;
+            text-align: left;
+        }
+
+            .cr-pagos-accordion .cr-pago-button:hover {
+                background: rgba(255,255,255,.045) !important;
+            }
+
+            .cr-pagos-accordion .cr-pago-button:not(.collapsed) {
+                color: var(--text) !important;
+                background: rgba(254,1,0,.08) !important;
+                box-shadow: inset 3px 0 0 var(--red) !important;
+            }
+
+            .cr-pagos-accordion .cr-pago-button:focus {
+                color: var(--text) !important;
+                border-color: transparent !important;
+                box-shadow: inset 3px 0 0 var(--red) !important;
+            }
+
+        /* La flecha SVG de Bootstrap es oscura por defecto. */
+        .cr-pagos-accordion .accordion-button::after {
+            flex-shrink: 0;
+            margin-left: auto;
+            filter: invert(1) grayscale(1) brightness(2);
+            opacity: .8;
+        }
+
+        .cr-pagos-accordion .accordion-button:not(.collapsed)::after {
+            opacity: 1;
+        }
+
+    .cr-pagos-page .cr-pago-row {
+        display: grid;
+        grid-template-columns: minmax(90px, 125px) minmax(95px, 130px) 1fr auto;
+        gap: .75rem 1.1rem;
+        align-items: center;
+        width: 100%;
+        padding-right: .75rem;
+        color: var(--text) !important;
+    }
+
+    .cr-pagos-page .cr-pago-numero {
+        color: var(--text) !important;
+        font-weight: 700;
+    }
+
+    .cr-pagos-page .cr-pago-fecha {
+        color: var(--muted) !important;
+        white-space: nowrap;
+    }
+
+    .cr-pagos-page .cr-pago-restante {
+        color: var(--muted) !important;
+        white-space: nowrap;
+    }
+
+        .cr-pagos-page .cr-pago-restante strong {
+            color: var(--text) !important;
+            font-weight: 700;
+        }
+
+    .cr-pagos-page .cr-pago-body {
+        padding: 1.15rem 1.25rem 1.25rem;
+        color: var(--text) !important;
+        background: rgba(0,0,0,.16) !important;
+        border-top: 1px solid rgba(255,255,255,.12);
+    }
+
+        .cr-pagos-page .cr-pago-body h6,
+        .cr-pagos-page .cr-pago-body strong,
+        .cr-pagos-page .cr-pago-body div,
+        .cr-pagos-page .cr-pago-body td,
+        .cr-pagos-page .cr-pago-body th {
+            color: var(--text);
+        }
+
+        .cr-pagos-page .cr-pago-body .text-muted {
+            color: var(--muted) !important;
+        }
+
+        .cr-pagos-page .cr-pago-body .table {
+            --bs-table-color: var(--text);
+            --bs-table-bg: transparent;
+            --bs-table-border-color: rgba(255,255,255,.12);
+            color: var(--text) !important;
+            margin-bottom: 0;
+        }
+
+            .cr-pagos-page .cr-pago-body .table > :not(caption) > * > * {
+                color: var(--text) !important;
+                background: transparent !important;
+            }
+
+    .cr-pagos-page .badge {
+        font-weight: 650;
+        padding: .42em .65em;
+    }
+
+    /* Los modales también respetan el tema oscuro. */
+    .cr-pagos-page ~ .modal .modal-content,
+    .modal .cr-card {
+        color: var(--text);
+    }
+
+        .cr-pagos-page ~ .modal .form-text,
+        .modal .cr-card .form-text {
+            color: var(--muted) !important;
+        }
+
+    @@media (max-width: 767.98px) {
+        .cr-pagos-page .cr-pago-row {
+            grid-template-columns: 1fr auto;
+            gap: .35rem .75rem;
+        }
+
+        .cr-pagos-page .cr-pago-fecha,
+        .cr-pagos-page .cr-pago-restante {
+            font-size: .88rem;
+        }
+
+        .cr-pagos-page .cr-pago-restante {
+            grid-column: 1 / -1;
+        }
+
+        .cr-pagos-page .cr-action-btn {
+            min-width: 0;
+            flex: 1 1 150px;
+        }
     }
 </style>

@@ -1,17 +1,12 @@
 #nullable disable
 
-using System;
-using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using System.Linq;
-using System.Threading.Tasks;
 using CrStudioFitnes.Models;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 
 namespace CrStudioFitnes.Areas.Identity.Pages.Account
 {
@@ -35,7 +30,6 @@ namespace CrStudioFitnes.Areas.Identity.Pages.Account
         public InputModel Input { get; set; }
 
         public IList<AuthenticationScheme> ExternalLogins { get; set; }
-
         public string ReturnUrl { get; set; }
 
         [TempData]
@@ -62,58 +56,71 @@ namespace CrStudioFitnes.Areas.Identity.Pages.Account
                 ModelState.AddModelError(string.Empty, ErrorMessage);
 
             returnUrl ??= Url.Content("~/");
+
             await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
 
-            ExternalLogins = (await _signInManager.GetExternalAuthenticationSchemesAsync()).ToList();
+            ExternalLogins = (await _signInManager
+                .GetExternalAuthenticationSchemesAsync())
+                .ToList();
+
             ReturnUrl = returnUrl;
         }
 
         public async Task<IActionResult> OnPostAsync(string returnUrl = null)
         {
             returnUrl ??= Url.Content("~/");
-            ExternalLogins = (await _signInManager.GetExternalAuthenticationSchemesAsync()).ToList();
+
+            ExternalLogins = (await _signInManager
+                .GetExternalAuthenticationSchemesAsync())
+                .ToList();
 
             if (!ModelState.IsValid)
                 return Page();
 
-            var identificador = (Input.Usuario ?? "").Trim();
+            var identificador = (Input.Usuario ?? string.Empty).Trim();
+
             if (string.IsNullOrWhiteSpace(identificador))
             {
-                ModelState.AddModelError(string.Empty, "Ingresá tu cédula o correo.");
+                ModelState.AddModelError(
+                    string.Empty,
+                    "Ingresá tu cédula o correo.");
                 return Page();
             }
 
-            // 1) Si parece correo: buscar por email
             ApplicationUser user = null;
+
             if (identificador.Contains("@"))
             {
                 user = await _userManager.FindByEmailAsync(identificador);
             }
 
-            // 2) Si no: buscar por cédula (normalizada) o por UserName
             if (user == null)
             {
-                var ced = NormalizarCedula(identificador);
+                var cedula = NormalizarCedula(identificador);
 
                 user = await _userManager.Users
                     .AsNoTracking()
                     .FirstOrDefaultAsync(u =>
-                        u.Cedula == ced ||
-                        u.UserName == identificador);
+                        u.Cedula
+                            .Replace("-", "")
+                            .Replace(".", "")
+                            .Replace(" ", "") == cedula
+                        || u.UserName == identificador);
             }
 
             if (user == null)
             {
-                ModelState.AddModelError(string.Empty, "Datos incorrectos. Verificá cédula/correo y contraseña.");
+                ModelState.AddModelError(
+                    string.Empty,
+                    "Datos incorrectos. Verificá cédula/correo y contraseña.");
                 return Page();
             }
 
-            // Login usando el usuario encontrado
             var result = await _signInManager.PasswordSignInAsync(
                 user,
                 Input.Password,
                 Input.RememberMe,
-                lockoutOnFailure: false);
+                lockoutOnFailure: true);
 
             if (result.Succeeded)
             {
@@ -123,31 +130,44 @@ namespace CrStudioFitnes.Areas.Identity.Pages.Account
 
             if (result.RequiresTwoFactor)
             {
-                return RedirectToPage("./LoginWith2fa", new { ReturnUrl = returnUrl, RememberMe = Input.RememberMe });
+                return RedirectToPage(
+                    "./LoginWith2fa",
+                    new
+                    {
+                        ReturnUrl = returnUrl,
+                        RememberMe = Input.RememberMe
+                    });
             }
 
             if (result.IsLockedOut)
             {
-                ModelState.AddModelError(string.Empty, "Tu cuenta está desactivada. Contactá al administrador.");
+                ModelState.AddModelError(
+                    string.Empty,
+                    "Tu cuenta está temporalmente bloqueada o desactivada. Contactá al administrador si el problema continúa.");
                 return Page();
             }
 
             if (result.IsNotAllowed)
             {
-                ModelState.AddModelError(string.Empty, "No se permite el acceso (revisá confirmación de correo u otras restricciones).");
+                ModelState.AddModelError(
+                    string.Empty,
+                    "No se permite el acceso a esta cuenta.");
                 return Page();
             }
 
-            ModelState.AddModelError(string.Empty, "Datos incorrectos. Verificá cédula/correo y contraseña.");
+            ModelState.AddModelError(
+                string.Empty,
+                "Datos incorrectos. Verificá cédula/correo y contraseña.");
             return Page();
         }
 
         private static string NormalizarCedula(string value)
         {
-            // quita espacios, guiones y puntos (por si escriben 1-2345-6789)
-            var s = (value ?? "").Trim();
-            s = s.Replace("-", "").Replace(".", "").Replace(" ", "");
-            return s;
+            return (value ?? string.Empty)
+                .Trim()
+                .Replace("-", "")
+                .Replace(".", "")
+                .Replace(" ", "");
         }
     }
 }

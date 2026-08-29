@@ -1,10 +1,12 @@
 @model CrStudioFitnes.Models.Paquete
 
 @{
-    ViewData["Title"] = "Eliminar Paquete";
-    string nombre = !string.IsNullOrWhiteSpace(Model.Detalle)
-        ? Model.Detalle
-        : "Paquete sin nombre";
+    ViewData["Title"] = "Desactivar paquete";
+
+    string nombre =
+        !string.IsNullOrWhiteSpace(Model.Detalle)
+            ? Model.Detalle
+            : "Paquete sin nombre";
 }
 
 <div class="container py-4">
@@ -14,33 +16,44 @@
                 <div class="card-body p-4 p-md-5">
 
                     <div class="text-center">
-                        <h1 class="h3 mb-3 text-danger">@ViewData["Title"]</h1>
+                        <h1 class="h3 mb-3 text-danger">
+                            @ViewData["Title"]
+                        </h1>
+
                         <p class="text-muted mb-4">
-                            ¿Está seguro de que desea eliminar este paquete?
-                            Esta acción no se puede deshacer.
+                            El paquete dejará de estar disponible para nuevas asignaciones,
+                            pero se conservará su historial y las referencias existentes.
                         </p>
                     </div>
 
                     <dl class="row mb-0">
-                        <dt class="col-sm-5 fw-bold">Nombre del paquete:</dt>
+                        <dt class="col-sm-5 fw-bold">
+                            Nombre del paquete:
+                        </dt>
                         <dd class="col-sm-7">@nombre</dd>
 
-                        <dt class="col-sm-5 fw-bold">Tipo de plan:</dt>
+                        <dt class="col-sm-5 fw-bold">
+                            Tipo de plan:
+                        </dt>
                         <dd class="col-sm-7">@Model.CantDias</dd>
 
-                        <dt class="col-sm-5 fw-bold">Cantidad total de lecciones:</dt>
-                        <dd class="col-sm-7">@Model.CantLecciones</dd>
+                        <dt class="col-sm-5 fw-bold">
+                            Lecciones por usuario:
+                        </dt>
+                        <dd class="col-sm-7">
+                            @Model.CantLeccionesPorUsuario
+                        </dd>
 
-                        <dt class="col-sm-5 fw-bold">Monto total:</dt>
-                        <dd class="col-sm-7">₡@Model.Pago.ToString("N2")</dd>
+                        <dt class="col-sm-5 fw-bold">
+                            Monto por usuario:
+                        </dt>
+                        <dd class="col-sm-7">
+                            ₡@Model.PagoPorUsuario.ToString("N2")
+                        </dd>
 
-                        <dt class="col-sm-5 fw-bold">Lecciones por usuario:</dt>
-                        <dd class="col-sm-7">@Model.CantLeccionesPorUsuario</dd>
-
-                        <dt class="col-sm-5 fw-bold">Monto por usuario:</dt>
-                        <dd class="col-sm-7">₡@Model.PagoPorUsuario.ToString("N2")</dd>
-
-                        <dt class="col-sm-5 fw-bold">Visible en catálogo:</dt>
+                        <dt class="col-sm-5 fw-bold">
+                            Visible en catálogo:
+                        </dt>
                         <dd class="col-sm-7">
                             @if (Model.Activo)
                             {
@@ -60,7 +73,8 @@
                         @Html.AntiForgeryToken()
                         <input type="hidden" asp-for="IdPaquete" />
 
-                        <a asp-action="Index" class="btn btn-outline-secondary">
+                        <a asp-action="Index"
+                           class="btn btn-outline-secondary">
                             Cancelar
                         </a>
 
@@ -68,7 +82,7 @@
                                 class="btn btn-danger"
                                 data-bs-toggle="modal"
                                 data-bs-target="#confirmDeleteModal">
-                            Eliminar
+                            Desactivar
                         </button>
                     </form>
 
@@ -80,31 +94,37 @@
                         <div class="modal-dialog modal-dialog-centered cr-modal-narrow">
                             <div class="modal-content cr-card border-0">
                                 <div class="modal-header bg-danger text-white">
-                                    <h5 class="modal-title" id="confirmDeleteLabel">
-                                        Confirmar eliminación
+                                    <h5 class="modal-title"
+                                        id="confirmDeleteLabel">
+                                        Confirmar desactivación
                                     </h5>
+
                                     <button type="button"
                                             class="btn-close btn-close-white"
                                             data-bs-dismiss="modal"
                                             aria-label="Cerrar"></button>
                                 </div>
+
                                 <div class="modal-body">
-                                    ¿Seguro que desea eliminar el paquete
+                                    ¿Seguro que desea desactivar el paquete
                                     <strong>@nombre</strong>?
+
                                     <div class="small text-muted mt-2">
-                                        Esta acción no se puede deshacer.
+                                        El registro no se eliminará de la base de datos.
                                     </div>
                                 </div>
+
                                 <div class="modal-footer">
                                     <button type="button"
                                             class="btn btn-outline-secondary"
                                             data-bs-dismiss="modal">
                                         No, cancelar
                                     </button>
+
                                     <button type="button"
                                             id="confirmDeleteBtn"
                                             class="btn btn-danger">
-                                        Sí, eliminar
+                                        Sí, desactivar
                                     </button>
                                 </div>
                             </div>
@@ -120,8 +140,11 @@
 @section Scripts {
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            const confirmBtn = document.getElementById('confirmDeleteBtn');
-            const form = document.getElementById('deleteForm');
+            const confirmBtn =
+                document.getElementById('confirmDeleteBtn');
+
+            const form =
+                document.getElementById('deleteForm');
 
             confirmBtn?.addEventListener('click', function () {
                 form?.submit();

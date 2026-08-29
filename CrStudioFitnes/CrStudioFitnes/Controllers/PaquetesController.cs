@@ -11,6 +11,11 @@ namespace CrStudioFitnes.Controllers
     [Authorize]
     public class PaquetesController : Controller
     {
+        private const string ROL_ADMIN = "Administrador";
+        private const string ROL_GESTOR_PAGOS = "Gestor de Pagos";
+        private const string ROL_USUARIO = "Usuario";
+        private const string ROL_ENTRENADOR = "Entrenador";
+
         private readonly ApplicationDbContext _context;
 
         public PaquetesController(ApplicationDbContext context)
@@ -18,27 +23,18 @@ namespace CrStudioFitnes.Controllers
             _context = context;
         }
 
-        // =========================================================
-        // Helpers de roles
-        // =========================================================
         private bool CanManagePaquetes()
         {
-            return User.IsInRole("Administrador")
-                || User.IsInRole("Gestor de pagos")
-                || User.IsInRole("GestorPagos");
+            return User.IsInRole(ROL_ADMIN)
+                || User.IsInRole(ROL_GESTOR_PAGOS);
         }
 
         private bool IsUsuarioOEntrenador()
         {
-            return User.IsInRole("Usuario") || User.IsInRole("Entrenador");
+            return User.IsInRole(ROL_USUARIO)
+                || User.IsInRole(ROL_ENTRENADOR);
         }
 
-        // =========================================================
-        // GET: Paquetes
-        // =========================================================
-        // soloActivos=true  => muestra únicamente paquetes visibles.
-        // soloActivos=false => muestra activos e inactivos.
-        // reset=true        => limpia filtros y muestra todos al administrador/gestor.
         public async Task<IActionResult> Index(
             int? pageNumber,
             string? buscar,
@@ -54,14 +50,12 @@ namespace CrStudioFitnes.Controllers
             bool canManage = CanManagePaquetes();
             bool isViewer = IsUsuarioOEntrenador();
 
-            // Usuario y entrenador siempre ven únicamente paquetes activos.
             if (!canManage && isViewer)
             {
                 soloActivos = true;
                 reset = false;
             }
 
-            // Administrador y gestor pueden limpiar para mostrar todos.
             if (canManage && reset)
             {
                 soloActivos = false;
@@ -74,7 +68,10 @@ namespace CrStudioFitnes.Controllers
             if (!string.IsNullOrWhiteSpace(buscar))
             {
                 string texto = buscar.Trim();
-                query = query.Where(p => p.Detalle != null && p.Detalle.Contains(texto));
+
+                query = query.Where(p =>
+                    p.Detalle != null
+                    && p.Detalle.Contains(texto));
             }
 
             if (soloActivos)
@@ -96,9 +93,6 @@ namespace CrStudioFitnes.Controllers
             return View(model);
         }
 
-        // =========================================================
-        // GET: Paquetes/Details/5
-        // =========================================================
         public async Task<IActionResult> Details(int? id)
         {
             if (id == null)
@@ -111,30 +105,24 @@ namespace CrStudioFitnes.Controllers
             if (paquete == null)
                 return NotFound();
 
-            // Usuario y entrenador no pueden consultar paquetes ocultos.
             if (!CanManagePaquetes() && !paquete.Activo)
                 return NotFound();
 
             ViewData["CanManage"] = CanManagePaquetes();
+
             return View(paquete);
         }
 
-        // =========================================================
-        // GET: Paquetes/Create
-        // =========================================================
-        [Authorize(Roles = "Administrador,Gestor de pagos,GestorPagos")]
+        [Authorize(Roles = ROL_ADMIN + "," + ROL_GESTOR_PAGOS)]
         public IActionResult Create()
         {
             PopulateCantDiasDropDownList();
             return View(new Paquete { Activo = true });
         }
 
-        // =========================================================
-        // POST: Paquetes/Create
-        // =========================================================
         [HttpPost]
         [ValidateAntiForgeryToken]
-        [Authorize(Roles = "Administrador,Gestor de pagos,GestorPagos")]
+        [Authorize(Roles = ROL_ADMIN + "," + ROL_GESTOR_PAGOS)]
         public async Task<IActionResult> Create(
             [Bind("IdPaquete,CantDias,CantLecciones,Pago,CantLeccionesPorUsuario,PagoPorUsuario,Detalle,Activo")]
             Paquete paquete)
@@ -152,29 +140,25 @@ namespace CrStudioFitnes.Controllers
             return View(paquete);
         }
 
-        // =========================================================
-        // GET: Paquetes/Edit/5
-        // =========================================================
-        [Authorize(Roles = "Administrador,Gestor de pagos,GestorPagos")]
+        [Authorize(Roles = ROL_ADMIN + "," + ROL_GESTOR_PAGOS)]
         public async Task<IActionResult> Edit(int? id)
         {
             if (id == null)
                 return NotFound();
 
             var paquete = await _context.Paquetes.FindAsync(id.Value);
+
             if (paquete == null)
                 return NotFound();
 
             PopulateCantDiasDropDownList(paquete.CantDias);
+
             return View(paquete);
         }
 
-        // =========================================================
-        // POST: Paquetes/Edit/5
-        // =========================================================
         [HttpPost]
         [ValidateAntiForgeryToken]
-        [Authorize(Roles = "Administrador,Gestor de pagos,GestorPagos")]
+        [Authorize(Roles = ROL_ADMIN + "," + ROL_GESTOR_PAGOS)]
         public async Task<IActionResult> Edit(
             int id,
             [Bind("IdPaquete,CantDias,CantLecciones,Pago,CantLeccionesPorUsuario,PagoPorUsuario,Detalle,Activo")]
@@ -209,10 +193,7 @@ namespace CrStudioFitnes.Controllers
             return View(paquete);
         }
 
-        // =========================================================
-        // GET: Paquetes/Delete/5
-        // =========================================================
-        [Authorize(Roles = "Administrador,Gestor de pagos,GestorPagos")]
+        [Authorize(Roles = ROL_ADMIN + "," + ROL_GESTOR_PAGOS)]
         public async Task<IActionResult> Delete(int? id)
         {
             if (id == null)
@@ -228,12 +209,9 @@ namespace CrStudioFitnes.Controllers
             return View(paquete);
         }
 
-        // =========================================================
-        // POST: Paquetes/Delete/5
-        // =========================================================
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
-        [Authorize(Roles = "Administrador,Gestor de pagos,GestorPagos")]
+        [Authorize(Roles = ROL_ADMIN + "," + ROL_GESTOR_PAGOS)]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
             var paquete = await _context.Paquetes.FindAsync(id);
@@ -241,25 +219,35 @@ namespace CrStudioFitnes.Controllers
             if (paquete == null)
                 return NotFound();
 
-            _context.Paquetes.Remove(paquete);
+            if (!paquete.Activo)
+            {
+                TempData["Ok"] = "El paquete ya estaba inactivo.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            // Baja lógica: conserva pagos e historial que referencian este paquete.
+            paquete.Activo = false;
             await _context.SaveChangesAsync();
 
-            TempData["Ok"] = "Paquete eliminado correctamente.";
+            TempData["Ok"] =
+                "Paquete desactivado correctamente. Se conserva su historial.";
+
             return RedirectToAction(nameof(Index));
         }
 
-        // =========================================================
-        // Helper enum
-        // =========================================================
-        private void PopulateCantDiasDropDownList(TipoPlanDias? selectedValue = null)
+        private void PopulateCantDiasDropDownList(
+            TipoPlanDias? selectedValue = null)
         {
-            var items = Enum.GetValues(typeof(TipoPlanDias))
+            var items = Enum
+                .GetValues(typeof(TipoPlanDias))
                 .Cast<TipoPlanDias>()
+                .Where(d => d != TipoPlanDias.ClasesExtra)
                 .Select(d => new SelectListItem
                 {
                     Value = d.ToString(),
                     Text = d.ToString(),
-                    Selected = selectedValue.HasValue && d == selectedValue.Value
+                    Selected = selectedValue.HasValue
+                        && d == selectedValue.Value
                 })
                 .ToList();
 

@@ -1,4 +1,3 @@
-// Program.cs (REEMPLAZAR COMPLETO)
 using CrStudioFitnes.Data;
 using CrStudioFitnes.EmailSender;
 using CrStudioFitnes.Models;
@@ -9,11 +8,8 @@ using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-//comando para publicar 
-//dotnet publish "C:\Proyectos\Crstudiofitnes\CrStudioFitnes\CrStudioFitnes\CrStudioFitnes.csproj" -c Release -f net8.0 -o "C:\Servicios\Cvstudio" --self-contained false
-
 // =============================================
-//  DB
+// DB
 // =============================================
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
@@ -22,7 +18,6 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
     options.UseSqlServer(connectionString, sql =>
     {
-        // Recomendado por tu log (errores transitorios / 233)
         sql.EnableRetryOnFailure(
             maxRetryCount: 5,
             maxRetryDelay: TimeSpan.FromSeconds(10),
@@ -30,22 +25,25 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     });
 });
 
-builder.Services.AddDataProtection()
-    .PersistKeysToFileSystem(new DirectoryInfo(@"C:\ProgramData\CrStudioFitnes\keys"))
-    .ProtectKeysWithDpapi();
-
-
 // =============================================
-//  DATA PROTECTION (Antiforgery / Cookies)
-//  -> Evita "token could not be decrypted"
+// DATA PROTECTION
+// Una sola configuración estable para cookies y antiforgery.
 // =============================================
-builder.Services.AddDataProtection()
-    .PersistKeysToFileSystem(new DirectoryInfo(
-        Path.Combine(builder.Environment.ContentRootPath, "dp_keys")))
+var dataProtectionBuilder = builder.Services
+    .AddDataProtection()
+    .PersistKeysToFileSystem(
+        new DirectoryInfo(@"C:\ProgramData\CrStudioFitnes\keys"))
     .SetApplicationName("CrStudioFitnes");
 
+if (OperatingSystem.IsWindows())
+{
+    dataProtectionBuilder.ProtectKeysWithDpapi();
+}
+
 // =============================================
-//  Identity
+// Identity
+// El registro actual inicia sesión directamente y no usa un flujo
+// real de confirmación de correo, por lo que se deja explícito.
 // =============================================
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
@@ -54,14 +52,19 @@ builder.Services.AddTransient<IEmailSender, DbEmailSender>();
 builder.Services
     .AddDefaultIdentity<ApplicationUser>(options =>
     {
-        options.SignIn.RequireConfirmedAccount = true;
+        options.SignIn.RequireConfirmedAccount = false;
 
         options.Password.RequireDigit = true;
         options.Password.RequireLowercase = true;
         options.Password.RequireUppercase = false;
-        options.Password.RequireNonAlphanumeric = false; // quita carácter especial
+        options.Password.RequireNonAlphanumeric = false;
         options.Password.RequiredLength = 6;
         options.Password.RequiredUniqueChars = 1;
+
+        // Protección básica contra intentos repetidos de contraseña.
+        options.Lockout.AllowedForNewUsers = true;
+        options.Lockout.MaxFailedAccessAttempts = 5;
+        options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
     })
     .AddRoles<IdentityRole>()
     .AddEntityFrameworkStores<ApplicationDbContext>();
@@ -72,7 +75,7 @@ builder.Services.AddRazorPages();
 var app = builder.Build();
 
 // =============================================
-//  Pipeline
+// Pipeline
 // =============================================
 if (app.Environment.IsDevelopment())
 {
@@ -84,11 +87,7 @@ else
     app.UseHsts();
 }
 
-// Si NO tenés HTTPS configurado en IIS todavía, podés comentar esto temporalmente
-// para quitar el warning "Failed to determine the https port for redirect."
-// Cuando ya tengas certificado/binding HTTPS, lo volvés a activar.
 app.UseHttpsRedirection();
-
 app.UseStaticFiles();
 
 app.UseRouting();

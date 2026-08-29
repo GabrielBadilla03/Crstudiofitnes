@@ -3,25 +3,28 @@
 @{
     ViewData["Title"] = "Detalle de historial";
 
+    bool canManage = ViewData["CanManageHistorial"] is bool value && value;
+
     var u = Model.Usuario;
     var nombre = u != null ? $"{u.Nombre} {u.Apellidos}".Trim() : "";
-    if (string.IsNullOrWhiteSpace(nombre)) nombre = "Usuario";
+    if (string.IsNullOrWhiteSpace(nombre))
+        nombre = "Usuario";
 
     var cedula = u?.Cedula ?? "";
     var email = u?.Email ?? "";
 
     var pesajes = (Model.Pesajes ?? new List<CrStudioFitnes.Models.Pesaje>())
         .OrderByDescending(p => p.Fecha)
+        .ThenByDescending(p => p.IdPesaje)
         .ToList();
 
     var cuerpos = (ViewBag.Cuerpos as List<CrStudioFitnes.Models.Cuerpo>)
-              ?? new List<CrStudioFitnes.Models.Cuerpo>();
+        ?? new List<CrStudioFitnes.Models.Cuerpo>();
 }
 
 <div class="container py-4">
     <div class="row justify-content-center">
         <div class="col-lg-10">
-
             <div class="card shadow-sm cr-card">
                 <div class="card-body p-4 p-md-5">
 
@@ -40,15 +43,25 @@
                         </p>
                     </div>
 
-                    <!-- Resumen del historial -->
+                    @if (TempData["Error"] != null)
+                    {
+                        <div class="alert alert-danger">@TempData["Error"]</div>
+                    }
+
                     <div class="row g-3">
                         <div class="col-md-6">
                             <div class="cr-card-paquete h-100" style="cursor:default;">
                                 <div class="cr-card-paquete-body">
                                     <div class="cr-card-title">Fechas</div>
                                     <div class="cr-card-subtitle">
-                                        <div><span class="text-muted">Inicio:</span> <span class="fw-semibold">@Model.FechaInicio.ToString("dd/MM/yyyy")</span></div>
-                                        <div><span class="text-muted">Fin:</span> <span class="fw-semibold">@((Model.FechaFin.HasValue) ? Model.FechaFin.Value.ToString("dd/MM/yyyy") : "—")</span></div>
+                                        <div>
+                                            <span class="text-muted">Inicio:</span>
+                                            <span class="fw-semibold">@Model.FechaInicio.ToString("dd/MM/yyyy")</span>
+                                        </div>
+                                        <div>
+                                            <span class="text-muted">Fin:</span>
+                                            <span class="fw-semibold">@(Model.FechaFin.HasValue ? Model.FechaFin.Value.ToString("dd/MM/yyyy") : "—")</span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -59,9 +72,18 @@
                                 <div class="cr-card-paquete-body">
                                     <div class="cr-card-title">Datos físicos</div>
                                     <div class="cr-card-subtitle">
-                                        <div><span class="text-muted">Estatura:</span> <span class="fw-semibold">@((Model.Estatura.HasValue) ? Model.Estatura.Value.ToString("N2") : "—")</span></div>
-                                        <div><span class="text-muted">Peso inicial:</span> <span class="fw-semibold">@((Model.Peso.HasValue) ? Model.Peso.Value.ToString("N2") : "—")</span></div>
-                                        <div><span class="text-muted">Edad:</span> <span class="fw-semibold">@((Model.Edad.HasValue) ? Model.Edad.Value.ToString() : "—")</span></div>
+                                        <div>
+                                            <span class="text-muted">Estatura:</span>
+                                            <span class="fw-semibold">@(Model.Estatura.HasValue ? Model.Estatura.Value.ToString("N2") : "—")</span>
+                                        </div>
+                                        <div>
+                                            <span class="text-muted">Peso inicial:</span>
+                                            <span class="fw-semibold">@(Model.Peso.HasValue ? Model.Peso.Value.ToString("N2") : "—")</span>
+                                        </div>
+                                        <div>
+                                            <span class="text-muted">Edad:</span>
+                                            <span class="fw-semibold">@(Model.Edad.HasValue ? Model.Edad.Value.ToString() : "—")</span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -72,20 +94,28 @@
                                 <div class="cr-card-paquete-body">
                                     <div class="cr-card-title">Información adicional</div>
                                     <div class="cr-card-subtitle">
-                                        <div><span class="text-muted">Estado:</span> <span class="fw-semibold">@(!string.IsNullOrWhiteSpace(Model.Estado) ? Model.Estado : "—")</span></div>
-                                        <div><span class="text-muted">Actividad:</span> <span class="fw-semibold">@(!string.IsNullOrWhiteSpace(Model.Actividad) ? Model.Actividad : "—")</span></div>
+                                        <div>
+                                            <span class="text-muted">Estado:</span>
+                                            <span class="fw-semibold">@(!string.IsNullOrWhiteSpace(Model.Estado) ? Model.Estado : "—")</span>
+                                        </div>
+                                        <div>
+                                            <span class="text-muted">Actividad:</span>
+                                            <span class="fw-semibold">@(!string.IsNullOrWhiteSpace(Model.Actividad) ? Model.Actividad : "—")</span>
+                                        </div>
                                         <div>
                                             <span class="text-muted">Frecuencia:</span>
-                                            <span class="fw-semibold">@((Model.Frecuencia?.ToString()) ?? "—")</span>
+                                            <span class="fw-semibold">@(Model.Frecuencia?.ToString() ?? "—")</span>
                                         </div>
-                                        <div><span class="text-muted">Objetivo:</span> <span class="fw-semibold">@(!string.IsNullOrWhiteSpace(Model.Objetivo) ? Model.Objetivo : "—")</span></div>
+                                        <div>
+                                            <span class="text-muted">Objetivo:</span>
+                                            <span class="fw-semibold">@(!string.IsNullOrWhiteSpace(Model.Objetivo) ? Model.Objetivo : "—")</span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Pesajes -->
                     <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mt-4">
                         <div>
                             <h5 class="mb-0">Pesajes</h5>
@@ -94,12 +124,15 @@
                             </div>
                         </div>
 
-                        <button type="button"
-                                class="btn btn-primary"
-                                data-bs-toggle="modal"
-                                data-bs-target="#modalAgregarPesaje">
-                            Agregar pesaje
-                        </button>
+                        @if (canManage)
+                        {
+                            <button type="button"
+                                    class="btn btn-primary"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#modalAgregarPesaje">
+                                Agregar pesaje
+                            </button>
+                        }
                     </div>
 
                     <hr class="my-3" />
@@ -138,62 +171,93 @@
                     }
 
                     <div class="d-flex justify-content-between mt-4">
-                        <a asp-action="Index" asp-route-idUsuario="@Model.IdUsuario" class="btn btn-outline-secondary">
+                        <a asp-action="Index"
+                           asp-route-idUsuario="@Model.IdUsuario"
+                           class="btn btn-outline-secondary">
                             Volver
                         </a>
                     </div>
 
                 </div>
             </div>
-
         </div>
     </div>
 </div>
 
-<!-- MODAL: Agregar Pesaje -->
-<div class="modal fade" id="modalAgregarPesaje" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content cr-card">
-            <div class="modal-header">
-                <h5 class="modal-title">Agregar pesaje</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+@if (canManage)
+{
+    <div class="modal fade"
+         id="modalAgregarPesaje"
+         tabindex="-1"
+         aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content cr-card">
+                <div class="modal-header">
+                    <h5 class="modal-title">Agregar pesaje</h5>
+                    <button type="button"
+                            class="btn-close"
+                            data-bs-dismiss="modal"
+                            aria-label="Cerrar"></button>
+                </div>
+
+                <form asp-action="AgregarPesaje" method="post">
+                    @Html.AntiForgeryToken()
+
+                    <div class="modal-body">
+                        <input type="hidden"
+                               name="idHistorial"
+                               value="@Model.IdHistorial" />
+
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Fecha</label>
+                            <input type="date"
+                                   class="form-control"
+                                   name="fecha"
+                                   value="@DateTime.Today.ToString("yyyy-MM-dd")"
+                                   required />
+                        </div>
+
+                        <div class="mb-2">
+                            <label class="form-label fw-semibold">Peso (kg)</label>
+                            <input type="number"
+                                   class="form-control"
+                                   name="peso"
+                                   step="0.01"
+                                   min="1"
+                                   max="500"
+                                   required />
+                        </div>
+                    </div>
+
+                    <div class="modal-footer d-flex gap-2">
+                        <button type="submit"
+                                class="btn btn-primary w-100">
+                            Guardar
+                        </button>
+                        <button type="button"
+                                class="btn btn-outline-secondary w-100"
+                                data-bs-dismiss="modal">
+                            Cancelar
+                        </button>
+                    </div>
+                </form>
             </div>
-
-            <form asp-action="AgregarPesaje" method="post">
-                @Html.AntiForgeryToken()
-
-                <div class="modal-body">
-                    <input type="hidden" name="idHistorial" value="@Model.IdHistorial" />
-                    <input type="hidden" name="idUsuario" value="@Model.IdUsuario" />
-
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Fecha</label>
-                        <input type="date" class="form-control" name="fecha"
-                               value="@DateTime.Today.ToString("yyyy-MM-dd")" required />
-                    </div>
-
-                    <div class="mb-2">
-                        <label class="form-label fw-semibold">Peso (kg)</label>
-                        <input type="number" class="form-control" name="peso" step="0.01" min="1" max="500" required />
-                        <div class="text-muted small mt-1">Ejemplo: 72.50</div>
-                    </div>
-                </div>
-
-                <div class="modal-footer d-flex gap-2">
-                    <button type="submit" class="btn btn-primary w-100">Guardar</button>
-                    <button type="button" class="btn btn-outline-secondary w-100" data-bs-dismiss="modal">Cancelar</button>
-                </div>
-            </form>
         </div>
     </div>
-</div>
+}
 
-<div class="modal fade" id="modalPesajeMedidas" tabindex="-1" aria-hidden="true">
+<div class="modal fade"
+     id="modalPesajeMedidas"
+     tabindex="-1"
+     aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content cr-card">
             <div class="modal-header">
                 <h5 class="modal-title">Medidas del pesaje</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                <button type="button"
+                        class="btn-close"
+                        data-bs-dismiss="modal"
+                        aria-label="Cerrar"></button>
             </div>
 
             <div class="modal-body">
@@ -208,50 +272,82 @@
                     <div class="text-muted small">Cargando...</div>
                 </div>
 
-                <hr class="my-3" />
+                @if (canManage)
+                {
+                    <hr class="my-3" />
 
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                    <div class="fw-semibold">Agregar o actualizar medida</div>
-                    <button type="button" class="btn btn-outline-light btn-sm" id="pm_btnToggle">
-                        Agregar medida
-                    </button>
-                </div>
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <div class="fw-semibold">Agregar o actualizar medida</div>
+                        <button type="button"
+                                class="btn btn-outline-light btn-sm"
+                                id="pm_btnToggle">
+                            Agregar medida
+                        </button>
+                    </div>
 
-                <div id="pm_formWrap" style="display:none;">
-                    <form id="pm_form">
-                        @Html.AntiForgeryToken()
+                    <div id="pm_formWrap" style="display:none;">
+                        <form id="pm_form">
+                            @Html.AntiForgeryToken()
 
-                        <div class="row g-2">
-                            <div class="col-12 col-md-7">
-                                <label class="form-label fw-semibold">Parte del cuerpo</label>
-                                <select class="form-select" id="pm_idCuerpo" required>
-                                    <option value="">-- Seleccione --</option>
-                                    @foreach (var c in cuerpos)
-                                    {
-                                        <option value="@c.IdCuerpo">@c.Nombre</option>
-                                    }
-                                </select>
+                            <div class="row g-2">
+                                <div class="col-12 col-md-7">
+                                    <label class="form-label fw-semibold">
+                                        Parte del cuerpo
+                                    </label>
+
+                                    <select class="form-select"
+                                            id="pm_idCuerpo"
+                                            required>
+                                        <option value="">-- Seleccione --</option>
+                                        @foreach (var c in cuerpos)
+                                        {
+                                            <option value="@c.IdCuerpo">@c.Nombre</option>
+                                        }
+                                    </select>
+                                </div>
+
+                                <div class="col-12 col-md-5">
+                                    <label class="form-label fw-semibold">
+                                        Medida (cm)
+                                    </label>
+
+                                    <input type="number"
+                                           class="form-control"
+                                           id="pm_medida"
+                                           step="0.01"
+                                           min="0"
+                                           max="500"
+                                           required />
+                                </div>
                             </div>
 
-                            <div class="col-12 col-md-5">
-                                <label class="form-label fw-semibold">Medida (cm)</label>
-                                <input type="number" class="form-control" id="pm_medida" step="0.01" min="0" max="500" required />
+                            <div class="d-flex gap-2 mt-3">
+                                <button type="submit"
+                                        class="btn btn-primary w-100">
+                                    Guardar medida
+                                </button>
+
+                                <button type="button"
+                                        class="btn btn-outline-secondary w-100"
+                                        id="pm_btnCancelar">
+                                    Cancelar
+                                </button>
                             </div>
-                        </div>
 
-                        <div class="d-flex gap-2 mt-3">
-                            <button type="submit" class="btn btn-primary w-100">Guardar medida</button>
-                            <button type="button" class="btn btn-outline-secondary w-100" id="pm_btnCancelar">Cancelar</button>
-                        </div>
-
-                        <div class="text-danger small mt-2" id="pm_error" style="display:none;"></div>
-                    </form>
-                </div>
-
+                            <div class="text-danger small mt-2"
+                                 id="pm_error"
+                                 style="display:none;"></div>
+                        </form>
+                    </div>
+                }
             </div>
 
             <div class="modal-footer">
-                <button type="button" class="btn btn-outline-secondary w-100" data-bs-dismiss="modal">Cerrar</button>
+                <button type="button"
+                        class="btn btn-outline-secondary w-100"
+                        data-bs-dismiss="modal">
+                    Cerrar
+                </button>
             </div>
         </div>
     </div>
@@ -260,8 +356,11 @@
 @section Scripts {
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            const canManage = @canManage.ToString().ToLowerInvariant();
 
             const modalEl = document.getElementById('modalPesajeMedidas');
+            if (!modalEl) return;
+
             const bsModal = new bootstrap.Modal(modalEl);
 
             const pmIdPesaje = document.getElementById('pm_idPesaje');
@@ -279,28 +378,38 @@
             const errBox = document.getElementById('pm_error');
 
             function token() {
-                const t = document.querySelector('input[name="__RequestVerificationToken"]');
+                const t = document.querySelector(
+                    'input[name="__RequestVerificationToken"]');
+
                 return t ? t.value : '';
             }
 
             function showError(msg) {
+                if (!errBox) return;
                 errBox.style.display = 'block';
                 errBox.textContent = msg || 'Error';
             }
 
             function clearError() {
+                if (!errBox) return;
                 errBox.style.display = 'none';
                 errBox.textContent = '';
             }
 
             async function cargarMedidas(idPesaje) {
-                pmLista.innerHTML = '<div class="text-muted small">Cargando...</div>';
+                pmLista.innerHTML =
+                    '<div class="text-muted small">Cargando...</div>';
 
-                const url = '@Url.Action("PesajeMedidas", "Historial")' + '?idPesaje=' + encodeURIComponent(idPesaje);
+                const url =
+                    '@Url.Action("PesajeMedidas", "Historial")'
+                    + '?idPesaje='
+                    + encodeURIComponent(idPesaje);
+
                 const res = await fetch(url);
 
                 if (!res.ok) {
-                    pmLista.innerHTML = '<div class="text-danger small">No se pudo cargar.</div>';
+                    pmLista.innerHTML =
+                        '<div class="text-danger small">No se pudo cargar.</div>';
                     return;
                 }
 
@@ -308,14 +417,12 @@
                 const items = data.items || [];
 
                 if (items.length === 0) {
-                    pmLista.innerHTML = '<div class="alert alert-info mb-0">Este pesaje aún no tiene medidas de cuerpo.</div>';
+                    pmLista.innerHTML =
+                        '<div class="alert alert-info mb-0">Este pesaje aún no tiene medidas de cuerpo.</div>';
                     return;
                 }
 
                 let html = `
-                    <div class="text-muted small mb-2">
-                        Tocá una fila para <strong>eliminar</strong> esa medida del pesaje.
-                    </div>
                     <div class="table-responsive">
                         <table class="table cr-table table-hover mb-0">
                             <thead>
@@ -327,9 +434,12 @@
                             <tbody>`;
 
                 for (const it of items) {
+                    const rowClass = canManage ? 'pm-row' : '';
+                    const cursor = canManage ? 'cursor:pointer;' : 'cursor:default;';
+
                     html += `
-                        <tr class="pm-row"
-                            style="cursor:pointer;"
+                        <tr class="${rowClass}"
+                            style="${cursor}"
                             data-idcuerpo="${it.idCuerpo}"
                             data-cuerpo="${(it.cuerpo || '').replace(/"/g, '&quot;')}"
                             data-medida="${it.medida}">
@@ -346,7 +456,6 @@
                 pmLista.innerHTML = html;
             }
 
-            // Click en fila de pesaje => abrir modal y cargar medidas
             document.querySelectorAll('.pesaje-row').forEach(row => {
                 row.addEventListener('click', async () => {
                     const idPesaje = row.getAttribute('data-idpesaje');
@@ -357,10 +466,13 @@
                     pmTitulo.textContent = `Pesaje del ${fecha}`;
                     pmSubtitulo.textContent = `Peso: ${peso} kg`;
 
-                    // reset form
-                    formWrap.style.display = 'none';
-                    selCuerpo.value = '';
-                    txtMedida.value = '';
+                    if (formWrap) {
+                        formWrap.style.display = 'none';
+                    }
+
+                    if (selCuerpo) selCuerpo.value = '';
+                    if (txtMedida) txtMedida.value = '';
+
                     clearError();
 
                     bsModal.show();
@@ -368,20 +480,25 @@
                 });
             });
 
-            btnToggle.addEventListener('click', () => {
-                formWrap.style.display = (formWrap.style.display === 'none') ? 'block' : 'none';
+            if (!canManage) return;
+
+            btnToggle?.addEventListener('click', () => {
+                formWrap.style.display =
+                    formWrap.style.display === 'none'
+                        ? 'block'
+                        : 'none';
+
                 clearError();
             });
 
-            btnCancelar.addEventListener('click', () => {
+            btnCancelar?.addEventListener('click', () => {
                 formWrap.style.display = 'none';
                 selCuerpo.value = '';
                 txtMedida.value = '';
                 clearError();
             });
 
-            // Guardar medida (AJAX)
-            form.addEventListener('submit', async (e) => {
+            form?.addEventListener('submit', async (e) => {
                 e.preventDefault();
                 clearError();
 
@@ -400,17 +517,21 @@
                 fd.append('medida', medida);
                 fd.append('__RequestVerificationToken', token());
 
-                const res = await fetch('@Url.Action("GuardarPesajeCuerpo", "Historial")', {
-                    method: 'POST',
-                    body: fd
-                });
+                const res = await fetch(
+                    '@Url.Action("GuardarPesajeCuerpo", "Historial")',
+                    {
+                        method: 'POST',
+                        body: fd
+                    });
 
                 if (!res.ok) {
                     let msg = 'No se pudo guardar.';
+
                     try {
                         const j = await res.json();
                         msg = j.message || msg;
                     } catch { }
+
                     showError(msg);
                     return;
                 }
@@ -422,19 +543,25 @@
                 txtMedida.value = '';
             });
 
-            // ✅ Click en una medida del listado => eliminar PesajeCuerpo (IdPesaje + IdCuerpo)
             pmLista.addEventListener('click', async (e) => {
-                const tr = e.target.closest('tr.pm-row[data-idcuerpo]');
+                const tr = e.target.closest(
+                    'tr.pm-row[data-idcuerpo]');
+
                 if (!tr) return;
 
                 const idPesaje = pmIdPesaje.value;
                 const idCuerpo = tr.getAttribute('data-idcuerpo');
-                const cuerpo = tr.getAttribute('data-cuerpo') || 'Medida';
-                const medida = tr.getAttribute('data-medida') || '';
+                const cuerpo =
+                    tr.getAttribute('data-cuerpo') || 'Medida';
+
+                const medida =
+                    tr.getAttribute('data-medida') || '';
 
                 if (!idPesaje || !idCuerpo) return;
 
-                const ok = confirm(`¿Eliminar "${cuerpo}" (${Number(medida).toFixed(2)} cm) de este pesaje?`);
+                const ok = confirm(
+                    `¿Eliminar "${cuerpo}" (${Number(medida).toFixed(2)} cm) de este pesaje?`);
+
                 if (!ok) return;
 
                 clearError();
@@ -444,30 +571,31 @@
                 fd.append('idCuerpo', idCuerpo);
                 fd.append('__RequestVerificationToken', token());
 
-                const res = await fetch('@Url.Action("EliminarPesajeCuerpo", "Historial")', {
-                    method: 'POST',
-                    body: fd
-                });
+                const res = await fetch(
+                    '@Url.Action("EliminarPesajeCuerpo", "Historial")',
+                    {
+                        method: 'POST',
+                        body: fd
+                    });
 
                 if (!res.ok) {
                     let msg = 'No se pudo eliminar.';
+
                     try {
                         const j = await res.json();
                         msg = j.message || msg;
                     } catch { }
+
                     showError(msg);
                     return;
                 }
 
                 await cargarMedidas(idPesaje);
 
-                // opcional: cerrar form si estaba abierto
                 formWrap.style.display = 'none';
                 selCuerpo.value = '';
                 txtMedida.value = '';
             });
-
         });
     </script>
 }
-
