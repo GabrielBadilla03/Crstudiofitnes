@@ -1,583 +1,415 @@
 @model CrStudioFitnes.Models.ApplicationUser
 @using CrStudioFitnes.Models
+@using CrStudioFitnes.ViewModels
 
 @{
     ViewData["Title"] = "Detalles de usuario";
 
     var nombreCompleto = $"{Model.Nombre} {Model.Apellidos}".Trim();
-    if (string.IsNullOrWhiteSpace(nombreCompleto)) { nombreCompleto = "Usuario"; }
+    if (string.IsNullOrWhiteSpace(nombreCompleto)) nombreCompleto = "Usuario";
 
     var nowUtc = DateTimeOffset.UtcNow;
-    bool activo = (Model.LockoutEnd == null || Model.LockoutEnd <= nowUtc);
-
+    bool activo = Model.LockoutEnd == null || Model.LockoutEnd <= nowUtc;
     var hoy = DateTime.Today;
 
-    var paqueteActual = (Model.PaquetesUsuario ?? new List<PaqueteUsuario>())
+    var grupoActual = ViewBag.GrupoActual as GrupoPaqueteDetalleVM;
+    var paquetesDisponibles = ViewBag.PaquetesDisponibles as List<Paquete> ?? new List<Paquete>();
+    var paquetesGrupoCompatibles = ViewBag.PaquetesGrupalesCompatibles as List<Paquete> ?? new List<Paquete>();
+
+    PaqueteUsuario? paqueteActual = null;
+    if (grupoActual != null)
+    {
+        var miembroActual = grupoActual.Miembros.FirstOrDefault(m => m.IdUsuario == Model.Id);
+        if (miembroActual?.IdPaqueteUsuario != null)
+        {
+            paqueteActual = (Model.PaquetesUsuario ?? new List<PaqueteUsuario>())
+                .FirstOrDefault(pu => pu.IdPaqueteUsuario == miembroActual.IdPaqueteUsuario);
+        }
+    }
+
+    paqueteActual ??= (Model.PaquetesUsuario ?? new List<PaqueteUsuario>())
+        .Where(pu => pu.Activo)
         .Where(pu => pu.FechaInicio.Date <= hoy && pu.FechaFin.Date >= hoy)
-        .OrderByDescending(pu => pu.FechaFin)
+        .OrderByDescending(pu => pu.IdPaqueteUsuario)
         .FirstOrDefault();
 
     paqueteActual ??= (Model.PaquetesUsuario ?? new List<PaqueteUsuario>())
-        .OrderByDescending(pu => pu.FechaFin)
+        .Where(pu => pu.Activo)
+        .OrderByDescending(pu => pu.IdPaqueteUsuario)
         .FirstOrDefault();
 
-    var paquetesDisponibles = ViewBag.PaquetesDisponibles as List<Paquete>;
-
-    var tiposPlanFiltro = (paquetesDisponibles ?? new List<Paquete>())
-    .Select(p => p.CantDias)
-    .Distinct()
-    .OrderBy(x => x)
-    .ToList();
-
-    var leccionesFiltro = (paquetesDisponibles ?? new List<Paquete>())
-        .Select(p => p.CantLecciones)
-        .Distinct()
-        .OrderBy(x => x)
-        .ToList();
-
-    // ==========================
-    // Permisos (según controller)
-    // ==========================
     bool isAdmin = User.IsInRole("Administrador");
+    bool canCambiarEstado = isAdmin;
+    bool canGestionarRoles = isAdmin;
+    bool canCambiarPaquete = User.IsInRole("Gestor de Pagos") || isAdmin || User.IsInRole("Entrenador");
+    bool canPagarPaquete = User.IsInRole("Gestor de Pagos") || isAdmin;
+    bool canVerHistorialPagos = User.IsInRole("Gestor de Pagos") || isAdmin;
+    bool canConfigurarFamiliar = isAdmin;
 
-    bool canCambiarEstado = isAdmin; // Activar/Desactivar
-    bool canGestionarRoles = isAdmin; // GestionarRoles
-
-    bool canCambiarPaquete =
-        User.IsInRole("Gestor de Pagos") || User.IsInRole("Administrador") || User.IsInRole("Entrenador");
-
-    bool canPagarPaquete =
-        User.IsInRole("Gestor de Pagos") || User.IsInRole("Administrador");
-
-    bool canVerHistorialPagos =
-        User.IsInRole("Gestor de Pagos") || User.IsInRole("Administrador");
-
-    bool canConfigurarFamiliar =
-     User.IsInRole("Administrador");
-}
-
-@if (TempData["OkEstado"] != null)
-{
-    <div class="alert alert-success">@TempData["OkEstado"]</div>
-}
-@if (TempData["ErrorEstado"] != null)
-{
-    <div class="alert alert-danger">@TempData["ErrorEstado"]</div>
-}
-@if (TempData["ErrorRoles"] != null)
-{
-    <div class="alert alert-danger mt-2">@TempData["ErrorRoles"]</div>
-}
-@if (TempData["OkRoles"] != null)
-{
-    <div class="alert alert-info mt-2">@TempData["OkRoles"]</div>
-}
-@if (TempData["OkFamiliar"] != null)
-{
-    <div class="alert alert-success mt-2">@TempData["OkFamiliar"]</div>
-}
-@if (TempData["ErrorFamiliar"] != null)
-{
-    <div class="alert alert-danger mt-2">@TempData["ErrorFamiliar"]</div>
-}
-@if (TempData["OkPago"] != null)
-{
-    <div class="alert alert-success">@TempData["OkPago"]</div>
-}
-@if (TempData["ErrorPago"] != null)
-{
-    <div class="alert alert-danger">@TempData["ErrorPago"]</div>
+    var rolesUsuario = ViewBag.RolesUsuario as List<string> ?? new List<string>();
+    var rolesNoTiene = ViewBag.RolesNoTiene as List<string> ?? new List<string>();
 }
 
 <div class="container py-4">
     <div class="row justify-content-center">
-        <div class="col-lg-10">
+        <div class="col-lg-11">
+            @foreach (var key in new[] { "OkEstado", "OkRoles", "OkFamiliar", "OkPago", "OkPaquete", "OkGrupo" })
+            {
+                if (TempData[key] != null)
+                {
+                    <div class="alert alert-success">@TempData[key]</div>
+                }
+            }
+            @foreach (var key in new[] { "ErrorEstado", "ErrorRoles", "ErrorFamiliar", "ErrorPago", "ErrorPaquete", "ErrorGrupo" })
+            {
+                if (TempData[key] != null)
+                {
+                    <div class="alert alert-danger">@TempData[key]</div>
+                }
+            }
 
             <div class="card shadow-sm cr-card">
                 <div class="card-body p-4 p-md-5">
-
-                    <div class="text-center mb-3">
+                    <div class="text-center mb-4">
                         <h1 class="h3 mb-1">@ViewData["Title"]</h1>
-                        <p class="text-muted mb-0">Datos del cliente y su paquete.</p>
+                        <p class="text-muted mb-0">Datos del cliente, paquete y grupo.</p>
                     </div>
 
-                    @if (TempData["OkPaquete"] != null)
-                    {
-                        <div class="alert alert-success">@TempData["OkPaquete"]</div>
-                    }
-                    @if (TempData["ErrorPaquete"] != null)
-                    {
-                        <div class="alert alert-danger">@TempData["ErrorPaquete"]</div>
-                    }
-
                     <div class="row g-4">
-                        <!-- Datos del cliente -->
-                        <div class="col-md-6">
+                        <div class="col-lg-5">
                             <h5 class="mb-3">Datos del cliente</h5>
 
-                            <div class="mb-2">
-                                <div class="text-muted" style="font-size:.9rem;">Nombre</div>
-                                <div class="fw-semibold">@nombreCompleto</div>
-                            </div>
-
-                            <div class="mb-2">
-                                <div class="text-muted" style="font-size:.9rem;">Cédula</div>
-                                <div class="fw-semibold">@Model.Cedula</div>
-                            </div>
-
-                            <div class="mb-2">
-                                <div class="text-muted" style="font-size:.9rem;">Email</div>
-                                <div class="fw-semibold">@Model.Email</div>
-                            </div>
-
-                            <div class="mb-2">
-                                <div class="text-muted" style="font-size:.9rem;">Teléfono personal</div>
-                                <div class="fw-semibold">@(!string.IsNullOrWhiteSpace(Model.TelefonoPersonal) ? Model.TelefonoPersonal : "—")</div>
-                            </div>
-
-                            <div class="mb-2">
-                                <div class="text-muted" style="font-size:.9rem;">Teléfono emergencia</div>
-                                <div class="fw-semibold">@(!string.IsNullOrWhiteSpace(Model.TelefonoEmergencia) ? Model.TelefonoEmergencia : "—")</div>
-                            </div>
-
-                            <div class="mb-2">
-                                <div class="text-muted" style="font-size:.9rem;">Lesión u operación</div>
-                                <div class="fw-semibold">
-                                    @(!string.IsNullOrWhiteSpace(Model.LesionOperacion) ? Model.LesionOperacion : "—")
-                                </div>
-                            </div>
-
-                            <div class="mb-2">
-                                <div class="text-muted" style="font-size:.9rem;">Patología</div>
-                                <div class="fw-semibold">
-                                    @(!string.IsNullOrWhiteSpace(Model.Patologia) ? Model.Patologia : "—")
-                                </div>
+                            <div class="cr-info-grid">
+                                <div><span>Nombre</span><strong>@nombreCompleto</strong></div>
+                                <div><span>Cédula</span><strong>@Model.Cedula</strong></div>
+                                <div><span>Email</span><strong>@Model.Email</strong></div>
+                                <div><span>Teléfono</span><strong>@(Model.TelefonoPersonal ?? "—")</strong></div>
+                                <div><span>Emergencia</span><strong>@(Model.TelefonoEmergencia ?? "—")</strong></div>
+                                <div><span>Lesión/operación</span><strong>@(Model.LesionOperacion ?? "—")</strong></div>
+                                <div><span>Patología</span><strong>@(Model.Patologia ?? "—")</strong></div>
                             </div>
 
                             @if (canConfigurarFamiliar)
                             {
-                                <form asp-action="ActualizarFamiliar" method="post" class="mt-3">
+                                <form asp-action="ActualizarFamiliar" method="post" class="border rounded p-3 mt-3">
                                     @Html.AntiForgeryToken()
-
                                     <input type="hidden" name="idUsuario" value="@Model.Id" />
-
-                                    <div class="mb-3">
-                                        <div class="d-flex align-items-center gap-3">
-                                            <label class="text-muted mb-0" style="font-size:.9rem;" for="familiar">
-                                                Familiar
-                                            </label>
-
-                                            <div class="form-check form-switch m-0">
-                                                <input class="form-check-input"
-                                                       type="checkbox"
-                                                       role="switch"
-                                                       id="familiar"
-                                                       name="familiar"
-                                                       value="true"
-                                                @(Model.Familiar ? "checked" : "") />
-
-                                                <input type="hidden" name="familiar" value="false" />
-                                            </div>
-
-                                            <span class="fw-semibold">
-                                                @(Model.Familiar ? "Sí" : "No")
-                                            </span>
-                                        </div>
+                                    <div class="form-check form-switch mb-3">
+                                        <input class="form-check-input" type="checkbox" id="familiar" name="familiar" value="true" @(Model.Familiar ? "checked" : "") />
+                                        <input type="hidden" name="familiar" value="false" />
+                                        <label class="form-check-label" for="familiar">Usuario familiar</label>
                                     </div>
-
-                                    <div class="d-flex align-items-end justify-content-between mt-3 gap-2 flex-wrap">
-                                        <div style="max-width: 180px;">
-                                            <label for="cantidadFamilia" class="form-label text-muted mb-1" style="font-size:.9rem;">
-                                                Cantidad familiar
-                                            </label>
-
-                                            <input type="number"
-                                                   class="form-control"
-                                                   id="cantidadFamilia"
-                                                   name="cantidadFamilia"
-                                                   min="0"
-                                                   value="@(Model.CantidadFamilia.HasValue ? Model.CantidadFamilia.Value.ToString() : "")" />
+                                    <div class="d-flex gap-2 align-items-end">
+                                        <div class="flex-grow-1">
+                                            <label class="form-label" for="cantidadFamilia">Cantidad familiar</label>
+                                            <input class="form-control" type="number" min="2" max="6" id="cantidadFamilia" name="cantidadFamilia" value="@Model.CantidadFamilia" />
                                         </div>
-
-                                        <button type="submit" class="btn btn-outline-primary cr-btn-mini">
-                                            Guardar
-                                        </button>
+                                        <button class="btn btn-outline-primary" type="submit">Guardar</button>
                                     </div>
                                 </form>
                             }
-                            else
-                            {
-                                <div class="mb-2">
-                                    <div class="text-muted" style="font-size:.9rem;">Familiar</div>
-                                    <div class="fw-semibold">@(Model.Familiar ? "Sí" : "No")</div>
-                                </div>
-
-                                <div class="mb-2">
-                                    <div class="text-muted" style="font-size:.9rem;">Cantidad familiar</div>
-                                    <div class="fw-semibold">
-                                        @(Model.CantidadFamilia.HasValue ? Model.CantidadFamilia.Value.ToString() : "—")
-                                    </div>
-                                </div>
-                            }
 
                             <div class="d-flex align-items-center justify-content-between mt-3 gap-2 flex-wrap">
-                                <div class="cr-status @(activo ? "cr-status--ok" : "cr-status--off")">
-                                    <span class="cr-dot"></span>
-                                    <span class="cr-status-text">@(activo ? "Activo" : "Inactivo")</span>
-                                </div>
-
-                                @* Activar/Desactivar: solo Admin *@
-                                @if (canCambiarEstado)
-                                {
-                                    if (activo)
+                                <div>
+                                    @if (activo)
                                     {
-                                        <form asp-action="Desactivar" method="post" class="m-0">
-                                            @Html.AntiForgeryToken()
-                                            <input type="hidden" name="idUsuario" value="@Model.Id" />
-                                            <button type="submit" class="btn btn-outline-danger cr-btn-mini">
-                                                Desactivar
-                                            </button>
-                                        </form>
+                                        <span class="badge bg-success">Usuario activo</span>
                                     }
                                     else
                                     {
-                                        <form asp-action="Activar" method="post" class="m-0">
-                                            @Html.AntiForgeryToken()
-                                            <input type="hidden" name="idUsuario" value="@Model.Id" />
-                                            <button type="submit" class="btn btn-outline-success cr-btn-mini">
-                                                Activar
-                                            </button>
-                                        </form>
+                                        <span class="badge bg-secondary">Usuario inactivo</span>
                                     }
+                                </div>
+
+                                @if (canCambiarEstado)
+                                {
+                                    <form asp-action="@(activo ? "Desactivar" : "Activar")" method="post" class="m-0">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="idUsuario" value="@Model.Id" />
+                                        <button type="submit" class="btn btn-sm @(activo ? "btn-outline-danger" : "btn-outline-success")">
+                                            @(activo ? "Desactivar" : "Activar")
+                                        </button>
+                                    </form>
                                 }
                             </div>
 
-                            @* Gestionar roles: solo Admin *@
                             @if (canGestionarRoles)
                             {
-                                <button type="button" class="btn btn-outline-primary mt-2" data-bs-toggle="modal" data-bs-target="#rolesModal">
+                                <button type="button" class="btn btn-outline-primary w-100 mt-3" data-bs-toggle="modal" data-bs-target="#rolesModal">
                                     Gestionar roles
                                 </button>
                             }
                         </div>
 
-                        <!-- Paquete -->
-                        <div class="col-md-6">
-                            <div class="d-flex align-items-center justify-content-between mb-3">
+                        <div class="col-lg-7">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
                                 <h5 class="mb-0">Paquete</h5>
-                                <span class="text-muted" style="font-size:.9rem;">Hoy: @hoy.ToString("dd/MM/yyyy")</span>
+                                <span class="text-muted small">Hoy: @hoy.ToString("dd/MM/yyyy")</span>
                             </div>
 
                             @if (paqueteActual == null)
                             {
-                                <div class="alert alert-info">
-                                    Este usuario no tiene un paquete asignado actualmente.
-                                </div>
-
-                                @* Agregar/Cambiar paquete: GestorPagos/Admin/Entrenador *@
-                                @if (canCambiarPaquete)
-                                {
-                                    <button type="button" class="btn btn-primary w-100"
-                                            data-bs-toggle="modal" data-bs-target="#modalPaquete">
-                                        Agregar paquete
-                                    </button>
-                                }
+                                <div class="alert alert-info">Este usuario no tiene un paquete activo asignado.</div>
                             }
                             else
                             {
-                                var vigente = (paqueteActual.FechaInicio.Date <= hoy && paqueteActual.FechaFin.Date >= hoy);
-
+                                var p = paqueteActual.Paquete;
+                                bool vigente = paqueteActual.FechaInicio.Date <= hoy && paqueteActual.FechaFin.Date >= hoy;
                                 <div class="cr-card-paquete mb-3">
                                     <div class="cr-card-paquete-body">
-                                        <div class="cr-card-title">Paquete #@paqueteActual.IdPaquete</div>
-
-                                        <div class="cr-card-subtitle">
-                                            <div>Plan: @paqueteActual.Paquete?.CantDias</div>
+                                        <div class="d-flex justify-content-between gap-2 flex-wrap">
                                             <div>
-                                                <span class="text-muted">Pago total:</span>
-                                                <span class="fw-semibold">@((paqueteActual.Paquete?.Pago ?? 0).ToString("N2"))</span>
+                                                <div class="cr-card-title">@(string.IsNullOrWhiteSpace(p?.Detalle) ? $"Paquete #{paqueteActual.IdPaquete}" : p!.Detalle)</div>
+                                                <div class="cr-card-subtitle">Plan: @p?.CantDias</div>
                                             </div>
                                             <div>
-                                                <span class="text-muted">Pago por usuario:</span>
-                                                <span class="fw-semibold">@((paqueteActual.Paquete?.PagoPorUsuario ?? 0).ToString("N2"))</span>
-                                            </div>
-                                            <div>
-                                                <span class="text-muted">Lecciones totales:</span>
-                                                <span class="fw-semibold">@paqueteActual.Paquete?.CantLecciones</span>
-                                            </div>
-                                            <div>
-                                                <span class="text-muted">Lecciones por usuario:</span>
-                                                <span class="fw-semibold">@paqueteActual.Paquete?.CantLeccionesPorUsuario</span>
-                                            </div>
-                                            @if (!string.IsNullOrWhiteSpace(paqueteActual.Paquete?.Detalle))
-                                            {
-                                                <div class="text-muted mt-1">@paqueteActual.Paquete.Detalle</div>
-                                            }
-                                        </div>
-
-                                        <div class="mt-3" style="font-size:.95rem;">
-                                            <div>
-                                                <span class="text-muted">Lecciones del usuario:</span>
-                                                <span class="fw-semibold">@paqueteActual.CantLecciones</span>
-                                            </div>
-                                            <div>
-                                                <span class="text-muted">Inicio:</span>
-                                                <span class="fw-semibold">@paqueteActual.FechaInicio.ToString("dd/MM/yyyy")</span>
-                                            </div>
-                                            <div>
-                                                <span class="text-muted">Fin:</span>
-                                                <span class="fw-semibold">@paqueteActual.FechaFin.ToString("dd/MM/yyyy")</span>
+                                                @if (grupoActual != null)
+                                                {
+                                                    <span class="badge bg-info text-dark">Grupal · @grupoActual.CantidadUsuarios usuarios</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge bg-secondary">Individual</span>
+                                                }
                                             </div>
                                         </div>
 
-                                        <div class="mt-3">
-                                            @if (vigente)
-                                            {
-                                                <span class="badge bg-success">Vigente</span>
-                                            }
-                                            else
-                                            {
-                                                <span class="badge bg-secondary">No vigente</span>
-                                            }
+                                        <div class="row g-2 mt-2">
+                                            <div class="col-6"><span class="text-muted">Lecciones por usuario:</span><div class="fw-semibold">@(p?.CantLeccionesPorUsuario ?? 0)</div></div>
+                                            <div class="col-6"><span class="text-muted">Monto por usuario:</span><div class="fw-semibold">₡@((p?.PagoPorUsuario ?? 0).ToString("N2"))</div></div>
+                                            <div class="col-6"><span class="text-muted">Lecciones disponibles:</span><div class="fw-semibold">@paqueteActual.CantLecciones</div></div>
+                                            <div class="col-6"><span class="text-muted">Estado:</span><div class="fw-semibold">@(vigente ? "Vigente" : "Pendiente / vencido")</div></div>
+                                            <div class="col-6"><span class="text-muted">Inicio:</span><div class="fw-semibold">@paqueteActual.FechaInicio.ToString("dd/MM/yyyy")</div></div>
+                                            <div class="col-6"><span class="text-muted">Fin:</span><div class="fw-semibold">@paqueteActual.FechaFin.ToString("dd/MM/yyyy")</div></div>
                                         </div>
                                     </div>
                                 </div>
+                            }
 
-                                @* Pagar paquete: GestorPagos/Admin *@
-                                @if (canPagarPaquete)
+                            @if (grupoActual != null)
+                            {
+                                <div class="border rounded p-3 mb-3">
+                                    <div class="d-flex justify-content-between align-items-center mb-2 gap-2 flex-wrap">
+                                        <div>
+                                            <div class="fw-semibold">Grupo #@grupoActual.IdGrupoPaquete</div>
+                                            <div class="text-muted small">@grupoActual.NombrePaquete</div>
+                                        </div>
+                                        @if (canCambiarPaquete)
+                                        {
+                                            <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#editarGrupoModal">
+                                                Editar grupo
+                                            </button>
+                                        }
+                                    </div>
+
+                                    @if (grupoActual.TieneSaldoPendiente)
+                                    {
+                                        <div class="alert alert-warning py-2">
+                                            <strong>No se puede renovar todavía.</strong> Hay integrantes con saldo pendiente.
+                                        </div>
+                                    }
+
+                                    <div class="table-responsive">
+                                        <table class="table table-sm align-middle mb-0">
+                                            <thead>
+                                                <tr>
+                                                    <th>Integrante</th>
+                                                    <th>Cédula</th>
+                                                    <th>Lecciones</th>
+                                                    <th>Deuda</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                            @foreach (var miembro in grupoActual.Miembros)
+                                            {
+                                                <tr>
+                                                    <td>
+                                                        @miembro.NombreCompleto
+                                                        @if (miembro.EsUsuarioActual)
+                                                        {
+                                                            <span class="badge bg-info text-dark ms-1">Actual</span>
+                                                        }
+                                                    </td>
+                                                    <td>@miembro.Cedula</td>
+                                                    <td>@miembro.CantLecciones</td>
+                                                    <td>
+                                                        @if (miembro.SaldoPendiente > 0)
+                                                        {
+                                                            <span class="text-warning fw-semibold">₡@miembro.SaldoPendiente.ToString("N2")</span>
+                                                        }
+                                                        else
+                                                        {
+                                                            <span class="text-success">Pagado</span>
+                                                        }
+                                                    </td>
+                                                </tr>
+                                            }
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            }
+
+                            <div class="d-grid gap-2">
+                                @if (canPagarPaquete && paqueteActual != null)
                                 {
-                                    <button type="button"
-                                            class="btn btn-outline-success w-100"
-                                            data-bs-toggle="modal"
-                                            data-bs-target="#modalPagarPaquete">
-                                        Pagar paquete
+                                    <button type="button" class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#modalPagarPaquete">
+                                        @(grupoActual != null ? "Pagar / renovar grupo" : "Pagar paquete")
                                     </button>
                                 }
 
-                                @* Cambiar paquete: GestorPagos/Admin/Entrenador *@
-                                @if (canCambiarPaquete)
+                                @if (canCambiarPaquete && grupoActual == null)
                                 {
-                                    <button type="button" class="btn btn-outline-primary w-100 mt-2"
-                                            data-bs-toggle="modal" data-bs-target="#modalPaquete">
-                                        Cambiar paquete
+                                    <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalPaquete">
+                                        @(paqueteActual == null ? "Asignar paquete" : "Cambiar paquete")
                                     </button>
                                 }
 
-                                @* Historial de pagos: GestorPagos/Admin/Entrenador/Usuario *@
                                 @if (canVerHistorialPagos)
                                 {
-                                    <a asp-action="HistorialPagos" asp-route-id="@Model.Id" class="btn btn-outline-secondary w-100 mt-2">
-                                        Historial de pagos
-                                    </a>
+                                    <a asp-action="HistorialPagos" asp-route-id="@Model.Id" class="btn btn-outline-secondary">Historial de pagos</a>
                                 }
-                            }
+                            </div>
                         </div>
                     </div>
 
-                    <div class="d-flex justify-content-between mt-4">
+                    <div class="mt-4">
                         <a asp-action="Index" class="btn btn-outline-secondary">Volver</a>
                     </div>
-
                 </div>
             </div>
-
         </div>
     </div>
 </div>
 
-@* ==========================
-   MODAL PAGAR PAQUETE
-   ========================== *@
 @if (canPagarPaquete && paqueteActual != null)
 {
-    var montoPaqueteActual = (paqueteActual.Paquete?.PagoPorUsuario ?? 0) > 0
-        ? paqueteActual.Paquete!.PagoPorUsuario
-        : paqueteActual.Paquete?.Pago ?? 0;
-
-    var leccionesPaqueteActual = (paqueteActual.Paquete?.CantLeccionesPorUsuario ?? 0) > 0
-        ? paqueteActual.Paquete!.CantLeccionesPorUsuario
-        : paqueteActual.Paquete?.CantLecciones ?? 0;
+    var p = paqueteActual.Paquete;
+    decimal montoUsuario = p?.PagoPorUsuario ?? 0;
+    int leccionesUsuario = p?.CantLeccionesPorUsuario ?? 0;
+    decimal totalGrupo = grupoActual != null ? montoUsuario * grupoActual.CantidadUsuarios : montoUsuario;
 
     <div class="modal fade" id="modalPagarPaquete" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content cr-card">
                 <div class="modal-header">
-                    <h5 class="modal-title">Pagar paquete</h5>
+                    <h5 class="modal-title">@(grupoActual != null ? "Pagar / renovar grupo" : "Pagar paquete")</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                 </div>
-
                 <form asp-action="PagarPaquete" method="post">
                     @Html.AntiForgeryToken()
-
+                    <input type="hidden" name="idUsuario" value="@Model.Id" />
                     <div class="modal-body">
-                        <input type="hidden" name="idUsuario" value="@Model.Id" />
-
-                        <p class="text-muted mb-3">
-                            Registrar pago para <strong>@nombreCompleto</strong>.
-                        </p>
-
-                        <div class="row g-3 mb-3">
-                            <div class="col-12 col-sm-6">
-                                <div class="text-muted" style="font-size:.9rem;">Monto por usuario</div>
-                                <div class="fw-semibold">@montoPaqueteActual.ToString("N2")</div>
+                        @if (grupoActual != null)
+                        {
+                            <div class="alert alert-info">
+                                Esta operación se aplicará a los <strong>@grupoActual.CantidadUsuarios integrantes</strong> del grupo.
+                                Cada uno recibirá <strong>@leccionesUsuario lecciones</strong> y tendrá un pago individual de
+                                <strong>₡@montoUsuario.ToString("N2")</strong>.
+                                <div class="mt-1">Referencia total: <strong>₡@totalGrupo.ToString("N2")</strong>.</div>
                             </div>
-                            <div class="col-12 col-sm-6">
-                                <div class="text-muted" style="font-size:.9rem;">Lecciones por usuario</div>
-                                <div class="fw-semibold">@leccionesPaqueteActual</div>
-                            </div>
-                        </div>
+
+                            @if (grupoActual.TieneSaldoPendiente)
+                            {
+                                <div class="alert alert-warning">
+                                    La renovación será rechazada mientras exista saldo pendiente en cualquiera de los integrantes.
+                                </div>
+                            }
+                        }
+                        else
+                        {
+                            <div class="alert alert-info">Se asignarán @leccionesUsuario lecciones por ₡@montoUsuario.ToString("N2").</div>
+                        }
 
                         <div class="mb-3">
-                            <label for="tipoPago" class="form-label">Tipo de pago</label>
-                            <select id="tipoPago" name="tipoPago" class="form-select" required>
+                            <label class="form-label" for="tipoPago">Tipo de pago</label>
+                            <select class="form-select" id="tipoPago" name="tipoPago" required>
                                 <option value="CONTADO">Contado</option>
                                 <option value="CREDITO">Crédito</option>
                             </select>
                         </div>
-
                         <div class="mb-3">
-                            <label for="fechaPago" class="form-label">Fecha de pago</label>
-                            <input type="date"
-                                   id="fechaPago"
-                                   name="fechaPago"
-                                   class="form-control"
-                                   value="@hoy.ToString("yyyy-MM-dd")"
-                                   required />
+                            <label class="form-label" for="fechaPago">Fecha de pago</label>
+                            <input class="form-control" type="date" id="fechaPago" name="fechaPago" value="@hoy.ToString("yyyy-MM-dd")" required />
                         </div>
-
-                        <div class="alert alert-info mb-0" style="font-size:.9rem;">
-                            <strong>Contado:</strong> el pago queda en 0 y se registra un abono por el total del paquete.
-                            <br />
-                            <strong>Crédito:</strong> el pago queda con el monto original y no se registra abono.
+                        <div class="small text-muted">
+                            En crédito, cada integrante recibe su propia deuda. Los abonos posteriores se registran individualmente.
                         </div>
                     </div>
-
                     <div class="modal-footer d-flex gap-2">
-                        <button type="submit" class="btn btn-success w-100">
-                            Confirmar pago
-                        </button>
-
-                        <button type="button" class="btn btn-outline-secondary w-100" data-bs-dismiss="modal">
-                            Cancelar
-                        </button>
+                        <button class="btn btn-success w-100" type="submit">Confirmar</button>
+                        <button class="btn btn-outline-secondary w-100" type="button" data-bs-dismiss="modal">Cancelar</button>
                     </div>
                 </form>
             </div>
         </div>
     </div>
 }
-@* ==========================
-   MODAL PAQUETE (solo si puede)
-   ========================== *@
-@if (canCambiarPaquete)
+
+@if (canCambiarPaquete && grupoActual == null)
 {
     <div class="modal fade" id="modalPaquete" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-dialog modal-dialog-centered modal-xl">
             <div class="modal-content cr-card">
                 <div class="modal-header">
                     <h5 class="modal-title">Seleccionar paquete</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                 </div>
-
-                <form asp-action="CambiarPaquete" method="post">
+                <form asp-action="CambiarPaquete" method="post" id="formAsignarPaquete">
                     @Html.AntiForgeryToken()
+                    <input type="hidden" name="idUsuario" value="@Model.Id" />
+                    <input type="hidden" name="idPaquete" id="idPaqueteSeleccionado" />
+                    <div id="usuariosGrupoHidden"></div>
 
                     <div class="modal-body">
-                        <input type="hidden" name="idUsuario" value="@Model.Id" />
-                        <input type="hidden" name="idPaquete" id="idPaqueteSeleccionado" value="" />
+                        <p class="text-muted">Seleccioná el paquete para <strong>@nombreCompleto</strong>.</p>
 
-                        <p class="text-muted mb-3">
-                            Seleccioná un paquete para <strong>@nombreCompleto</strong>.
-                        </p>
-
-                        @if (paquetesDisponibles == null || !paquetesDisponibles.Any())
-                        {
-                            <div class="alert alert-info mb-0">
-                                No hay paquetes activos disponibles.
-                            </div>
-                        }
-                        else
-                        {
-                            <div class="row g-2 mb-3">
-                                <div class="col-12 col-md-5">
-                                    <label for="filtroTipoPlanPaquete" class="form-label text-muted mb-1" style="font-size:.9rem;">
-                                        Tipo plan
-                                    </label>
-
-                                    <select id="filtroTipoPlanPaquete" class="form-select form-select-sm">
-                                        <option value="">Todos</option>
-                                        @foreach (var plan in tiposPlanFiltro)
-                                        {
-                                            <option value="@plan">@plan</option>
-                                        }
-                                    </select>
-                                </div>
-
-                                <div class="col-12 col-md-5">
-                                    <label for="filtroLeccionesPaquete" class="form-label text-muted mb-1" style="font-size:.9rem;">
-                                        Cantidad de lecciones
-                                    </label>
-
-                                    <select id="filtroLeccionesPaquete" class="form-select form-select-sm">
-                                        <option value="">Todas</option>
-                                        @foreach (var cant in leccionesFiltro)
-                                        {
-                                            <option value="@cant">@cant</option>
-                                        }
-                                    </select>
-                                </div>
-
-                                <div class="col-12 col-md-2 d-flex align-items-end">
-                                    <button type="button" class="btn btn-outline-secondary btn-sm w-100" id="btnLimpiarFiltrosPaquete">
-                                        Limpiar
-                                    </button>
-                                </div>
-                            </div>
-
-                            <div class="alert alert-info d-none" id="sinResultadosPaquetes">
-                                No hay paquetes que coincidan con los filtros seleccionados.
-                            </div>
-
-                            <div class="row g-3" id="contenedorPaquetes">
-                                @foreach (var p in paquetesDisponibles)
-                                {
-                                    var isCurrent = paqueteActual != null && paqueteActual.IdPaquete == p.IdPaquete;
-
-                                    <div class="col-12 col-md-6 paquete-item"
-                                         data-plan="@p.CantDias"
-                                         data-lecciones="@p.CantLecciones">
-                                        <div class="cr-card-paquete paquete-select-card h-100 @(isCurrent ? "selected" : "")"
-                                             data-id="@p.IdPaquete"
-                                             style="cursor:pointer;">
-                                            <div class="cr-card-paquete-body">
-                                                <div class="cr-card-title">Paquete #@p.IdPaquete</div>
-                                                <div class="cr-card-subtitle">
-                                                    <div>Plan: <span class="fw-semibold">@p.CantDias</span></div>
-                                                    <div>Lecciones: <span class="fw-semibold">@p.CantLecciones</span></div>
-                                                    <div>Pago: <span class="fw-semibold">@p.Pago.ToString("N2")</span></div>
-                                                    @if (!string.IsNullOrWhiteSpace(p.Detalle))
-                                                    {
-                                                        <div class="text-muted mt-1">@p.Detalle</div>
-                                                    }
-                                                </div>
-                                                @if (isCurrent)
-                                                {
-                                                    <div class="mt-2">
-                                                        <span class="badge bg-info">Actual</span>
-                                                    </div>
-                                                }
+                        <div class="row g-3" id="contenedorPaquetes">
+                            @foreach (var p in paquetesDisponibles)
+                            {
+                                <div class="col-12 col-md-6 col-xl-4">
+                                    <div class="cr-card-paquete paquete-select-card h-100"
+                                         role="button"
+                                         tabindex="0"
+                                         data-id="@p.IdPaquete"
+                                         data-esgrupal="@p.EsGrupal.ToString().ToLowerInvariant()"
+                                         data-cantidad="@p.CantidadUsuarios"
+                                         data-nombre="@(p.Detalle ?? $"Paquete #{p.IdPaquete}")">
+                                        <div class="cr-card-paquete-body">
+                                            <div class="d-flex justify-content-between gap-2">
+                                                <div class="cr-card-title">@(p.Detalle ?? $"Paquete #{p.IdPaquete}")</div>
+                                                <span class="badge @(p.EsGrupal ? "bg-info text-dark" : "bg-secondary")">@(p.EsGrupal ? $"Grupal x{p.CantidadUsuarios}" : "Individual")</span>
+                                            </div>
+                                            <div class="cr-card-subtitle mt-2">
+                                                <div>@p.CantDias</div>
+                                                <div>@p.CantLeccionesPorUsuario lecciones por usuario</div>
+                                                <div>₡@p.PagoPorUsuario.ToString("N2") por usuario</div>
                                             </div>
                                         </div>
                                     </div>
-                                }
-                            </div>
-                        }
-                    </div>
+                                </div>
+                            }
+                        </div>
 
+                        <div class="border rounded p-3 mt-4 d-none" id="grupoSeleccionWrap">
+                            <div class="d-flex justify-content-between align-items-center gap-2 flex-wrap mb-2">
+                                <div>
+                                    <h6 class="mb-0">Completar grupo</h6>
+                                    <div class="text-muted small" id="grupoRequerimiento"></div>
+                                </div>
+                                <span class="badge bg-info text-dark" id="grupoContador">0 / 0</span>
+                            </div>
+
+                            <div class="input-group mb-2">
+                                <input type="text" class="form-control" id="buscarUsuarioGrupo" placeholder="Buscar por nombre, cédula o correo..." />
+                                <button type="button" class="btn btn-outline-primary" id="btnBuscarUsuarioGrupo">Buscar</button>
+                            </div>
+                            <div id="resultadosUsuarioGrupo" class="mb-3"></div>
+                            <div id="usuariosGrupoSeleccionados" class="d-flex flex-wrap gap-2"></div>
+                        </div>
+                    </div>
                     <div class="modal-footer d-flex gap-2">
-                        <button type="submit" class="btn btn-primary w-100" id="btnGuardarPaquete">
-                            Guardar
-                        </button>
+                        <button type="submit" class="btn btn-primary w-100" id="btnGuardarPaquete">Guardar asignación</button>
                         <button type="button" class="btn btn-outline-secondary w-100" data-bs-dismiss="modal">Cancelar</button>
                     </div>
                 </form>
@@ -586,74 +418,115 @@
     </div>
 }
 
-@* ==========================
-   MODAL ROLES (solo Admin)
-   ========================== *@
+@if (grupoActual != null && canCambiarPaquete)
+{
+    <div class="modal fade" id="editarGrupoModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content cr-card">
+                <div class="modal-header">
+                    <h5 class="modal-title">Editar grupo #@grupoActual.IdGrupoPaquete</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    @if (grupoActual.TieneSaldoPendiente)
+                    {
+                        <div class="alert alert-warning">
+                            El grupo tiene deuda activa. No se podrá reemplazar integrantes, cambiar paquete ni deshacer el grupo hasta que todos paguen.
+                        </div>
+                    }
+
+                    <h6>Reemplazar integrante</h6>
+                    <form asp-action="ReemplazarMiembroGrupo" method="post" id="formReemplazarMiembro" class="border rounded p-3 mb-4">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="idGrupoPaquete" value="@grupoActual.IdGrupoPaquete" />
+                        <input type="hidden" name="idUsuarioRetorno" value="@Model.Id" />
+                        <input type="hidden" name="idUsuarioEntra" id="idUsuarioEntra" />
+
+                        <div class="mb-3">
+                            <label class="form-label">Integrante que sale</label>
+                            <select class="form-select" name="idUsuarioSale" required>
+                                <option value="">Seleccione...</option>
+                                @foreach (var m in grupoActual.Miembros)
+                                {
+                                    <option value="@m.IdUsuario">@m.NombreCompleto · @m.Cedula</option>
+                                }
+                            </select>
+                        </div>
+
+                        <div class="input-group mb-2">
+                            <input type="text" class="form-control" id="buscarReemplazo" placeholder="Buscar nuevo integrante..." />
+                            <button type="button" class="btn btn-outline-primary" id="btnBuscarReemplazo">Buscar</button>
+                        </div>
+                        <div id="resultadosReemplazo" class="mb-2"></div>
+                        <div class="small text-muted mb-3" id="reemplazoSeleccionado">No hay usuario nuevo seleccionado.</div>
+                        <button class="btn btn-primary" type="submit">Reemplazar integrante</button>
+                    </form>
+
+                    <h6>Cambiar paquete del grupo</h6>
+                    <form asp-action="CambiarPaqueteGrupo" method="post" class="border rounded p-3 mb-4">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="idGrupoPaquete" value="@grupoActual.IdGrupoPaquete" />
+                        <input type="hidden" name="idUsuarioRetorno" value="@Model.Id" />
+                        <div class="d-flex gap-2">
+                            <select class="form-select" name="idPaqueteNuevo" required>
+                                @foreach (var p in paquetesGrupoCompatibles)
+                                {
+                                    <option value="@p.IdPaquete" selected="@(p.IdPaquete == grupoActual.IdPaquete ? "selected" : null)">
+                                        @(p.Detalle ?? $"Paquete #{p.IdPaquete}") · @p.CantLeccionesPorUsuario lecciones · ₡@p.PagoPorUsuario.ToString("N2")
+                                    </option>
+                                }
+                            </select>
+                            <button class="btn btn-outline-primary" type="submit">Cambiar</button>
+                        </div>
+                        <div class="form-text">Solo se permite si nadie tiene deuda ni lecciones disponibles.</div>
+                    </form>
+
+                    <h6 class="text-danger">Deshacer grupo</h6>
+                    <form asp-action="DeshacerGrupo" method="post" class="border border-danger rounded p-3" onsubmit="return confirm('¿Seguro que desea deshacer el grupo completo? Los integrantes quedarán sin esta asignación grupal activa.');">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="idGrupoPaquete" value="@grupoActual.IdGrupoPaquete" />
+                        <input type="hidden" name="idUsuarioRetorno" value="@Model.Id" />
+                        <p class="text-muted small">Los pagos históricos se conservan. Las asignaciones grupales activas se desactivan y las lecciones restantes se ponen en 0.</p>
+                        <button class="btn btn-outline-danger" type="submit">Deshacer grupo completo</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 @if (canGestionarRoles)
 {
-    var rolesUsuario = ViewBag.RolesUsuario as List<string> ?? new List<string>();
-    var rolesNoTiene = ViewBag.RolesNoTiene as List<string> ?? new List<string>();
-
-    <div class="modal fade" id="rolesModal" tabindex="-1" aria-labelledby="rolesModalLabel" aria-hidden="true">
+    <div class="modal fade" id="rolesModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content cr-card">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="rolesModalLabel">Gestionar roles</h5>
+                    <h5 class="modal-title">Gestionar roles</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                 </div>
-
-                <form method="post" asp-action="GestionarRoles">
+                <form method="post" asp-action="GestionarRoles" id="formRoles">
                     @Html.AntiForgeryToken()
                     <input type="hidden" name="idUsuario" value="@Model.Id" />
-
                     <input type="hidden" name="addRole" id="addRole" />
                     <input type="hidden" name="removeRole" id="removeRole" />
-
                     <div class="modal-body">
-                        <div class="text-muted small mb-3 text-center">
-                            Elegí un rol para <strong>quitar</strong> o un rol para <strong>agregar</strong>. Solo uno a la vez.
+                        <div class="mb-3">
+                            <label class="form-label">Quitar rol</label>
+                            <select class="form-select" id="selRolesTiene">
+                                <option value="">-- Ninguno --</option>
+                                @foreach (var r in rolesUsuario) { <option value="@r">@r</option> }
+                            </select>
                         </div>
-
-                        <div class="row g-3">
-                            <div class="col-12 col-md-6">
-                                <label class="form-label fw-semibold">Roles que TIENE (quitar)</label>
-                                <select id="selRolesTiene" class="form-select">
-                                    <option value="">-- Seleccionar --</option>
-                                    @foreach (var r in rolesUsuario)
-                                    {
-                                        <option value="@r">@r</option>
-                                    }
-                                </select>
-                                @if (rolesUsuario.Count == 0)
-                                {
-                                    <div class="text-muted small mt-1">(no tiene roles)</div>
-                                }
-                            </div>
-
-                            <div class="col-12 col-md-6">
-                                <label class="form-label fw-semibold">Roles que NO tiene (agregar)</label>
-                                <select id="selRolesNoTiene" class="form-select">
-                                    <option value="">-- Seleccionar --</option>
-                                    @foreach (var r in rolesNoTiene)
-                                    {
-                                        <option value="@r">@r</option>
-                                    }
-                                </select>
-                                @if (rolesNoTiene.Count == 0)
-                                {
-                                    <div class="text-muted small mt-1">(no hay roles disponibles)</div>
-                                }
-                            </div>
+                        <div class="mb-3">
+                            <label class="form-label">Agregar rol</label>
+                            <select class="form-select" id="selRolesNoTiene">
+                                <option value="">-- Ninguno --</option>
+                                @foreach (var r in rolesNoTiene) { <option value="@r">@r</option> }
+                            </select>
                         </div>
-
-                        <div class="text-center small mt-3" id="rolesAccionTxt"></div>
                     </div>
-
-                    <div class="modal-footer d-flex gap-2">
-                        <button type="submit" class="btn btn-primary w-100" id="btnAplicarRol" disabled>
-                            Aplicar cambio
-                        </button>
-                        <button type="button" class="btn btn-outline-secondary w-100" data-bs-dismiss="modal">Cerrar</button>
+                    <div class="modal-footer">
+                        <button class="btn btn-primary w-100" type="submit" id="btnAplicarRol" disabled>Aplicar</button>
                     </div>
                 </form>
             </div>
@@ -661,186 +534,179 @@
     </div>
 }
 
-<style>
-    .paquete-select-card.selected {
-        outline: 2px solid rgba(255,255,255,.35);
-        box-shadow: 0 0 0 3px rgba(0,0,0,.2);
-    }
-
-    .cr-status {
-        display: inline-flex;
-        align-items: center;
-        gap: .5rem;
-        padding: .35rem .75rem;
-        border-radius: 999px;
-        border: 1px solid rgba(255,255,255,.18);
-        background: rgba(255,255,255,.06);
-        font-size: .95rem;
-        font-weight: 600;
-    }
-
-    .cr-dot {
-        width: 9px;
-        height: 9px;
-        border-radius: 50%;
-        display: inline-block;
-        background: rgba(255,255,255,.45);
-        box-shadow: 0 0 0 4px rgba(255,255,255,.06);
-    }
-
-    .cr-status--ok .cr-dot {
-        background: #22c55e;
-        box-shadow: 0 0 0 4px rgba(34,197,94,.18);
-    }
-
-    .cr-status--off .cr-dot {
-        background: #94a3b8;
-        box-shadow: 0 0 0 4px rgba(148,163,184,.18);
-    }
-
-    .cr-status-text {
-        line-height: 1;
-    }
-
-    .cr-btn-mini {
-        padding: .45rem .9rem;
-        font-size: .95rem;
-        border-radius: .4rem;
-    }
-</style>
-
 @section Scripts {
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const buscarUrl = '@Url.Action("BuscarUsuariosGrupo", "ApplicationUser")';
+        const usuarioPrincipalId = '@Model.Id';
 
-            // ====== Selección y filtros de paquete ======
-            const cards = document.querySelectorAll('.paquete-select-card');
-            const inputId = document.getElementById('idPaqueteSeleccionado');
+        // ==============================
+        // Asignación de paquete / grupo
+        // ==============================
+        const cards = document.querySelectorAll('.paquete-select-card');
+        const inputPaquete = document.getElementById('idPaqueteSeleccionado');
+        const wrapGrupo = document.getElementById('grupoSeleccionWrap');
+        const requerimiento = document.getElementById('grupoRequerimiento');
+        const contador = document.getElementById('grupoContador');
+        const hiddenWrap = document.getElementById('usuariosGrupoHidden');
+        const seleccionadosWrap = document.getElementById('usuariosGrupoSeleccionados');
+        const btnGuardar = document.getElementById('btnGuardarPaquete');
+        let requeridosOtros = 0;
+        let seleccionados = [];
 
-            const filtroTipoPlan = document.getElementById('filtroTipoPlanPaquete');
-            const filtroLecciones = document.getElementById('filtroLeccionesPaquete');
-            const btnLimpiarFiltros = document.getElementById('btnLimpiarFiltrosPaquete');
-            const itemsPaquete = document.querySelectorAll('.paquete-item');
-            const sinResultadosPaquetes = document.getElementById('sinResultadosPaquetes');
+        function renderSeleccionados() {
+            if (!seleccionadosWrap || !hiddenWrap) return;
+            seleccionadosWrap.innerHTML = '';
+            hiddenWrap.innerHTML = '';
 
-            if (cards && cards.length && inputId) {
-                cards.forEach(c => {
-                    c.addEventListener('click', () => {
-                        cards.forEach(x => x.classList.remove('selected'));
-                        c.classList.add('selected');
-                        inputId.value = c.getAttribute('data-id') || '';
-                    });
+            seleccionados.forEach(u => {
+                const chip = document.createElement('button');
+                chip.type = 'button';
+                chip.className = 'btn btn-sm btn-outline-info';
+                chip.textContent = `${u.nombre} · ${u.cedula} ×`;
+                chip.addEventListener('click', () => {
+                    seleccionados = seleccionados.filter(x => x.idUsuario !== u.idUsuario);
+                    renderSeleccionados();
                 });
+                seleccionadosWrap.appendChild(chip);
+
+                const h = document.createElement('input');
+                h.type = 'hidden';
+                h.name = 'idsUsuariosGrupo';
+                h.value = u.idUsuario;
+                hiddenWrap.appendChild(h);
+            });
+
+            if (contador) contador.textContent = `${seleccionados.length} / ${requeridosOtros}`;
+            if (btnGuardar && requeridosOtros > 0) btnGuardar.disabled = seleccionados.length !== requeridosOtros;
+            else if (btnGuardar) btnGuardar.disabled = !inputPaquete?.value;
+        }
+
+        cards.forEach(card => {
+            card.addEventListener('click', () => {
+                cards.forEach(c => c.classList.remove('selected'));
+                card.classList.add('selected');
+                if (inputPaquete) inputPaquete.value = card.dataset.id || '';
+
+                const grupal = card.dataset.esgrupal === 'true';
+                const cantidad = Number(card.dataset.cantidad || '1');
+                seleccionados = [];
+                requeridosOtros = grupal ? Math.max(0, cantidad - 1) : 0;
+
+                if (wrapGrupo) wrapGrupo.classList.toggle('d-none', !grupal);
+                if (requerimiento) requerimiento.textContent = grupal
+                    ? `Este paquete requiere ${cantidad} usuarios en total. Seleccioná ${requeridosOtros} usuario(s) adicional(es).`
+                    : '';
+                renderSeleccionados();
+            });
+        });
+
+        async function buscarUsuarios(inputId, resultsId, onSelect) {
+            const input = document.getElementById(inputId);
+            const results = document.getElementById(resultsId);
+            if (!input || !results) return;
+            const termino = input.value.trim();
+            if (termino.length < 2) {
+                results.innerHTML = '<div class="text-warning small">Ingresá al menos 2 caracteres.</div>';
+                return;
             }
 
-            function aplicarFiltrosPaquetes() {
-                const plan = filtroTipoPlan ? filtroTipoPlan.value : '';
-                const lecciones = filtroLecciones ? filtroLecciones.value : '';
+            results.innerHTML = '<div class="text-muted small">Buscando...</div>';
+            try {
+                const res = await fetch(`${buscarUrl}?termino=${encodeURIComponent(termino)}`);
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.message || 'No se pudo buscar.');
 
-                let visibles = 0;
-
-                itemsPaquete.forEach(item => {
-                    const itemPlan = item.getAttribute('data-plan') || '';
-                    const itemLecciones = item.getAttribute('data-lecciones') || '';
-
-                    const cumplePlan = !plan || itemPlan === plan;
-                    const cumpleLecciones = !lecciones || itemLecciones === lecciones;
-
-                    const visible = cumplePlan && cumpleLecciones;
-
-                    item.classList.toggle('d-none', !visible);
-
-                    if (visible) {
-                        visibles++;
-                    }
-                });
-
-                if (sinResultadosPaquetes) {
-                    sinResultadosPaquetes.classList.toggle('d-none', visibles > 0);
+                results.innerHTML = '';
+                if (!data.usuarios?.length) {
+                    results.innerHTML = '<div class="text-muted small">No hay usuarios disponibles.</div>';
+                    return;
                 }
 
-                // Si el paquete seleccionado queda oculto por el filtro, se limpia la selección
-                const seleccionado = document.querySelector('.paquete-select-card.selected');
-                if (seleccionado) {
-                    const itemSeleccionado = seleccionado.closest('.paquete-item');
-
-                    if (itemSeleccionado && itemSeleccionado.classList.contains('d-none')) {
-                        seleccionado.classList.remove('selected');
-
-                        if (inputId) {
-                            inputId.value = '';
-                        }
-                    }
-                }
-            }
-
-            if (filtroTipoPlan) {
-                filtroTipoPlan.addEventListener('change', aplicarFiltrosPaquetes);
-            }
-
-            if (filtroLecciones) {
-                filtroLecciones.addEventListener('change', aplicarFiltrosPaquetes);
-            }
-
-            if (btnLimpiarFiltros) {
-                btnLimpiarFiltros.addEventListener('click', () => {
-                    if (filtroTipoPlan) filtroTipoPlan.value = '';
-                    if (filtroLecciones) filtroLecciones.value = '';
-
-                    aplicarFiltrosPaquetes();
+                data.usuarios.forEach(u => {
+                    if (u.idUsuario === usuarioPrincipalId) return;
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'btn btn-outline-secondary btn-sm me-2 mb-2';
+                    btn.textContent = `${u.nombre} · ${u.cedula}`;
+                    btn.addEventListener('click', () => onSelect(u));
+                    results.appendChild(btn);
                 });
+            } catch (e) {
+                results.innerHTML = `<div class="text-danger small">${e.message}</div>`;
             }
+        }
 
-            // ====== Gestionar roles (solo si existe el modal) ======
-            const selTiene = document.getElementById('selRolesTiene');
-            const selNoTiene = document.getElementById('selRolesNoTiene');
+        document.getElementById('btnBuscarUsuarioGrupo')?.addEventListener('click', () => {
+            buscarUsuarios('buscarUsuarioGrupo', 'resultadosUsuarioGrupo', u => {
+                if (seleccionados.some(x => x.idUsuario === u.idUsuario)) return;
+                if (seleccionados.length >= requeridosOtros) return;
+                seleccionados.push(u);
+                renderSeleccionados();
+            });
+        });
 
-            const inputAdd = document.getElementById('addRole');
-            const inputRemove = document.getElementById('removeRole');
-
-            const btn = document.getElementById('btnAplicarRol');
-            const txt = document.getElementById('rolesAccionTxt');
-
-            function resetHidden() {
-                if (inputAdd) inputAdd.value = '';
-                if (inputRemove) inputRemove.value = '';
-                if (btn) btn.disabled = true;
-                if (txt) txt.textContent = '';
+        document.getElementById('formAsignarPaquete')?.addEventListener('submit', e => {
+            if (!inputPaquete?.value) {
+                e.preventDefault();
+                alert('Seleccione un paquete.');
+                return;
             }
-
-            if (selTiene && selNoTiene && inputAdd && inputRemove && btn && txt) {
-                resetHidden();
-
-                selTiene.addEventListener('change', () => {
-                    const val = selTiene.value || '';
-                    selNoTiene.value = '';
-
-                    inputAdd.value = '';
-                    inputRemove.value = val;
-
-                    if (val) {
-                        btn.disabled = false;
-                        txt.textContent = 'Se quitará el rol: ' + val;
-                    } else {
-                        resetHidden();
-                    }
-                });
-
-                selNoTiene.addEventListener('change', () => {
-                    const val = selNoTiene.value || '';
-                    selTiene.value = '';
-
-                    inputRemove.value = '';
-                    inputAdd.value = val;
-
-                    if (val) {
-                        btn.disabled = false;
-                        txt.textContent = 'Se agregará el rol: ' + val;
-                    } else {
-                        resetHidden();
-                    }
-                });
+            if (requeridosOtros > 0 && seleccionados.length !== requeridosOtros) {
+                e.preventDefault();
+                alert(`Debe seleccionar exactamente ${requeridosOtros} usuario(s) adicional(es).`);
             }
         });
-    </script>
+
+        // ==============================
+        // Reemplazo de integrante
+        // ==============================
+        const inputEntra = document.getElementById('idUsuarioEntra');
+        const seleccionadoTxt = document.getElementById('reemplazoSeleccionado');
+        document.getElementById('btnBuscarReemplazo')?.addEventListener('click', () => {
+            buscarUsuarios('buscarReemplazo', 'resultadosReemplazo', u => {
+                if (inputEntra) inputEntra.value = u.idUsuario;
+                if (seleccionadoTxt) seleccionadoTxt.textContent = `Nuevo integrante: ${u.nombre} · ${u.cedula}`;
+            });
+        });
+
+        document.getElementById('formReemplazarMiembro')?.addEventListener('submit', e => {
+            if (!inputEntra?.value) {
+                e.preventDefault();
+                alert('Seleccione el nuevo integrante.');
+            }
+        });
+
+        // ==============================
+        // Roles
+        // ==============================
+        const selTiene = document.getElementById('selRolesTiene');
+        const selNoTiene = document.getElementById('selRolesNoTiene');
+        const addRole = document.getElementById('addRole');
+        const removeRole = document.getElementById('removeRole');
+        const btnRol = document.getElementById('btnAplicarRol');
+
+        function actualizarRoles(origen) {
+            if (!addRole || !removeRole || !btnRol) return;
+            if (origen === 'quitar') {
+                if (selNoTiene) selNoTiene.value = '';
+                removeRole.value = selTiene?.value || '';
+                addRole.value = '';
+            } else {
+                if (selTiene) selTiene.value = '';
+                addRole.value = selNoTiene?.value || '';
+                removeRole.value = '';
+            }
+            btnRol.disabled = !addRole.value && !removeRole.value;
+        }
+        selTiene?.addEventListener('change', () => actualizarRoles('quitar'));
+        selNoTiene?.addEventListener('change', () => actualizarRoles('agregar'));
+    });
+</script>
 }
+
+<style>
+    .cr-info-grid > div { margin-bottom:.75rem; }
+    .cr-info-grid span { display:block; color:var(--muted); font-size:.88rem; }
+    .paquete-select-card.selected { outline:2px solid var(--red); box-shadow:0 0 0 3px rgba(254,1,0,.12); }
+</style>

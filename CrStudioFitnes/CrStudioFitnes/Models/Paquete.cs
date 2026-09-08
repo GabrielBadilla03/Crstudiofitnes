@@ -40,7 +40,17 @@ namespace CrStudioFitnes.Models
         [Display(Name = "Visible en catálogo")]
         public bool Activo { get; set; } = true;
 
+        [Display(Name = "Paquete grupal")]
+        public bool EsGrupal { get; set; } = false;
+
+        [Range(1, 1000, ErrorMessage = "La cantidad de usuarios debe ser mayor que cero.")]
+        [Display(Name = "Cantidad de usuarios")]
+        public int CantidadUsuarios { get; set; } = 1;
+
         public ICollection<PaqueteUsuario> PaquetesUsuario { get; set; }
             = new List<PaqueteUsuario>();
+
+        public ICollection<GrupoPaquete> GruposPaquete { get; set; }
+            = new List<GrupoPaquete>();
     }
 }

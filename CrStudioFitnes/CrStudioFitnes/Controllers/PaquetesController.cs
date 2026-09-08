@@ -8,13 +8,11 @@ using SIGE.Helpers;
 
 namespace CrStudioFitnes.Controllers
 {
-    [Authorize]
+    [Authorize(Roles = "Usuario,Entrenador,Administrador,Gestor de Pagos")]
     public class PaquetesController : Controller
     {
         private const string ROL_ADMIN = "Administrador";
         private const string ROL_GESTOR_PAGOS = "Gestor de Pagos";
-        private const string ROL_USUARIO = "Usuario";
-        private const string ROL_ENTRENADOR = "Entrenador";
 
         private readonly ApplicationDbContext _context;
 
@@ -27,12 +25,6 @@ namespace CrStudioFitnes.Controllers
         {
             return User.IsInRole(ROL_ADMIN)
                 || User.IsInRole(ROL_GESTOR_PAGOS);
-        }
-
-        private bool IsUsuarioOEntrenador()
-        {
-            return User.IsInRole(ROL_USUARIO)
-                || User.IsInRole(ROL_ENTRENADOR);
         }
 
         public async Task<IActionResult> Index(
@@ -48,13 +40,9 @@ namespace CrStudioFitnes.Controllers
                 page = 1;
 
             bool canManage = CanManagePaquetes();
-            bool isViewer = IsUsuarioOEntrenador();
 
-            if (!canManage && isViewer)
-            {
+            if (!canManage)
                 soloActivos = true;
-                reset = false;
-            }
 
             if (canManage && reset)
             {
@@ -68,10 +56,7 @@ namespace CrStudioFitnes.Controllers
             if (!string.IsNullOrWhiteSpace(buscar))
             {
                 string texto = buscar.Trim();
-
-                query = query.Where(p =>
-                    p.Detalle != null
-                    && p.Detalle.Contains(texto));
+                query = query.Where(p => p.Detalle != null && p.Detalle.Contains(texto));
             }
 
             if (soloActivos)
@@ -85,11 +70,7 @@ namespace CrStudioFitnes.Controllers
             ViewData["CurrentSoloActivos"] = soloActivos;
             ViewData["CanManage"] = canManage;
 
-            var model = await PaginatedList<Paquete>.CreateAsync(
-                query,
-                page,
-                pageSize);
-
+            var model = await PaginatedList<Paquete>.CreateAsync(query, page, pageSize);
             return View(model);
         }
 
@@ -109,6 +90,9 @@ namespace CrStudioFitnes.Controllers
                 return NotFound();
 
             ViewData["CanManage"] = CanManagePaquetes();
+            ViewBag.GruposActivos = await _context.GruposPaquete
+                .AsNoTracking()
+                .CountAsync(g => g.IdPaquete == paquete.IdPaquete && g.Activo);
 
             return View(paquete);
         }
@@ -117,16 +101,23 @@ namespace CrStudioFitnes.Controllers
         public IActionResult Create()
         {
             PopulateCantDiasDropDownList();
-            return View(new Paquete { Activo = true });
+            return View(new Paquete
+            {
+                Activo = true,
+                EsGrupal = false,
+                CantidadUsuarios = 1
+            });
         }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
         [Authorize(Roles = ROL_ADMIN + "," + ROL_GESTOR_PAGOS)]
         public async Task<IActionResult> Create(
-            [Bind("IdPaquete,CantDias,CantLecciones,Pago,CantLeccionesPorUsuario,PagoPorUsuario,Detalle,Activo")]
+            [Bind("IdPaquete,CantDias,CantLecciones,Pago,Detalle,Activo,EsGrupal,CantidadUsuarios")]
             Paquete paquete)
         {
+            AplicarCalculosPaquete(paquete);
+
             if (ModelState.IsValid)
             {
                 _context.Paquetes.Add(paquete);
@@ -147,11 +138,13 @@ namespace CrStudioFitnes.Controllers
                 return NotFound();
 
             var paquete = await _context.Paquetes.FindAsync(id.Value);
-
             if (paquete == null)
                 return NotFound();
 
             PopulateCantDiasDropDownList(paquete.CantDias);
+            ViewBag.TieneGruposActivos = await _context.GruposPaquete
+                .AsNoTracking()
+                .AnyAsync(g => g.IdPaquete == paquete.IdPaquete && g.Activo);
 
             return View(paquete);
         }
@@ -161,11 +154,33 @@ namespace CrStudioFitnes.Controllers
         [Authorize(Roles = ROL_ADMIN + "," + ROL_GESTOR_PAGOS)]
         public async Task<IActionResult> Edit(
             int id,
-            [Bind("IdPaquete,CantDias,CantLecciones,Pago,CantLeccionesPorUsuario,PagoPorUsuario,Detalle,Activo")]
+            [Bind("IdPaquete,CantDias,CantLecciones,Pago,Detalle,Activo,EsGrupal,CantidadUsuarios")]
             Paquete paquete)
         {
             if (id != paquete.IdPaquete)
                 return NotFound();
+
+            var actual = await _context.Paquetes
+                .AsNoTracking()
+                .FirstOrDefaultAsync(p => p.IdPaquete == id);
+
+            if (actual == null)
+                return NotFound();
+
+            bool tieneGruposActivos = await _context.GruposPaquete
+                .AsNoTracking()
+                .AnyAsync(g => g.IdPaquete == id && g.Activo);
+
+            if (tieneGruposActivos
+                && (actual.EsGrupal != paquete.EsGrupal
+                    || actual.CantidadUsuarios != paquete.CantidadUsuarios))
+            {
+                ModelState.AddModelError(
+                    string.Empty,
+                    "No se puede cambiar si el paquete es grupal ni su cantidad de usuarios mientras existan grupos activos. Primero edite o deshaga esos grupos.");
+            }
+
+            AplicarCalculosPaquete(paquete);
 
             if (ModelState.IsValid)
             {
@@ -176,12 +191,8 @@ namespace CrStudioFitnes.Controllers
                 }
                 catch (DbUpdateConcurrencyException)
                 {
-                    bool existe = await _context.Paquetes
-                        .AnyAsync(p => p.IdPaquete == paquete.IdPaquete);
-
-                    if (!existe)
+                    if (!await _context.Paquetes.AnyAsync(p => p.IdPaquete == paquete.IdPaquete))
                         return NotFound();
-
                     throw;
                 }
 
@@ -190,6 +201,7 @@ namespace CrStudioFitnes.Controllers
             }
 
             PopulateCantDiasDropDownList(paquete.CantDias);
+            ViewBag.TieneGruposActivos = tieneGruposActivos;
             return View(paquete);
         }
 
@@ -215,28 +227,89 @@ namespace CrStudioFitnes.Controllers
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
             var paquete = await _context.Paquetes.FindAsync(id);
-
             if (paquete == null)
                 return NotFound();
 
-            if (!paquete.Activo)
+            bool grupoActivo = await _context.GruposPaquete
+                .AsNoTracking()
+                .AnyAsync(g => g.IdPaquete == id && g.Activo);
+
+            if (grupoActivo)
             {
-                TempData["Ok"] = "El paquete ya estaba inactivo.";
+                TempData["Error"] = "No se puede desactivar el paquete porque todavía tiene grupos activos.";
                 return RedirectToAction(nameof(Index));
             }
 
-            // Baja lógica: conserva pagos e historial que referencian este paquete.
             paquete.Activo = false;
             await _context.SaveChangesAsync();
 
-            TempData["Ok"] =
-                "Paquete desactivado correctamente. Se conserva su historial.";
-
+            TempData["Ok"] = "Paquete desactivado correctamente. Se conserva su historial.";
             return RedirectToAction(nameof(Index));
         }
 
-        private void PopulateCantDiasDropDownList(
-            TipoPlanDias? selectedValue = null)
+        private void AplicarCalculosPaquete(Paquete paquete)
+        {
+            // Son campos derivados: cualquier valor enviado por el cliente se ignora
+            // y se recalcula en servidor. Se limpian errores previos de validación
+            // porque el model binder los valida antes de ejecutar este método.
+            ModelState.Remove(nameof(Paquete.CantLeccionesPorUsuario));
+            ModelState.Remove(nameof(Paquete.PagoPorUsuario));
+            ModelState.Remove(nameof(Paquete.CantidadUsuarios));
+
+            if (!paquete.EsGrupal)
+                paquete.CantidadUsuarios = 1;
+
+            if (paquete.EsGrupal && paquete.CantidadUsuarios < 2)
+            {
+                ModelState.AddModelError(
+                    nameof(Paquete.CantidadUsuarios),
+                    "Un paquete grupal debe tener al menos 2 usuarios.");
+                return;
+            }
+
+            if (paquete.CantidadUsuarios <= 0)
+                return;
+
+            if (paquete.CantLecciones > 0)
+            {
+                if (paquete.CantLecciones % paquete.CantidadUsuarios != 0)
+                {
+                    ModelState.AddModelError(
+                        nameof(Paquete.CantLecciones),
+                        "La cantidad total de lecciones debe poder dividirse exactamente entre la cantidad de usuarios.");
+                }
+                else
+                {
+                    paquete.CantLeccionesPorUsuario =
+                        paquete.CantLecciones / paquete.CantidadUsuarios;
+                }
+            }
+
+            if (paquete.Pago > 0)
+            {
+                decimal centavos = paquete.Pago * 100m;
+
+                if (centavos != decimal.Truncate(centavos))
+                {
+                    ModelState.AddModelError(
+                        nameof(Paquete.Pago),
+                        "El monto total solo puede tener 2 decimales.");
+                }
+                else if (centavos % paquete.CantidadUsuarios != 0)
+                {
+                    ModelState.AddModelError(
+                        nameof(Paquete.Pago),
+                        "El monto total debe poder dividirse exactamente entre la cantidad de usuarios, hasta centavos.");
+                }
+                else
+                {
+                    paquete.PagoPorUsuario =
+                        paquete.Pago / paquete.CantidadUsuarios;
+                }
+            }
+        }
+
+        private void PopulateCantDiasDropDownList(TipoPlanDias? selectedValue = null)
         {
             var items = Enum
                 .GetValues(typeof(TipoPlanDias))
@@ -246,8 +319,7 @@ namespace CrStudioFitnes.Controllers
                 {
                     Value = d.ToString(),
                     Text = d.ToString(),
-                    Selected = selectedValue.HasValue
-                        && d == selectedValue.Value
+                    Selected = selectedValue.HasValue && d == selectedValue.Value
                 })
                 .ToList();
 

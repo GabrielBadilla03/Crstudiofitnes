@@ -9,25 +9,22 @@
         <div class="col-lg-10">
             <div class="card shadow-sm cr-card">
                 <div class="card-body p-4 p-md-5">
-
                     <div class="text-center">
                         <h1 class="h3 mb-1">@ViewData["Title"]</h1>
                         <p class="text-muted mb-4">
-                            Modifique los datos del paquete seleccionado.
+                            Los valores por usuario se recalculan automáticamente. La estructura grupal no puede cambiar mientras existan grupos activos.
                         </p>
                     </div>
 
-                    <form asp-action="Edit" method="post" novalidate>
-                        <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+                    <form asp-action="Edit" method="post" novalidate id="paqueteForm">
                         <input type="hidden" asp-for="IdPaquete" />
+                        @Html.AntiForgeryToken()
+                        <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
 
                         <div class="row g-3">
                             <div class="col-12">
                                 <div class="form-floating">
-                                    <input asp-for="Detalle"
-                                           class="form-control"
-                                           placeholder="Nombre del paquete"
-                                           maxlength="200" />
+                                    <input asp-for="Detalle" class="form-control" placeholder="Nombre del paquete" maxlength="200" />
                                     <label asp-for="Detalle">Nombre del paquete</label>
                                     <span asp-validation-for="Detalle" class="text-danger"></span>
                                 </div>
@@ -35,9 +32,7 @@
 
                             <div class="col-md-6">
                                 <div class="form-floating">
-                                    <select asp-for="CantDias"
-                                            class="form-select"
-                                            asp-items="ViewBag.CantDiasList">
+                                    <select asp-for="CantDias" class="form-select" asp-items="ViewBag.CantDiasList">
                                         <option value="">Seleccione el tipo</option>
                                     </select>
                                     <label asp-for="CantDias">Tipo de plan</label>
@@ -45,15 +40,24 @@
                                 </div>
                             </div>
 
+                            <div class="col-md-6 d-flex align-items-center">
+                                <div class="form-check form-switch ms-2">
+                                    <input class="form-check-input" type="checkbox" asp-for="EsGrupal" id="esGrupalSwitch" style="transform:scale(1.35);cursor:pointer;" />
+                                    <label class="form-check-label fw-bold ms-2" for="esGrupalSwitch">Paquete grupal</label>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6" id="cantidadUsuariosWrap">
+                                <div class="form-floating">
+                                    <input asp-for="CantidadUsuarios" class="form-control" type="number" min="2" max="1000" step="1" placeholder="Cantidad de usuarios" />
+                                    <label asp-for="CantidadUsuarios">Cantidad de usuarios</label>
+                                    <span asp-validation-for="CantidadUsuarios" class="text-danger"></span>
+                                </div>
+                            </div>
+
                             <div class="col-md-6">
                                 <div class="form-floating">
-                                    <input asp-for="CantLecciones"
-                                           class="form-control"
-                                           type="number"
-                                           min="1"
-                                           max="1000"
-                                           step="1"
-                                           placeholder="Cantidad total de lecciones" />
+                                    <input asp-for="CantLecciones" class="form-control" type="number" min="1" max="1000" step="1" placeholder="Cantidad total de lecciones" />
                                     <label asp-for="CantLecciones">Cantidad total de lecciones</label>
                                     <span asp-validation-for="CantLecciones" class="text-danger"></span>
                                 </div>
@@ -61,70 +65,45 @@
 
                             <div class="col-md-6">
                                 <div class="form-floating">
-                                    <input asp-for="Pago"
-                                           class="form-control"
-                                           type="number"
-                                           min="0.01"
-                                           max="1000000"
-                                           step="0.01"
-                                           placeholder="Monto total del paquete" />
+                                    <input asp-for="Pago" class="form-control" type="number" min="0.01" max="1000000" step="0.01" placeholder="Monto total del paquete" />
                                     <label asp-for="Pago">Monto total del paquete</label>
                                     <span asp-validation-for="Pago" class="text-danger"></span>
                                 </div>
                             </div>
 
                             <div class="col-md-6">
-                                <div class="form-floating">
-                                    <input asp-for="CantLeccionesPorUsuario"
-                                           class="form-control"
-                                           type="number"
-                                           min="1"
-                                           max="1000"
-                                           step="1"
-                                           placeholder="Lecciones por usuario" />
-                                    <label asp-for="CantLeccionesPorUsuario">Lecciones por usuario</label>
-                                    <span asp-validation-for="CantLeccionesPorUsuario" class="text-danger"></span>
+                                <div class="border rounded p-3 h-100">
+                                    <div class="text-muted small">Lecciones por usuario</div>
+                                    <div class="fw-semibold fs-5" id="previewLecciones">—</div>
                                 </div>
                             </div>
 
                             <div class="col-md-6">
-                                <div class="form-floating">
-                                    <input asp-for="PagoPorUsuario"
-                                           class="form-control"
-                                           type="number"
-                                           min="0.01"
-                                           max="1000000"
-                                           step="0.01"
-                                           placeholder="Monto por usuario" />
-                                    <label asp-for="PagoPorUsuario">Monto por usuario</label>
-                                    <span asp-validation-for="PagoPorUsuario" class="text-danger"></span>
+                                <div class="border rounded p-3 h-100">
+                                    <div class="text-muted small">Monto por usuario</div>
+                                    <div class="fw-semibold fs-5" id="previewPago">—</div>
                                 </div>
                             </div>
 
                             <div class="col-md-6 d-flex align-items-center">
                                 <div class="form-check form-switch ms-2">
-                                    <input class="form-check-input"
-                                           type="checkbox"
-                                           asp-for="Activo"
-                                           id="activoSwitch"
-                                           style="transform: scale(1.5); cursor:pointer;" />
-                                    <label class="form-check-label fw-bold ms-2" for="activoSwitch">
-                                        @Html.DisplayNameFor(m => m.Activo)
-                                    </label>
+                                    <input class="form-check-input" type="checkbox" asp-for="Activo" id="activoSwitch" style="transform:scale(1.35);cursor:pointer;" />
+                                    <label class="form-check-label fw-bold ms-2" for="activoSwitch">Visible en catálogo</label>
+                                </div>
+                            </div>
+
+                            <div class="col-12">
+                                <div class="alert alert-info mb-0">
+                                    <strong>Ejemplo:</strong> 24 lecciones y 3 usuarios = 8 lecciones por usuario. ₡45.000 y 3 usuarios = ₡15.000 por usuario.
                                 </div>
                             </div>
 
                             <div class="col-12 d-flex justify-content-between mt-4">
-                                <a asp-action="Index" class="btn btn-outline-secondary">
-                                    Volver a la lista
-                                </a>
-                                <button type="submit" class="btn btn-primary">
-                                    Guardar cambios
-                                </button>
+                                <a asp-action="Index" class="btn btn-outline-secondary">Volver a la lista</a>
+                                <button type="submit" class="btn btn-primary">Guardar cambios</button>
                             </div>
                         </div>
                     </form>
-
                 </div>
             </div>
         </div>
@@ -132,7 +111,42 @@
 </div>
 
 @section Scripts {
-    @{
-        await Html.RenderPartialAsync("_ValidationScriptsPartial");
-    }
+    @{ await Html.RenderPartialAsync("_ValidationScriptsPartial"); }
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const esGrupal = document.getElementById('esGrupalSwitch');
+            const cantUsuarios = document.getElementById('CantidadUsuarios');
+            const cantLecciones = document.getElementById('CantLecciones');
+            const pago = document.getElementById('Pago');
+            const wrap = document.getElementById('cantidadUsuariosWrap');
+            const prevL = document.getElementById('previewLecciones');
+            const prevP = document.getElementById('previewPago');
+
+            function actualizar() {
+                const grupal = esGrupal.checked;
+                if (!grupal) {
+                    cantUsuarios.value = '1';
+                    wrap.classList.add('d-none');
+                } else {
+                    wrap.classList.remove('d-none');
+                    if (Number(cantUsuarios.value) < 2) cantUsuarios.value = '2';
+                }
+
+                const usuarios = Math.max(1, Number(cantUsuarios.value) || 1);
+                const lecciones = Number(cantLecciones.value) || 0;
+                const monto = Number(pago.value) || 0;
+
+                prevL.textContent = lecciones > 0
+                    ? (lecciones % usuarios === 0 ? (lecciones / usuarios).toString() : 'No divide exacto')
+                    : '—';
+
+                prevP.textContent = monto > 0
+                    ? '₡' + (monto / usuarios).toLocaleString('es-CR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                    : '—';
+            }
+
+            [esGrupal, cantUsuarios, cantLecciones, pago].forEach(el => el?.addEventListener('input', actualizar));
+            actualizar();
+        });
+    </script>
 }

@@ -25,8 +25,12 @@ namespace CrStudioFitnes.Models
         [DisplayFormat(ApplyFormatInEditMode = true, DataFormatString = "{0:dd/MM/yyyy}")]
         public DateTime FechaFin { get; set; }
 
-        // Nav
+        [Required]
+        public bool Activo { get; set; } = true;
+
         public Paquete Paquete { get; set; } = null!;
         public ApplicationUser Usuario { get; set; } = null!;
+        public ICollection<GrupoPaqueteUsuario> GruposUsuario { get; set; } = new List<GrupoPaqueteUsuario>();
+        public ICollection<PagoPaquete> Pagos { get; set; } = new List<PagoPaquete>();
     }
 }

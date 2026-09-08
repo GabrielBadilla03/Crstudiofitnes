@@ -4,59 +4,32 @@
 
 @{
     ViewData["Title"] = "Historial de pagos";
-
-    var usuarioNombre =
-        ViewData["UsuarioNombre"]?.ToString() ?? "Usuario";
-
-    var usuarioId =
-        ViewData["UsuarioId"]?.ToString();
-
-    var pagos =
-        Model ?? new List<PagoPaquete>();
-
-    var pagosActivos =
-        pagos.Where(p => p.Activo).ToList();
-
-    var pagoPendiente =
-        pagosActivos
-            .Where(p => p.Monto > 0)
-            .OrderByDescending(p => p.Fecha)
-            .ThenByDescending(p => p.IdPagoPaquete)
-            .FirstOrDefault();
-
-    decimal totalPendiente =
-        pagosActivos.Sum(p => p.Monto);
-
-    bool canGestionarPagos =
-        User.IsInRole("Gestor de Pagos")
-        || User.IsInRole("Administrador");
-
-    bool puedeVolverADetalles = canGestionarPagos;
+    var usuarioNombre = ViewData["UsuarioNombre"]?.ToString() ?? "Usuario";
+    var usuarioId = ViewData["UsuarioId"]?.ToString();
+    var pagos = Model ?? new List<PagoPaquete>();
+    var pagosActivos = pagos.Where(p => p.Activo).ToList();
+    var pagoPendiente = pagosActivos
+        .Where(p => p.Monto > 0)
+        .OrderByDescending(p => p.Fecha)
+        .ThenByDescending(p => p.IdPagoPaquete)
+        .FirstOrDefault();
+    decimal totalPendiente = pagosActivos.Sum(p => p.Monto);
+    bool canGestionarPagos = User.IsInRole("Gestor de Pagos") || User.IsInRole("Administrador");
 }
 
-@if (TempData["OkAbono"] != null)
+@foreach (var key in new[] { "OkAbono", "OkLecciones", "OkAnulacion" })
 {
-    <div class="alert alert-success">@TempData["OkAbono"]</div>
+    if (TempData[key] != null)
+    {
+        <div class="alert alert-success">@TempData[key]</div>
+    }
 }
-@if (TempData["ErrorAbono"] != null)
+@foreach (var key in new[] { "ErrorAbono", "ErrorLecciones", "ErrorAnulacion" })
 {
-    <div class="alert alert-danger">@TempData["ErrorAbono"]</div>
-}
-@if (TempData["OkLecciones"] != null)
-{
-    <div class="alert alert-success">@TempData["OkLecciones"]</div>
-}
-@if (TempData["ErrorLecciones"] != null)
-{
-    <div class="alert alert-danger">@TempData["ErrorLecciones"]</div>
-}
-@if (TempData["OkAnulacion"] != null)
-{
-    <div class="alert alert-success">@TempData["OkAnulacion"]</div>
-}
-@if (TempData["ErrorAnulacion"] != null)
-{
-    <div class="alert alert-danger">@TempData["ErrorAnulacion"]</div>
+    if (TempData[key] != null)
+    {
+        <div class="alert alert-danger">@TempData[key]</div>
+    }
 }
 
 <div class="container py-4 cr-pagos-page">
@@ -64,44 +37,25 @@
         <div class="col-lg-10">
             <div class="card shadow-sm cr-card">
                 <div class="card-body p-4 p-md-5">
-
                     <div class="text-center mb-4">
                         <h1 class="h3 mb-1">Historial de pagos</h1>
-                        <p class="text-muted mb-0">
-                            Pagos de @usuarioNombre.
-                        </p>
+                        <p class="text-muted mb-0">Pagos de @usuarioNombre.</p>
                     </div>
 
-                    @if (puedeVolverADetalles)
+                    @if (canGestionarPagos)
                     {
                         <div class="mb-3">
-                            <a asp-action="Details"
-                               asp-route-id="@usuarioId"
-                               class="btn btn-outline-secondary cr-back-btn">
-                                Volver a detalles
-                            </a>
+                            <a asp-action="Details" asp-route-id="@usuarioId" class="btn btn-outline-secondary cr-back-btn">Volver a detalles</a>
                         </div>
                     }
 
                     <div class="d-flex align-items-center justify-content-between mb-3 gap-2 flex-wrap">
                         <h5 class="mb-0">Resumen</h5>
-
                         @if (canGestionarPagos)
                         {
                             <div class="d-flex gap-2 flex-wrap">
-                                <button type="button"
-                                        class="btn btn-success cr-action-btn"
-                                        data-bs-toggle="modal"
-                                        data-bs-target="#modalAgregarPago">
-                                    Agregar pago
-                                </button>
-
-                                <button type="button"
-                                        class="btn btn-primary cr-action-btn"
-                                        data-bs-toggle="modal"
-                                        data-bs-target="#modalAgregarLecciones">
-                                    Agregar lecciones
-                                </button>
+                                <button type="button" class="btn btn-success cr-action-btn" data-bs-toggle="modal" data-bs-target="#modalAgregarPago">Agregar pago</button>
+                                <button type="button" class="btn btn-primary cr-action-btn" data-bs-toggle="modal" data-bs-target="#modalAgregarLecciones">Agregar lecciones</button>
                             </div>
                         }
                     </div>
@@ -109,240 +63,143 @@
                     <div class="row g-3 mb-4">
                         <div class="col-12 col-md-6">
                             <div class="cr-resumen-box">
-                                <div class="text-muted" style="font-size:.9rem;">
-                                    Total registros
-                                </div>
-                                <div class="fw-semibold fs-5">
-                                    @pagos.Count
-                                </div>
+                                <div class="text-muted small">Total registros</div>
+                                <div class="fw-semibold fs-5">@pagos.Count</div>
                             </div>
                         </div>
-
                         <div class="col-12 col-md-6">
                             <div class="cr-resumen-box">
-                                <div class="text-muted" style="font-size:.9rem;">
-                                    Pendiente activo
-                                </div>
-                                <div class="fw-semibold fs-5">
-                                    ₡@totalPendiente.ToString("N2")
-                                </div>
+                                <div class="text-muted small">Pendiente activo de este usuario</div>
+                                <div class="fw-semibold fs-5">₡@totalPendiente.ToString("N2")</div>
                             </div>
                         </div>
                     </div>
 
                     @if (!pagos.Any())
                     {
-                        <div class="alert alert-info">
-                            Este usuario no tiene pagos registrados.
-                        </div>
+                        <div class="alert alert-info">Este usuario no tiene pagos registrados.</div>
                     }
                     else
                     {
-                        <div class="accordion cr-pagos-accordion"
-                             id="accordionPagos">
-                            @foreach (var pago in pagos
-                                .OrderByDescending(p => p.Fecha)
-                                .ThenByDescending(p => p.IdPagoPaquete))
+                        <div class="accordion cr-pagos-accordion" id="accordionPagos">
+                            @foreach (var pago in pagos.OrderByDescending(p => p.Fecha).ThenByDescending(p => p.IdPagoPaquete))
                             {
-                                var detalles =
-                                    pago.Detalles
-                                    ?? new List<PagoPaqueteDetalle>();
-
-                                var abonos =
-                                    (pago.Abonos
-                                    ?? new List<PagoPaqueteAbono>())
+                                var detalles = pago.Detalles ?? new List<PagoPaqueteDetalle>();
+                                var abonos = (pago.Abonos ?? new List<PagoPaqueteAbono>())
                                     .OrderByDescending(a => a.Fecha)
                                     .ThenByDescending(a => a.IdPagoPaqueteAbono)
                                     .ToList();
-
-                                var totalOriginal =
-                                    detalles.Sum(d => d.Pago);
-
-                                var totalAbonado =
-                                    abonos.Sum(a => a.Monto);
-
-                                var collapseId =
-                                    $"collapsePago_{pago.IdPagoPaquete}";
+                                var totalOriginal = detalles.Sum(d => d.Pago);
+                                var totalAbonado = abonos.Sum(a => a.Monto);
+                                var collapseId = $"collapsePago_{pago.IdPagoPaquete}";
+                                bool esGrupal = pago.IdGrupoPaquete.HasValue && pago.IdOperacionGrupo.HasValue;
 
                                 <div class="accordion-item cr-pago-item mb-2">
                                     <h2 class="accordion-header">
-                                        <button class="accordion-button collapsed cr-pago-button"
-                                                type="button"
-                                                data-bs-toggle="collapse"
-                                                data-bs-target="#@collapseId">
+                                        <button class="accordion-button collapsed cr-pago-button" type="button" data-bs-toggle="collapse" data-bs-target="#@collapseId">
                                             <div class="cr-pago-row">
-                                                <span class="cr-pago-numero">
-                                                    Pago #@pago.IdPagoPaquete
+                                                <span class="cr-pago-numero">Pago #@pago.IdPagoPaquete</span>
+                                                <span class="cr-pago-fecha">@pago.Fecha.ToString("dd/MM/yyyy")</span>
+                                                <span class="cr-pago-restante">Restante: <strong>₡@pago.Monto.ToString("N2")</strong></span>
+                                                <span class="d-flex gap-1 align-items-center flex-wrap">
+                                                    @if (esGrupal)
+                                                    {
+                                                        <span class="badge bg-info text-dark">Grupo #@pago.IdGrupoPaquete</span>
+                                                    }
+                                                    @if (!pago.Activo)
+                                                    {
+                                                        <span class="badge bg-danger">Anulado</span>
+                                                    }
+                                                    else if (pago.Monto <= 0)
+                                                    {
+                                                        <span class="badge bg-success">Pagado</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="badge bg-warning text-dark">Pendiente</span>
+                                                    }
                                                 </span>
-
-                                                <span class="cr-pago-fecha">
-                                                    @pago.Fecha.ToString("dd/MM/yyyy")
-                                                </span>
-
-                                                <span class="cr-pago-restante">
-                                                    Restante: <strong>₡@pago.Monto.ToString("N2")</strong>
-                                                </span>
-
-                                                @if (!pago.Activo)
-                                                {
-                                                    <span class="badge bg-danger">
-                                                        Anulado
-                                                    </span>
-                                                }
-                                                else if (pago.Monto <= 0)
-                                                {
-                                                    <span class="badge bg-success">
-                                                        Pagado
-                                                    </span>
-                                                }
-                                                else
-                                                {
-                                                    <span class="badge bg-warning text-dark">
-                                                        Pendiente
-                                                    </span>
-                                                }
                                             </div>
                                         </button>
                                     </h2>
-
-                                    <div id="@collapseId"
-                                         class="accordion-collapse collapse"
-                                         data-bs-parent="#accordionPagos">
+                                    <div id="@collapseId" class="accordion-collapse collapse" data-bs-parent="#accordionPagos">
                                         <div class="accordion-body cr-pago-body">
-
+                                            @if (esGrupal)
+                                            {
+                                                <div class="alert alert-info">
+                                                    Este registro forma parte de una operación grupal. Los otros integrantes tienen su propio registro de pago con la misma operación.
+                                                </div>
+                                            }
                                             @if (!pago.Activo)
                                             {
                                                 <div class="alert alert-danger">
-                                                    <div class="fw-semibold">
-                                                        Este pago fue anulado.
-                                                    </div>
-                                                    <div>
-                                                        <strong>Motivo:</strong>
-                                                        @(string.IsNullOrWhiteSpace(pago.MotivoAnulacion)
-                                                            ? "Sin motivo registrado"
-                                                            : pago.MotivoAnulacion)
-                                                    </div>
+                                                    <strong>Pago anulado.</strong><br />
+                                                    Motivo: @(string.IsNullOrWhiteSpace(pago.MotivoAnulacion) ? "Sin motivo registrado" : pago.MotivoAnulacion)
                                                 </div>
                                             }
 
                                             <div class="row g-3 mb-3">
                                                 <div class="col-md-6">
-                                                    <div>
-                                                        <strong>Tipo:</strong>
-                                                        @pago.TipoPago
-                                                    </div>
-                                                    <div>
-                                                        <strong>Monto original:</strong>
-                                                        ₡@totalOriginal.ToString("N2")
-                                                    </div>
-                                                    <div>
-                                                        <strong>Total abonado:</strong>
-                                                        ₡@totalAbonado.ToString("N2")
-                                                    </div>
+                                                    <div><strong>Tipo:</strong> @pago.TipoPago</div>
+                                                    <div><strong>Monto original:</strong> ₡@totalOriginal.ToString("N2")</div>
+                                                    <div><strong>Total abonado:</strong> ₡@totalAbonado.ToString("N2")</div>
                                                 </div>
-
                                                 <div class="col-md-6">
-                                                    <div>
-                                                        <strong>Monto restante:</strong>
-                                                        ₡@pago.Monto.ToString("N2")
-                                                    </div>
-                                                    <div>
-                                                        <strong>Estado:</strong>
-                                                        @(pago.Activo ? "Activo" : "Anulado")
-                                                    </div>
+                                                    <div><strong>Monto restante:</strong> ₡@pago.Monto.ToString("N2")</div>
+                                                    <div><strong>Estado:</strong> @(pago.Activo ? "Activo" : "Anulado")</div>
                                                 </div>
                                             </div>
 
                                             <h6>Detalle registrado</h6>
-
-                                            @if (!detalles.Any())
-                                            {
-                                                <div class="text-muted mb-3">
-                                                    Sin detalles.
-                                                </div>
-                                            }
-                                            else
+                                            @if (detalles.Any())
                                             {
                                                 <div class="table-responsive mb-3">
                                                     <table class="table table-sm align-middle">
-                                                        <thead>
-                                                            <tr>
-                                                                <th>Plan</th>
-                                                                <th>Lecciones</th>
-                                                                <th>Pago</th>
-                                                                <th>Detalle</th>
-                                                            </tr>
-                                                        </thead>
+                                                        <thead><tr><th>Plan</th><th>Lecciones</th><th>Pago</th><th>Detalle</th></tr></thead>
                                                         <tbody>
-                                                            @foreach (var detalle in detalles)
-                                                            {
-                                                                <tr>
-                                                                    <td>
-                                                                        @(detalle.CantDias == TipoPlanDias.ClasesExtra
-                                                                            ? "Clases extra"
-                                                                            : detalle.CantDias.ToString())
-                                                                    </td>
-                                                                    <td>
-                                                                        @(detalle.CantLecciones?.ToString() ?? "—")
-                                                                    </td>
-                                                                    <td>
-                                                                        ₡@detalle.Pago.ToString("N2")
-                                                                    </td>
-                                                                    <td>
-                                                                        @(string.IsNullOrWhiteSpace(detalle.Detalle)
-                                                                            ? "—"
-                                                                            : detalle.Detalle)
-                                                                    </td>
-                                                                </tr>
-                                                            }
+                                                        @foreach (var d in detalles)
+                                                        {
+                                                            <tr>
+                                                                <td>@(d.CantDias == TipoPlanDias.ClasesExtra ? "Clases extra" : d.CantDias.ToString())</td>
+                                                                <td>@(d.CantLecciones?.ToString() ?? "—")</td>
+                                                                <td>₡@d.Pago.ToString("N2")</td>
+                                                                <td>@(string.IsNullOrWhiteSpace(d.Detalle) ? "—" : d.Detalle)</td>
+                                                            </tr>
+                                                        }
                                                         </tbody>
                                                     </table>
-                                                </div>
-                                            }
-
-                                            <h6>Abonos</h6>
-
-                                            @if (!abonos.Any())
-                                            {
-                                                <div class="text-muted">
-                                                    Sin abonos registrados.
                                                 </div>
                                             }
                                             else
                                             {
+                                                <div class="text-muted mb-3">Sin detalles.</div>
+                                            }
+
+                                            <h6>Abonos</h6>
+                                            @if (abonos.Any())
+                                            {
                                                 <div class="table-responsive">
                                                     <table class="table table-sm align-middle">
-                                                        <thead>
-                                                            <tr>
-                                                                <th>Fecha</th>
-                                                                <th>Monto</th>
-                                                            </tr>
-                                                        </thead>
+                                                        <thead><tr><th>Fecha</th><th>Monto</th></tr></thead>
                                                         <tbody>
-                                                            @foreach (var abono in abonos)
-                                                            {
-                                                                <tr>
-                                                                    <td>
-                                                                        @abono.Fecha.ToString("dd/MM/yyyy")
-                                                                    </td>
-                                                                    <td>
-                                                                        ₡@abono.Monto.ToString("N2")
-                                                                    </td>
-                                                                </tr>
-                                                            }
+                                                        @foreach (var a in abonos)
+                                                        {
+                                                            <tr><td>@a.Fecha.ToString("dd/MM/yyyy")</td><td>₡@a.Monto.ToString("N2")</td></tr>
+                                                        }
                                                         </tbody>
                                                     </table>
                                                 </div>
+                                            }
+                                            else
+                                            {
+                                                <div class="text-muted">Sin abonos registrados.</div>
                                             }
 
                                             @if (canGestionarPagos && pago.Activo)
                                             {
                                                 <div class="mt-3">
-                                                    <button type="button"
-                                                            class="btn btn-outline-danger btn-sm"
-                                                            data-bs-toggle="modal"
-                                                            data-bs-target="#modalAnularPago_@pago.IdPagoPaquete">
-                                                        Anular pago
+                                                    <button type="button" class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#modalAnularPago_@pago.IdPagoPaquete">
+                                                        @(esGrupal ? "Anular operación grupal" : "Anular pago")
                                                     </button>
                                                 </div>
                                             }
@@ -352,7 +209,6 @@
                             }
                         </div>
                     }
-
                 </div>
             </div>
         </div>
@@ -361,452 +217,93 @@
 
 @if (canGestionarPagos)
 {
-    <div class="modal fade"
-         id="modalAgregarPago"
-         tabindex="-1"
-         aria-hidden="true">
+    <div class="modal fade" id="modalAgregarPago" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content cr-card">
-                <div class="modal-header">
-                    <h5 class="modal-title">Agregar pago</h5>
-                    <button type="button"
-                            class="btn-close"
-                            data-bs-dismiss="modal"
-                            aria-label="Cerrar"></button>
-                </div>
-
+                <div class="modal-header"><h5 class="modal-title">Agregar abono</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
                 @if (pagoPendiente == null)
                 {
-                    <div class="modal-body">
-                        <div class="alert alert-success mb-0">
-                            No hay un pago activo con monto pendiente.
-                        </div>
-                    </div>
-
-                    <div class="modal-footer">
-                        <button type="button"
-                                class="btn btn-outline-secondary w-100"
-                                data-bs-dismiss="modal">
-                            Cerrar
-                        </button>
-                    </div>
+                    <div class="modal-body"><div class="alert alert-success mb-0">Este usuario no tiene deuda activa.</div></div>
                 }
                 else
                 {
-                    <form asp-action="AgregarAbonoPaquete"
-                          method="post">
+                    <form asp-action="AgregarAbonoPaquete" method="post">
                         @Html.AntiForgeryToken()
-
-                        <input type="hidden"
-                               name="idPagoPaquete"
-                               value="@pagoPendiente.IdPagoPaquete" />
-
+                        <input type="hidden" name="idPagoPaquete" value="@pagoPendiente.IdPagoPaquete" />
                         <div class="modal-body">
-                            <div class="mb-3">
-                                <div class="text-muted"
-                                     style="font-size:.9rem;">
-                                    Restante por pagar
-                                </div>
-
-                                <div class="fw-semibold fs-4">
-                                    ₡@pagoPendiente.Monto.ToString("N2")
-                                </div>
-                            </div>
-
-                            <div class="mb-3">
-                                <label for="fechaAbono"
-                                       class="form-label">
-                                    Fecha del pago
-                                </label>
-
-                                <input type="date"
-                                       class="form-control"
-                                       id="fechaAbono"
-                                       name="fechaAbono"
-                                       value="@DateTime.Today.ToString("yyyy-MM-dd")"
-                                       required />
-                            </div>
-
-                            <div class="mb-3">
-                                <label for="montoAbono"
-                                       class="form-label">
-                                    Monto a pagar
-                                </label>
-
-                                <input type="number"
-                                       class="form-control"
-                                       id="montoAbono"
-                                       name="montoAbono"
-                                       min="0.01"
-                                       step="0.01"
-                                       max="@pagoPendiente.Monto.ToString(CultureInfo.InvariantCulture)"
-                                       required />
-                            </div>
+                            @if (pagoPendiente.IdGrupoPaquete.HasValue)
+                            {
+                                <div class="alert alert-info">Este abono reduce únicamente la deuda de <strong>@usuarioNombre</strong>, aunque el pago provenga de un paquete grupal.</div>
+                            }
+                            <div class="mb-3"><label class="form-label">Restante</label><div class="fw-semibold fs-4">₡@pagoPendiente.Monto.ToString("N2")</div></div>
+                            <div class="mb-3"><label class="form-label">Fecha</label><input class="form-control" type="date" name="fechaAbono" value="@DateTime.Today.ToString("yyyy-MM-dd")" required /></div>
+                            <div class="mb-3"><label class="form-label">Monto</label><input class="form-control" type="number" name="montoAbono" min="0.01" step="0.01" max="@pagoPendiente.Monto.ToString(CultureInfo.InvariantCulture)" required /></div>
                         </div>
-
-                        <div class="modal-footer d-flex gap-2">
-                            <button type="submit"
-                                    class="btn btn-success w-100">
-                                Guardar pago
-                            </button>
-
-                            <button type="button"
-                                    class="btn btn-outline-secondary w-100"
-                                    data-bs-dismiss="modal">
-                                Cancelar
-                            </button>
-                        </div>
+                        <div class="modal-footer"><button class="btn btn-success w-100" type="submit">Guardar abono</button></div>
                     </form>
                 }
             </div>
         </div>
     </div>
 
-    <div class="modal fade"
-         id="modalAgregarLecciones"
-         tabindex="-1"
-         aria-hidden="true">
+    <div class="modal fade" id="modalAgregarLecciones" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content cr-card">
-                <div class="modal-header">
-                    <h5 class="modal-title">
-                        Agregar lecciones
-                    </h5>
-
-                    <button type="button"
-                            class="btn-close"
-                            data-bs-dismiss="modal"
-                            aria-label="Cerrar"></button>
-                </div>
-
-                <form asp-action="AgregarLeccionesPago"
-                      method="post">
+                <div class="modal-header"><h5 class="modal-title">Agregar lecciones extra</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                <form asp-action="AgregarLeccionesPago" method="post">
                     @Html.AntiForgeryToken()
-
-                    <input type="hidden"
-                           name="idUsuario"
-                           value="@usuarioId" />
-
+                    <input type="hidden" name="idUsuario" value="@usuarioId" />
                     <div class="modal-body">
-                        <p class="text-muted">
-                            Se conservarán el paquete asignado y sus fechas actuales.
-                            Solo se sumarán las lecciones y se registrará el pago.
-                        </p>
-
-                        <div class="mb-3">
-                            <label for="cantLecciones"
-                                   class="form-label">
-                                Lecciones a agregar
-                            </label>
-
-                            <input type="number"
-                                   class="form-control"
-                                   id="cantLecciones"
-                                   name="cantLecciones"
-                                   min="1"
-                                   max="1000"
-                                   required />
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="montoLecciones"
-                                   class="form-label">
-                                Monto pagado
-                            </label>
-
-                            <input type="number"
-                                   class="form-control"
-                                   id="montoLecciones"
-                                   name="monto"
-                                   min="0.01"
-                                   max="1000000"
-                                   step="0.01"
-                                   required />
-                        </div>
+                        <div class="alert alert-info">Las lecciones extra se aplican solamente a este usuario, incluso si pertenece a un grupo.</div>
+                        <div class="mb-3"><label class="form-label">Lecciones</label><input class="form-control" type="number" name="cantLecciones" min="1" max="1000" required /></div>
+                        <div class="mb-3"><label class="form-label">Monto pagado</label><input class="form-control" type="number" name="monto" min="0.01" max="1000000" step="0.01" required /></div>
                     </div>
-
-                    <div class="modal-footer d-flex gap-2">
-                        <button type="submit"
-                                class="btn btn-primary w-100">
-                            Agregar lecciones
-                        </button>
-
-                        <button type="button"
-                                class="btn btn-outline-secondary w-100"
-                                data-bs-dismiss="modal">
-                            Cancelar
-                        </button>
-                    </div>
+                    <div class="modal-footer"><button class="btn btn-primary w-100" type="submit">Agregar</button></div>
                 </form>
             </div>
         </div>
     </div>
 }
 
-@foreach (var pago in pagos
-    .OrderByDescending(p => p.Fecha)
-    .ThenByDescending(p => p.IdPagoPaquete))
+@foreach (var pago in pagos.Where(p => p.Activo))
 {
-    @if (canGestionarPagos && pago.Activo)
-    {
-        <div class="modal fade"
-             id="modalAnularPago_@pago.IdPagoPaquete"
-             tabindex="-1"
-             aria-hidden="true">
-            <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content cr-card border-danger">
-                    <div class="modal-header">
-                        <h5 class="modal-title">
-                            Anular pago #@pago.IdPagoPaquete
-                        </h5>
-
-                        <button type="button"
-                                class="btn-close"
-                                data-bs-dismiss="modal"
-                                aria-label="Cerrar"></button>
+    bool esGrupal = pago.IdGrupoPaquete.HasValue && pago.IdOperacionGrupo.HasValue;
+    <div class="modal fade" id="modalAnularPago_@pago.IdPagoPaquete" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content cr-card border-danger">
+                <div class="modal-header"><h5 class="modal-title">@(esGrupal ? "Anular operación grupal" : "Anular pago")</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                <form asp-action="AnularPagoPaquete" method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="idPagoPaquete" value="@pago.IdPagoPaquete" />
+                    <div class="modal-body">
+                        @if (esGrupal)
+                        {
+                            <div class="alert alert-danger"><strong>Atención:</strong> se anularán todos los pagos de los integrantes que pertenezcan a esta misma operación grupal.</div>
+                        }
+                        <div class="alert alert-warning">Las lecciones no se revierten automáticamente para evitar inconsistencias si ya existieron reservas.</div>
+                        <label class="form-label">Motivo</label>
+                        <textarea class="form-control" name="motivoAnulacion" maxlength="300" rows="4" required></textarea>
                     </div>
-
-                    <form asp-action="AnularPagoPaquete"
-                          method="post">
-                        @Html.AntiForgeryToken()
-
-                        <input type="hidden"
-                               name="idPagoPaquete"
-                               value="@pago.IdPagoPaquete" />
-
-                        <div class="modal-body">
-                            <div class="alert alert-warning">
-                                El pago seguirá apareciendo como anulado.
-                                <strong>
-                                    Las lecciones del usuario no se modificarán automáticamente.
-                                </strong>
-                                Esto evita afectar por error un paquete posterior.
-                            </div>
-
-                            <div class="mb-3">
-                                <label for="motivoAnulacion_@pago.IdPagoPaquete"
-                                       class="form-label">
-                                    Motivo de anulación
-                                </label>
-
-                                <textarea class="form-control"
-                                          id="motivoAnulacion_@pago.IdPagoPaquete"
-                                          name="motivoAnulacion"
-                                          rows="4"
-                                          maxlength="300"
-                                          required></textarea>
-
-                                <div class="form-text">
-                                    Máximo 300 caracteres.
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="modal-footer d-flex gap-2">
-                            <button type="submit"
-                                    class="btn btn-danger w-100">
-                                Confirmar anulación
-                            </button>
-
-                            <button type="button"
-                                    class="btn btn-outline-secondary w-100"
-                                    data-bs-dismiss="modal">
-                                Cancelar
-                            </button>
-                        </div>
-                    </form>
-                </div>
+                    <div class="modal-footer"><button class="btn btn-danger w-100" type="submit">Confirmar anulación</button></div>
+                </form>
             </div>
         </div>
-    }
+    </div>
 }
 
 <style>
-    /* =========================================================
-           HISTORIAL DE PAGOS
-           Estilos locales: no afectan otras pantallas del proyecto.
-           ========================================================= */
-
-    .cr-pagos-page .cr-resumen-box {
-        min-height: 82px;
-        border: 1px solid rgba(255,255,255,.18);
-        border-radius: .65rem;
-        padding: 1rem;
-        background: rgba(255,255,255,.045);
-        color: var(--text);
-    }
-
-    .cr-pagos-page .cr-action-btn {
-        min-width: 145px;
-        font-weight: 600;
-    }
-
-    .cr-pagos-page .cr-back-btn {
-        color: var(--text) !important;
-        border-color: rgba(255,255,255,.35) !important;
-    }
-
-        .cr-pagos-page .cr-back-btn:hover {
-            color: var(--text) !important;
-            background: rgba(255,255,255,.08) !important;
-            border-color: rgba(255,255,255,.55) !important;
-            text-decoration: none;
-        }
-
-    /* Quitar los colores claros que Bootstrap pone por defecto
-           en accordion y usar la paleta oscura del proyecto. */
-    .cr-pagos-accordion {
-        --bs-accordion-bg: transparent;
-        --bs-accordion-color: var(--text);
-        --bs-accordion-border-color: rgba(255,255,255,.18);
-        --bs-accordion-btn-color: var(--text);
-        --bs-accordion-btn-bg: rgba(0,0,0,.10);
-        --bs-accordion-active-color: var(--text);
-        --bs-accordion-active-bg: rgba(255,255,255,.055);
-    }
-
-        .cr-pagos-accordion .cr-pago-item {
-            overflow: hidden;
-            background: rgba(0,0,0,.10) !important;
-            color: var(--text) !important;
-            border: 1px solid rgba(255,255,255,.20) !important;
-            border-radius: .6rem !important;
-        }
-
-        .cr-pagos-accordion .cr-pago-button {
-            min-height: 58px;
-            padding: .9rem 1.15rem;
-            color: var(--text) !important;
-            background: rgba(0,0,0,.10) !important;
-            border: 0 !important;
-            box-shadow: none !important;
-            text-align: left;
-        }
-
-            .cr-pagos-accordion .cr-pago-button:hover {
-                background: rgba(255,255,255,.045) !important;
-            }
-
-            .cr-pagos-accordion .cr-pago-button:not(.collapsed) {
-                color: var(--text) !important;
-                background: rgba(254,1,0,.08) !important;
-                box-shadow: inset 3px 0 0 var(--red) !important;
-            }
-
-            .cr-pagos-accordion .cr-pago-button:focus {
-                color: var(--text) !important;
-                border-color: transparent !important;
-                box-shadow: inset 3px 0 0 var(--red) !important;
-            }
-
-        /* La flecha SVG de Bootstrap es oscura por defecto. */
-        .cr-pagos-accordion .accordion-button::after {
-            flex-shrink: 0;
-            margin-left: auto;
-            filter: invert(1) grayscale(1) brightness(2);
-            opacity: .8;
-        }
-
-        .cr-pagos-accordion .accordion-button:not(.collapsed)::after {
-            opacity: 1;
-        }
-
-    .cr-pagos-page .cr-pago-row {
-        display: grid;
-        grid-template-columns: minmax(90px, 125px) minmax(95px, 130px) 1fr auto;
-        gap: .75rem 1.1rem;
-        align-items: center;
-        width: 100%;
-        padding-right: .75rem;
-        color: var(--text) !important;
-    }
-
-    .cr-pagos-page .cr-pago-numero {
-        color: var(--text) !important;
-        font-weight: 700;
-    }
-
-    .cr-pagos-page .cr-pago-fecha {
-        color: var(--muted) !important;
-        white-space: nowrap;
-    }
-
-    .cr-pagos-page .cr-pago-restante {
-        color: var(--muted) !important;
-        white-space: nowrap;
-    }
-
-        .cr-pagos-page .cr-pago-restante strong {
-            color: var(--text) !important;
-            font-weight: 700;
-        }
-
-    .cr-pagos-page .cr-pago-body {
-        padding: 1.15rem 1.25rem 1.25rem;
-        color: var(--text) !important;
-        background: rgba(0,0,0,.16) !important;
-        border-top: 1px solid rgba(255,255,255,.12);
-    }
-
-        .cr-pagos-page .cr-pago-body h6,
-        .cr-pagos-page .cr-pago-body strong,
-        .cr-pagos-page .cr-pago-body div,
-        .cr-pagos-page .cr-pago-body td,
-        .cr-pagos-page .cr-pago-body th {
-            color: var(--text);
-        }
-
-        .cr-pagos-page .cr-pago-body .text-muted {
-            color: var(--muted) !important;
-        }
-
-        .cr-pagos-page .cr-pago-body .table {
-            --bs-table-color: var(--text);
-            --bs-table-bg: transparent;
-            --bs-table-border-color: rgba(255,255,255,.12);
-            color: var(--text) !important;
-            margin-bottom: 0;
-        }
-
-            .cr-pagos-page .cr-pago-body .table > :not(caption) > * > * {
-                color: var(--text) !important;
-                background: transparent !important;
-            }
-
-    .cr-pagos-page .badge {
-        font-weight: 650;
-        padding: .42em .65em;
-    }
-
-    /* Los modales también respetan el tema oscuro. */
-    .cr-pagos-page ~ .modal .modal-content,
-    .modal .cr-card {
-        color: var(--text);
-    }
-
-        .cr-pagos-page ~ .modal .form-text,
-        .modal .cr-card .form-text {
-            color: var(--muted) !important;
-        }
-
-    @@media (max-width: 767.98px) {
-        .cr-pagos-page .cr-pago-row {
-            grid-template-columns: 1fr auto;
-            gap: .35rem .75rem;
-        }
-
-        .cr-pagos-page .cr-pago-fecha,
-        .cr-pagos-page .cr-pago-restante {
-            font-size: .88rem;
-        }
-
-        .cr-pagos-page .cr-pago-restante {
-            grid-column: 1 / -1;
-        }
-
-        .cr-pagos-page .cr-action-btn {
-            min-width: 0;
-            flex: 1 1 150px;
-        }
-    }
+    .cr-pagos-page .cr-resumen-box { min-height:82px;border:1px solid rgba(255,255,255,.18);border-radius:.65rem;padding:1rem;background:rgba(255,255,255,.045); }
+    .cr-pagos-page .cr-action-btn { min-width:145px;font-weight:600; }
+    .cr-pagos-page .cr-back-btn { color:var(--text)!important;border-color:rgba(255,255,255,.35)!important; }
+    .cr-pagos-accordion { --bs-accordion-bg:transparent;--bs-accordion-color:var(--text);--bs-accordion-border-color:rgba(255,255,255,.18);--bs-accordion-btn-color:var(--text);--bs-accordion-btn-bg:rgba(0,0,0,.10);--bs-accordion-active-color:var(--text);--bs-accordion-active-bg:rgba(255,255,255,.055); }
+    .cr-pagos-accordion .cr-pago-item { overflow:hidden;background:rgba(0,0,0,.10)!important;color:var(--text)!important;border:1px solid rgba(255,255,255,.20)!important;border-radius:.6rem!important; }
+    .cr-pagos-accordion .cr-pago-button { min-height:58px;padding:.9rem 1.15rem;color:var(--text)!important;background:rgba(0,0,0,.10)!important;border:0!important;box-shadow:none!important;text-align:left; }
+    .cr-pagos-accordion .cr-pago-button:not(.collapsed) { background:rgba(254,1,0,.08)!important;box-shadow:inset 3px 0 0 var(--red)!important; }
+    .cr-pagos-accordion .accordion-button::after { filter:invert(1) grayscale(1) brightness(2);opacity:.8; }
+    .cr-pago-row { display:grid;grid-template-columns:minmax(90px,125px) minmax(95px,130px) 1fr auto;gap:.75rem 1.1rem;align-items:center;width:100%;padding-right:.75rem;color:var(--text)!important; }
+    .cr-pago-numero { font-weight:700;color:var(--text)!important; }
+    .cr-pago-fecha,.cr-pago-restante { color:var(--muted)!important;white-space:nowrap; }
+    .cr-pago-body { color:var(--text)!important;background:rgba(0,0,0,.16)!important;border-top:1px solid rgba(255,255,255,.12); }
+    .cr-pago-body .table { --bs-table-color:var(--text);--bs-table-bg:transparent;--bs-table-border-color:rgba(255,255,255,.12); }
+    @@media (max-width:767.98px) { .cr-pago-row { grid-template-columns:1fr auto;gap:.35rem .75rem; } .cr-pago-restante { grid-column:1/-1; } }
 </style>

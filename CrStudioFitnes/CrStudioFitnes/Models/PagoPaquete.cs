@@ -21,18 +21,22 @@ namespace CrStudioFitnes.Models
         [Display(Name = "Pago activo")]
         public bool Activo { get; set; } = true;
 
-        [StringLength(
-        300,
-        ErrorMessage = "El motivo de anulación no puede superar los 300 caracteres.")]
+        [StringLength(300, ErrorMessage = "El motivo de anulación no puede superar los 300 caracteres.")]
         [Display(Name = "Motivo de anulación")]
         public string? MotivoAnulacion { get; set; }
 
         [Required, StringLength(10)]
         public string TipoPago { get; set; } = null!;
 
+        public int? IdGrupoPaquete { get; set; }
+        public Guid? IdOperacionGrupo { get; set; }
+        public int? IdPaqueteUsuario { get; set; }
+
         public ApplicationUser Usuario { get; set; } = null!;
+        public GrupoPaquete? GrupoPaquete { get; set; }
+        public PaqueteUsuario? PaqueteUsuario { get; set; }
+
         public ICollection<PagoPaqueteDetalle> Detalles { get; set; } = new List<PagoPaqueteDetalle>();
         public ICollection<PagoPaqueteAbono> Abonos { get; set; } = new List<PagoPaqueteAbono>();
-
     }
 }
