@@ -918,7 +918,8 @@ namespace CrStudioFitnes.Controllers
                         .Where(pu => pu.IdUsuario == reserva.IdUsuario
                             && pu.FechaInicio.Date <= reserva.Fecha.Date
                             && pu.FechaFin.Date >= reserva.Fecha.Date)
-                        .OrderBy(pu => pu.FechaFin)
+                        .OrderByDescending(pu => pu.Activo)
+                        .ThenByDescending(pu => pu.IdPaqueteUsuario)
                         .FirstOrDefaultAsync();
 
                     if (paqueteActivo == null)
@@ -1212,10 +1213,12 @@ namespace CrStudioFitnes.Controllers
 
                 var paqueteActivo = await _context.PaquetesUsuario
                     .Where(pu => pu.IdUsuario == idUsuarioObjetivo
+                        && pu.Activo
                         && pu.CantLecciones > 0
                         && pu.FechaInicio.Date <= fecha
                         && pu.FechaFin.Date >= fecha)
                     .OrderBy(pu => pu.FechaFin)
+                    .ThenByDescending(pu => pu.IdPaqueteUsuario)
                     .FirstOrDefaultAsync();
 
                 if (paqueteActivo == null)
