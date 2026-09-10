@@ -17,6 +17,7 @@ namespace CrStudioFitnes.Controllers
 
         private const int MAX_POR_HORA = 6;
         private const int MAX_RESULTADOS_USUARIOS = 15;
+        private const int MINUTOS_ANTICIPACION_RESERVA = 10;
 
         public ReservasController(
             ApplicationDbContext context,
@@ -29,14 +30,13 @@ namespace CrStudioFitnes.Controllers
         // =========================================================
         // CALENDARIO
         // =========================================================
-
         [Authorize(Roles = "Usuario,Administrador,Entrenador")]
         public async Task<IActionResult> Index(int? year, int? month)
         {
             var hoy = DateTime.Today;
 
-            int y = year ?? hoy.Year;
-            int m = month ?? hoy.Month;
+            var y = year ?? hoy.Year;
+            var m = month ?? hoy.Month;
 
             if (m < 1 || m > 12 || y < 1900 || y > 9999)
             {
@@ -46,7 +46,7 @@ namespace CrStudioFitnes.Controllers
 
             var monthStart = new DateTime(y, m, 1);
 
-            int diff = (int)monthStart.DayOfWeek - (int)DayOfWeek.Monday;
+            var diff = (int)monthStart.DayOfWeek - (int)DayOfWeek.Monday;
             if (diff < 0)
                 diff += 7;
 
@@ -101,7 +101,6 @@ namespace CrStudioFitnes.Controllers
                     g => g.Key,
                     g => g.Select(x => x.IdHora).ToHashSet());
 
-            // Las reservas canceladas no consumen cupo ni se cuentan en el calendario.
             var reservasCounts = await _context.Reservas
                 .AsNoTracking()
                 .Where(r => r.Activa
@@ -138,30 +137,32 @@ namespace CrStudioFitnes.Controllers
                     .ToUpperInvariant()
             };
 
-            for (int i = 0; i < 42; i++)
+            for (var i = 0; i < 42; i++)
             {
                 var dia = gridStart.AddDays(i).Date;
-                bool bloqueado = setBloqueosDia.Contains(dia);
+                var bloqueado = setBloqueosDia.Contains(dia);
 
                 if (!bloqueado)
                 {
-                    var bloqueadasEseDia = dictBloqDiaHora.TryGetValue(dia, out var horasBloqueadas)
-                        ? horasBloqueadas
-                        : new HashSet<int>();
+                    var bloqueadasEseDia =
+                        dictBloqDiaHora.TryGetValue(dia, out var horasBloqueadas)
+                            ? horasBloqueadas
+                            : new HashSet<int>();
 
-                    bool hayAlgunaDisponible = false;
+                    var hayAlgunaDisponible = false;
 
                     foreach (var idHora in horasActivasIds)
                     {
-                        if (setGlobal.Contains(idHora))
+                        if (setGlobal.Contains(idHora)
+                            || bloqueadasEseDia.Contains(idHora))
+                        {
                             continue;
+                        }
 
-                        if (bloqueadasEseDia.Contains(idHora))
-                            continue;
-
-                        int cantidad = dictResPorDiaHora.TryGetValue((dia, idHora), out var count)
-                            ? count
-                            : 0;
+                        var cantidad =
+                            dictResPorDiaHora.TryGetValue((dia, idHora), out var count)
+                                ? count
+                                : 0;
 
                         if (cantidad < MAX_POR_HORA)
                         {
@@ -180,9 +181,8 @@ namespace CrStudioFitnes.Controllers
                     IsCurrentMonth = dia.Month == m,
                     IsToday = dia == hoy,
                     IsBlockedDay = bloqueado,
-                    ReservasCount = dictResPorDia.TryGetValue(dia, out var total)
-                        ? total
-                        : 0
+                    ReservasCount =
+                        dictResPorDia.TryGetValue(dia, out var total) ? total : 0
                 });
             }
 
@@ -192,7 +192,6 @@ namespace CrStudioFitnes.Controllers
         // =========================================================
         // HORAS DISPONIBLES
         // =========================================================
-
         [HttpGet]
         [Authorize(Roles = "Usuario,Administrador,Entrenador")]
         public async Task<IActionResult> GetHorasDisponibles(
@@ -207,7 +206,7 @@ namespace CrStudioFitnes.Controllers
             if (string.IsNullOrWhiteSpace(usuarioActualId))
                 return Unauthorized(new { message = "No se pudo identificar el usuario." });
 
-            string usuarioObjetivoId = usuarioActualId;
+            var usuarioObjetivoId = usuarioActualId;
 
             if (!string.IsNullOrWhiteSpace(idUsuarioObjetivo))
             {
@@ -234,11 +233,11 @@ namespace CrStudioFitnes.Controllers
             if (usuarioObjetivo == null)
                 return NotFound(new { message = "No se encontró el usuario seleccionado." });
 
-            int limiteUsuarioPorHora = ObtenerLimitePorHora(
+            var limiteUsuarioPorHora = ObtenerLimitePorHora(
                 usuarioObjetivo.Familiar,
                 usuarioObjetivo.CantidadFamilia);
 
-            bool blockedDay = await _context.BloqueosHorarios
+            var blockedDay = await _context.BloqueosHorarios
                 .AsNoTracking()
                 .AnyAsync(b => b.Activo
                     && b.Fecha != null
@@ -254,7 +253,9 @@ namespace CrStudioFitnes.Controllers
                     usuarioObjetivo = new
                     {
                         id = usuarioObjetivo.Id,
-                        nombre = NombreCompleto(usuarioObjetivo.Nombre, usuarioObjetivo.Apellidos),
+                        nombre = NombreCompleto(
+                            usuarioObjetivo.Nombre,
+                            usuarioObjetivo.Apellidos),
                         cedula = usuarioObjetivo.Cedula
                     },
                     horas = Array.Empty<object>()
@@ -320,24 +321,39 @@ namespace CrStudioFitnes.Controllers
                 })
                 .ToListAsync();
 
-            var dictUsuario = reservasUsuario.ToDictionary(x => x.IdHora, x => x.Count);
+            var dictUsuario = reservasUsuario.ToDictionary(
+                x => x.IdHora,
+                x => x.Count);
+
+            var ahora = DateTime.Now;
 
             var result = horasActivas.Select(h =>
             {
-                bool bloqueoGlobal = setGlobal.Contains(h.IdHora);
-                bool bloqueoDia = setDia.Contains(h.IdHora);
+                var bloqueoGlobal = setGlobal.Contains(h.IdHora);
+                var bloqueoDia = setDia.Contains(h.IdHora);
 
-                int totalReservasHora = dictCount.TryGetValue(h.IdHora, out var total)
-                    ? total
-                    : 0;
+                var totalReservasHora =
+                    dictCount.TryGetValue(h.IdHora, out var total) ? total : 0;
 
-                int reservasDelUsuario = dictUsuario.TryGetValue(h.IdHora, out var propias)
-                    ? propias
-                    : 0;
+                var reservasDelUsuario =
+                    dictUsuario.TryGetValue(h.IdHora, out var propias) ? propias : 0;
 
-                bool llena = totalReservasHora >= MAX_POR_HORA;
-                bool limiteUsuarioLleno = reservasDelUsuario >= limiteUsuarioPorHora;
-                bool disponible = !(bloqueoGlobal || bloqueoDia || llena || limiteUsuarioLleno);
+                var llena = totalReservasHora >= MAX_POR_HORA;
+                var limiteUsuarioLleno =
+                    reservasDelUsuario >= limiteUsuarioPorHora;
+
+                var fechaHora = fecha.Date.Add(h.Hora);
+                var fueraDeTiempo =
+                    fecha < ahora.Date
+                    || (fecha == ahora.Date
+                        && fechaHora <= ahora.AddMinutes(MINUTOS_ANTICIPACION_RESERVA));
+
+                var disponible =
+                    !(bloqueoGlobal
+                      || bloqueoDia
+                      || llena
+                      || limiteUsuarioLleno
+                      || fueraDeTiempo);
 
                 return new
                 {
@@ -349,7 +365,9 @@ namespace CrStudioFitnes.Controllers
                     esMia = reservasDelUsuario > 0,
                     misReservas = reservasDelUsuario,
                     limiteUsuario = limiteUsuarioPorHora,
-                    cuposDisponibles = Math.Max(0, MAX_POR_HORA - totalReservasHora)
+                    cuposDisponibles =
+                        Math.Max(0, MAX_POR_HORA - totalReservasHora),
+                    fueraDeTiempo
                 };
             });
 
@@ -360,7 +378,9 @@ namespace CrStudioFitnes.Controllers
                 usuarioObjetivo = new
                 {
                     id = usuarioObjetivo.Id,
-                    nombre = NombreCompleto(usuarioObjetivo.Nombre, usuarioObjetivo.Apellidos),
+                    nombre = NombreCompleto(
+                        usuarioObjetivo.Nombre,
+                        usuarioObjetivo.Apellidos),
                     cedula = usuarioObjetivo.Cedula
                 },
                 horas = result
@@ -368,12 +388,13 @@ namespace CrStudioFitnes.Controllers
         }
 
         // =========================================================
-        // CONSULTAR RESERVAS ACTIVAS DE UNA HORA
+        // CONSULTAS DE RESERVAS
         // =========================================================
-
         [HttpGet]
         [Authorize(Roles = "Administrador,Entrenador")]
-        public async Task<IActionResult> GetReservasPorHora(string date, int idHora)
+        public async Task<IActionResult> GetReservasPorHora(
+            string date,
+            int idHora)
         {
             if (!TryParseFecha(date, out var fecha))
                 return BadRequest(new { message = "Fecha inválida." });
@@ -392,7 +413,6 @@ namespace CrStudioFitnes.Controllers
             if (hora == null)
                 return NotFound(new { message = "La hora no existe." });
 
-            // Solo se muestran reservas activas.
             var reservas = await _context.Reservas
                 .AsNoTracking()
                 .Where(r => r.Activa
@@ -413,7 +433,7 @@ namespace CrStudioFitnes.Controllers
                 .OrderBy(x => x.Nombre)
                 .ToListAsync();
 
-            string horaEtiqueta = string.IsNullOrWhiteSpace(hora.Etiqueta)
+            var horaEtiqueta = string.IsNullOrWhiteSpace(hora.Etiqueta)
                 ? hora.Hora.ToString(@"hh\:mm")
                 : hora.Etiqueta;
 
@@ -426,17 +446,15 @@ namespace CrStudioFitnes.Controllers
                 reservas = reservas.Select(x => new
                 {
                     idReserva = x.IdReserva,
-                    nombre = string.IsNullOrWhiteSpace(x.Nombre) ? "Usuario" : x.Nombre,
+                    nombre = string.IsNullOrWhiteSpace(x.Nombre)
+                        ? "Usuario"
+                        : x.Nombre,
                     cedula = x.Cedula ?? string.Empty,
                     email = x.Email ?? string.Empty,
                     telefono = x.Telefono ?? string.Empty
                 })
             });
         }
-
-        // =========================================================
-        // CONSULTAR TODAS LAS RESERVAS ACTIVAS DE UN DÍA
-        // =========================================================
 
         [HttpGet]
         [Authorize(Roles = "Administrador,Entrenador")]
@@ -518,15 +536,15 @@ namespace CrStudioFitnes.Controllers
             });
         }
 
-
         // =========================================================
-        // CREAR RESERVA DEL USUARIO LOGUEADO
+        // CREACIÓN
         // =========================================================
-
         [HttpPost]
         [ValidateAntiForgeryToken]
         [Authorize(Roles = "Usuario")]
-        public async Task<IActionResult> CrearDesdeCalendario(string date, int idHora)
+        public async Task<IActionResult> CrearDesdeCalendario(
+            string date,
+            int idHora)
         {
             if (!TryParseFecha(date, out var fecha))
             {
@@ -546,33 +564,28 @@ namespace CrStudioFitnes.Controllers
                 });
             }
 
-            var redirect = new
-            {
-                year = fecha.Year,
-                month = fecha.Month
-            };
-
             try
             {
                 var resultado = await CrearReservaParaUsuarioAsync(
                     fecha,
                     idHora,
-                    idUsuarioObjetivo: userId,
-                    idUsuarioCreador: userId);
+                    userId,
+                    userId);
 
                 TempData[resultado.Ok ? "Ok" : "Error"] = resultado.Message;
             }
             catch
             {
-                TempData["Error"] = "Ocurrió un error creando la reserva.";
+                TempData["Error"] =
+                    "Ocurrió un error creando la reserva. No se consumieron lecciones parcialmente.";
             }
 
-            return RedirectToAction(nameof(Index), redirect);
+            return RedirectToAction(nameof(Index), new
+            {
+                year = fecha.Year,
+                month = fecha.Month
+            });
         }
-
-        // =========================================================
-        // ADMINISTRADOR: BUSCAR Y RESERVAR PARA OTRO USUARIO
-        // =========================================================
 
         [HttpGet]
         [Authorize(Roles = "Administrador")]
@@ -584,18 +597,19 @@ namespace CrStudioFitnes.Controllers
             {
                 return BadRequest(new
                 {
-                    message = "Ingresá al menos 2 caracteres del nombre, correo o cédula."
+                    message =
+                        "Ingresá al menos 2 caracteres del nombre, correo o cédula."
                 });
             }
 
             var usuarios = await _context.Users
                 .AsNoTracking()
                 .Where(u =>
-                    (u.Cedula != null && u.Cedula.Contains(termino))
+                    u.Cedula.Contains(termino)
                     || (u.Email != null && u.Email.Contains(termino))
-                    || (u.Nombre != null && u.Nombre.Contains(termino))
-                    || (u.Apellidos != null && u.Apellidos.Contains(termino))
-                    || ((u.Nombre + " " + u.Apellidos).Contains(termino)))
+                    || u.Nombre.Contains(termino)
+                    || u.Apellidos.Contains(termino)
+                    || (u.Nombre + " " + u.Apellidos).Contains(termino))
                 .OrderByDescending(u =>
                     u.Cedula == termino
                     || u.Email == termino
@@ -622,13 +636,10 @@ namespace CrStudioFitnes.Controllers
             });
         }
 
-        // Compatibilidad con enlaces o JavaScript anteriores.
         [HttpGet]
         [Authorize(Roles = "Administrador")]
         public Task<IActionResult> BuscarUsuariosPorCedula(string cedula)
-        {
-            return BuscarUsuarios(cedula);
-        }
+            => BuscarUsuarios(cedula);
 
         [HttpPost]
         [ValidateAntiForgeryToken]
@@ -658,19 +669,15 @@ namespace CrStudioFitnes.Controllers
 
             if (string.IsNullOrWhiteSpace(idUsuarioObjetivo))
             {
-                TempData["Error"] = "Debés seleccionar el usuario para quien se hará la reserva.";
+                TempData["Error"] =
+                    "Debés seleccionar el usuario para quien se hará la reserva.";
+
                 return RedirectToAction(nameof(Index), new
                 {
                     year = fecha.Year,
                     month = fecha.Month
                 });
             }
-
-            var redirect = new
-            {
-                year = fecha.Year,
-                month = fecha.Month
-            };
 
             try
             {
@@ -684,16 +691,20 @@ namespace CrStudioFitnes.Controllers
             }
             catch
             {
-                TempData["Error"] = "Ocurrió un error creando la reserva para el usuario.";
+                TempData["Error"] =
+                    "Ocurrió un error creando la reserva para el usuario.";
             }
 
-            return RedirectToAction(nameof(Index), redirect);
+            return RedirectToAction(nameof(Index), new
+            {
+                year = fecha.Year,
+                month = fecha.Month
+            });
         }
 
         // =========================================================
-        // RESERVAS DEL USUARIO LOGUEADO O DEL USUARIO SELECCIONADO
+        // MIS RESERVAS / CANCELACIÓN
         // =========================================================
-
         [HttpGet]
         [Authorize(Roles = "Usuario,Administrador")]
         public async Task<IActionResult> GetMisReservas(
@@ -705,8 +716,8 @@ namespace CrStudioFitnes.Controllers
             if (string.IsNullOrWhiteSpace(usuarioActualId))
                 return Unauthorized(new { message = "No se pudo identificar el usuario." });
 
-            bool esAdministrador = User.IsInRole("Administrador");
-            string usuarioObjetivoId = usuarioActualId;
+            var esAdministrador = User.IsInRole("Administrador");
+            var usuarioObjetivoId = usuarioActualId;
 
             if (!string.IsNullOrWhiteSpace(idUsuarioObjetivo))
             {
@@ -721,6 +732,7 @@ namespace CrStudioFitnes.Controllers
 
                 usuarioObjetivoId = idUsuarioObjetivo.Trim();
             }
+
             var usuarioObjetivo = await _context.Users
                 .AsNoTracking()
                 .Where(u => u.Id == usuarioObjetivoId)
@@ -737,6 +749,25 @@ namespace CrStudioFitnes.Controllers
                 return NotFound(new { message = "No se encontró el usuario seleccionado." });
 
             var ahora = DateTime.Now;
+            var hoy = DateTime.Today;
+
+            var paqueteVigente = await _context.PaquetesUsuario
+                .AsNoTracking()
+                .Where(pu => pu.IdUsuario == usuarioObjetivoId
+                    && pu.Activo
+                    && pu.FechaInicio.Date <= hoy
+                    && pu.FechaFin.Date >= hoy)
+                .OrderByDescending(pu => pu.CantLecciones)
+                .ThenBy(pu => pu.FechaFin)
+                .ThenByDescending(pu => pu.IdPaqueteUsuario)
+                .Select(pu => new
+                {
+                    pu.IdPaqueteUsuario,
+                    pu.CantLecciones,
+                    pu.FechaInicio,
+                    pu.FechaFin
+                })
+                .FirstOrDefaultAsync();
 
             var reservasDb = await _context.Reservas
                 .AsNoTracking()
@@ -768,31 +799,20 @@ namespace CrStudioFitnes.Controllers
             var resultado = reservasFiltradas.Select(x =>
             {
                 var r = x.Reserva;
-                bool yaPaso = x.FechaHora < ahora;
-                bool puedeCancelar = r.Activa
+                var yaPaso = x.FechaHora < ahora;
+                var puedeCancelar = r.Activa
                     && !yaPaso
                     && x.FechaHora >= ahora.AddHours(1);
 
-                string estado;
+                var estado = !r.Activa
+                    ? "Cancelada"
+                    : yaPaso
+                        ? "Reserva realizada"
+                        : puedeCancelar
+                            ? "Activa"
+                            : "Activa - ya no se puede cancelar";
 
-                if (!r.Activa)
-                {
-                    estado = "Cancelada";
-                }
-                else if (yaPaso)
-                {
-                    estado = "Reserva realizada";
-                }
-                else if (puedeCancelar)
-                {
-                    estado = "Activa";
-                }
-                else
-                {
-                    estado = "Activa - ya no se puede cancelar";
-                }
-
-                string horaEtiqueta = string.IsNullOrWhiteSpace(r.HoraReserva.Etiqueta)
+                var horaEtiqueta = string.IsNullOrWhiteSpace(r.HoraReserva.Etiqueta)
                     ? r.HoraReserva.Hora.ToString(@"hh\:mm")
                     : r.HoraReserva.Etiqueta;
 
@@ -824,6 +844,17 @@ namespace CrStudioFitnes.Controllers
                     cedula = usuarioObjetivo.Cedula ?? string.Empty
                 },
                 anteriores,
+                paqueteActivo = paqueteVigente == null
+                    ? null
+                    : new
+                    {
+                        idPaqueteUsuario = paqueteVigente.IdPaqueteUsuario,
+                        leccionesDisponibles = paqueteVigente.CantLecciones,
+                        fechaInicio = paqueteVigente.FechaInicio.ToString("yyyy-MM-dd"),
+                        fechaInicioTexto = paqueteVigente.FechaInicio.ToString("dd/MM/yyyy", cultura),
+                        fechaFin = paqueteVigente.FechaFin.ToString("yyyy-MM-dd"),
+                        fechaFinTexto = paqueteVigente.FechaFin.ToString("dd/MM/yyyy", cultura)
+                    },
                 total = resultado.Count,
                 reservas = resultado
             });
@@ -867,7 +898,7 @@ namespace CrStudioFitnes.Controllers
                 });
             }
 
-            bool esAdministrador = User.IsInRole("Administrador");
+            var esAdministrador = User.IsInRole("Administrador");
 
             try
             {
@@ -901,20 +932,24 @@ namespace CrStudioFitnes.Controllers
                         return;
                     }
 
-                    var fechaHoraReserva = reserva.Fecha.Date
-                        .Add(reserva.HoraReserva.Hora);
+                    var fechaHoraReserva =
+                        reserva.Fecha.Date.Add(reserva.HoraReserva.Hora);
 
                     if (fechaHoraReserva < DateTime.Now.AddHours(1))
                     {
                         result = BadRequest(new
                         {
                             ok = false,
-                            message = "Solo se puede cancelar una reserva con 1 hora o más de anticipación."
+                            message =
+                                "Solo se puede cancelar una reserva con 1 hora o más de anticipación."
                         });
                         return;
                     }
 
-                    var paqueteActivo = await _context.PaquetesUsuario
+                    // Reserva no guarda IdPaqueteUsuario.
+                    // Se resuelve la asignación individual que cubría la fecha
+                    // de la reserva, priorizando una asignación activa.
+                    var paquete = await _context.PaquetesUsuario
                         .Where(pu => pu.IdUsuario == reserva.IdUsuario
                             && pu.FechaInicio.Date <= reserva.Fecha.Date
                             && pu.FechaFin.Date >= reserva.Fecha.Date)
@@ -922,19 +957,20 @@ namespace CrStudioFitnes.Controllers
                         .ThenByDescending(pu => pu.IdPaqueteUsuario)
                         .FirstOrDefaultAsync();
 
-                    if (paqueteActivo == null)
+                    if (paquete == null)
                     {
                         result = BadRequest(new
                         {
                             ok = false,
-                            message = "No se encontró un paquete válido para devolver la lección."
+                            message =
+                                "No se encontró de forma segura el paquete del cual se descontó la lección. La reserva no fue modificada."
                         });
                         return;
                     }
 
                     reserva.Activa = false;
                     reserva.MotivoCancelacion = motivoCancelacion;
-                    paqueteActivo.CantLecciones += 1;
+                    paquete.CantLecciones += 1;
 
                     await _context.SaveChangesAsync();
                     await tx.CommitAsync();
@@ -942,7 +978,8 @@ namespace CrStudioFitnes.Controllers
                     result = Json(new
                     {
                         ok = true,
-                        message = "Reserva cancelada correctamente. Se devolvió 1 lección."
+                        message =
+                            "Reserva cancelada correctamente. Se devolvió 1 lección al paquete correspondiente."
                     });
                 });
 
@@ -957,16 +994,15 @@ namespace CrStudioFitnes.Controllers
                 return StatusCode(500, new
                 {
                     ok = false,
-                    message = "Ocurrió un error cancelando la reserva."
+                    message =
+                        "Ocurrió un error cancelando la reserva. No se aplicaron cambios parciales."
                 });
             }
         }
 
-
         // =========================================================
-        // ADMINISTRADOR: CONSULTAR RESERVAS DE UN USUARIO
+        // ADMINISTRADOR: CONSULTAR RESERVAS DE USUARIO
         // =========================================================
-
         [HttpGet]
         [Authorize(Roles = "Administrador")]
         public async Task<IActionResult> GetReservasUsuario(
@@ -983,7 +1019,8 @@ namespace CrStudioFitnes.Controllers
             {
                 return BadRequest(new
                 {
-                    message = "Primero seleccioná el usuario que deseás consultar."
+                    message =
+                        "Primero seleccioná el usuario que deseás consultar."
                 });
             }
 
@@ -1039,9 +1076,9 @@ namespace CrStudioFitnes.Controllers
             var resultado = reservas.Select(r =>
             {
                 var fechaHora = r.Fecha.Date.Add(r.HoraReserva.Hora);
-                bool yaPaso = fechaHora < ahora;
+                var yaPaso = fechaHora < ahora;
 
-                string estado = !r.Activa
+                var estado = !r.Activa
                     ? "Cancelada"
                     : yaPaso
                         ? "Reserva realizada"
@@ -1058,11 +1095,13 @@ namespace CrStudioFitnes.Controllers
                     activa = r.Activa,
                     yaPaso,
                     estado,
-                    motivoCancelacion = r.MotivoCancelacion ?? string.Empty,
+                    motivoCancelacion =
+                        r.MotivoCancelacion ?? string.Empty,
                     registradaPor = NombreCompleto(
                         r.UsuarioReserva.Nombre,
                         r.UsuarioReserva.Apellidos),
-                    registradaPorMismoUsuario = r.IdUsuario == r.IdUsuarioReserva
+                    registradaPorMismoUsuario =
+                        r.IdUsuario == r.IdUsuarioReserva
                 };
             }).ToList();
 
@@ -1072,7 +1111,9 @@ namespace CrStudioFitnes.Controllers
                 {
                     idUsuario = usuario.Id,
                     cedula = usuario.Cedula,
-                    nombre = NombreCompleto(usuario.Nombre, usuario.Apellidos),
+                    nombre = NombreCompleto(
+                        usuario.Nombre,
+                        usuario.Apellidos),
                     email = usuario.Email ?? string.Empty,
                     telefono = usuario.TelefonoPersonal ?? string.Empty
                 },
@@ -1084,9 +1125,8 @@ namespace CrStudioFitnes.Controllers
         }
 
         // =========================================================
-        // MÉTODOS PRIVADOS
+        // CORE DE CREACIÓN
         // =========================================================
-
         private async Task<(bool Ok, string Message)> CrearReservaParaUsuarioAsync(
             DateTime fecha,
             int idHora,
@@ -1094,7 +1134,8 @@ namespace CrStudioFitnes.Controllers
             string idUsuarioCreador)
         {
             var strategy = _context.Database.CreateExecutionStrategy();
-            (bool Ok, string Message) resultado = (false, "No se pudo crear la reserva.");
+            (bool Ok, string Message) resultado =
+                (false, "No se pudo crear la reserva.");
 
             await strategy.ExecuteAsync(async () =>
             {
@@ -1115,16 +1156,15 @@ namespace CrStudioFitnes.Controllers
 
                 if (usuarioObjetivo == null)
                 {
-                    resultado = (false, "No se encontró el usuario para quien se hará la reserva.");
+                    resultado =
+                        (false, "No se encontró el usuario para quien se hará la reserva.");
                     return;
                 }
 
-                bool usuarioCreadorExiste = await _context.Users
-                    .AnyAsync(u => u.Id == idUsuarioCreador);
-
-                if (!usuarioCreadorExiste)
+                if (!await _context.Users.AnyAsync(u => u.Id == idUsuarioCreador))
                 {
-                    resultado = (false, "No se pudo identificar al usuario que registra la reserva.");
+                    resultado =
+                        (false, "No se pudo identificar al usuario que registra la reserva.");
                     return;
                 }
 
@@ -1149,14 +1189,17 @@ namespace CrStudioFitnes.Controllers
                 {
                     var fechaHoraSlot = fecha.Add(hora.Hora);
 
-                    if (fechaHoraSlot <= ahora.AddMinutes(10))
+                    if (fechaHoraSlot <=
+                        ahora.AddMinutes(MINUTOS_ANTICIPACION_RESERVA))
                     {
-                        resultado = (false, "No se puede reservar una hora que ya pasó.");
+                        resultado =
+                            (false,
+                             $"La reserva debe hacerse con al menos {MINUTOS_ANTICIPACION_RESERVA} minutos de anticipación.");
                         return;
                     }
                 }
 
-                bool blockedDay = await _context.BloqueosHorarios
+                var blockedDay = await _context.BloqueosHorarios
                     .AnyAsync(b => b.Activo
                         && b.Fecha != null
                         && b.IdHora == null
@@ -1168,7 +1211,7 @@ namespace CrStudioFitnes.Controllers
                     return;
                 }
 
-                bool blockedHour = await _context.BloqueosHorarios
+                var blockedHour = await _context.BloqueosHorarios
                     .AnyAsync(b => b.Activo
                         && b.IdHora != null
                         && b.IdHora.Value == idHora
@@ -1180,15 +1223,14 @@ namespace CrStudioFitnes.Controllers
                     return;
                 }
 
-                int limiteUsuarioPorHora = ObtenerLimitePorHora(
+                var limiteUsuarioPorHora = ObtenerLimitePorHora(
                     usuarioObjetivo.Familiar,
                     usuarioObjetivo.CantidadFamilia);
 
-                int cantidadTotal = await _context.Reservas
-                    .Where(r => r.Activa
+                var cantidadTotal = await _context.Reservas
+                    .CountAsync(r => r.Activa
                         && r.Fecha == fecha
-                        && r.IdHora == idHora)
-                    .CountAsync();
+                        && r.IdHora == idHora);
 
                 if (cantidadTotal >= MAX_POR_HORA)
                 {
@@ -1196,18 +1238,19 @@ namespace CrStudioFitnes.Controllers
                     return;
                 }
 
-                int cantidadUsuario = await _context.Reservas
-                    .Where(r => r.Activa
+                var cantidadUsuario = await _context.Reservas
+                    .CountAsync(r => r.Activa
                         && r.IdUsuario == idUsuarioObjetivo
                         && r.Fecha == fecha
-                        && r.IdHora == idHora)
-                    .CountAsync();
+                        && r.IdHora == idHora);
 
                 if (cantidadUsuario >= limiteUsuarioPorHora)
                 {
                     resultado = usuarioObjetivo.Familiar
-                        ? (false, $"El usuario ya alcanzó el máximo permitido para su plan familiar en esta hora ({limiteUsuarioPorHora}).")
-                        : (false, "El usuario ya tiene una reserva activa en esa hora.");
+                        ? (false,
+                           $"El usuario ya alcanzó el máximo permitido para su plan familiar en esta hora ({limiteUsuarioPorHora}).")
+                        : (false,
+                           "El usuario ya tiene una reserva activa en esa hora.");
                     return;
                 }
 
@@ -1223,7 +1266,9 @@ namespace CrStudioFitnes.Controllers
 
                 if (paqueteActivo == null)
                 {
-                    resultado = (false, "El usuario no tiene lecciones disponibles o su paquete no está vigente para esa fecha.");
+                    resultado =
+                        (false,
+                         "El usuario no tiene lecciones disponibles o su paquete no está vigente para esa fecha.");
                     return;
                 }
 
@@ -1242,7 +1287,7 @@ namespace CrStudioFitnes.Controllers
                 await _context.SaveChangesAsync();
                 await tx.CommitAsync();
 
-                string nombre = NombreCompleto(
+                var nombre = NombreCompleto(
                     usuarioObjetivo.Nombre,
                     usuarioObjetivo.Apellidos);
 
@@ -1254,7 +1299,9 @@ namespace CrStudioFitnes.Controllers
             return resultado;
         }
 
-        private static bool TryParseFecha(string? value, out DateTime fecha)
+        private static bool TryParseFecha(
+            string? value,
+            out DateTime fecha)
         {
             fecha = default;
 
@@ -1275,17 +1322,25 @@ namespace CrStudioFitnes.Controllers
             return true;
         }
 
-        private static int ObtenerLimitePorHora(bool familiar, int? cantidadFamilia)
+        private static int ObtenerLimitePorHora(
+            bool familiar,
+            int? cantidadFamilia)
         {
-            if (familiar && cantidadFamilia.HasValue && cantidadFamilia.Value > 0)
+            if (familiar
+                && cantidadFamilia.HasValue
+                && cantidadFamilia.Value > 0)
+            {
                 return Math.Min(cantidadFamilia.Value, MAX_POR_HORA);
+            }
 
             return 1;
         }
 
-        private static string NombreCompleto(string? nombre, string? apellidos)
+        private static string NombreCompleto(
+            string? nombre,
+            string? apellidos)
         {
-            string resultado = $"{nombre} {apellidos}".Trim();
+            var resultado = $"{nombre} {apellidos}".Trim();
             return string.IsNullOrWhiteSpace(resultado) ? "Usuario" : resultado;
         }
     }
