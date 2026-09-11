@@ -99,7 +99,6 @@ namespace CrStudioFitnes.Areas.Identity.Pages.Account
                 var cedula = NormalizarCedula(identificador);
 
                 user = await _userManager.Users
-                    .AsNoTracking()
                     .FirstOrDefaultAsync(u =>
                         u.Cedula
                             .Replace("-", "")

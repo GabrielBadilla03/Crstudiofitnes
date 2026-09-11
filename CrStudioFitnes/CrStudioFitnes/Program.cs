@@ -8,6 +8,9 @@ using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
+//comando para publicar 
+//dotnet publish "C:\Proyectos\Crstudiofitnes\CrStudioFitnes\CrStudioFitnes\CrStudioFitnes.csproj" -c Release -f net8.0 -o "C:\Servicios\Cvstudio" --self-contained false
+
 // =============================================
 // DB
 // =============================================
