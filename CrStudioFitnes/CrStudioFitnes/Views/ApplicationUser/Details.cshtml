@@ -16,6 +16,21 @@
     var paquetesDisponibles = ViewBag.PaquetesDisponibles as List<Paquete> ?? new List<Paquete>();
     var paquetesGrupoCompatibles = ViewBag.PaquetesGrupalesCompatibles as List<Paquete> ?? new List<Paquete>();
 
+    // Filtros del selector de paquetes.
+    // En paquetes grupales se filtra por las lecciones OPERATIVAS de cada usuario,
+    // no por el total de referencia del grupo.
+    var tiposPlanFiltro = paquetesDisponibles
+        .Select(p => p.CantDias)
+        .Distinct()
+        .OrderBy(x => x)
+        .ToList();
+
+    var leccionesFiltro = paquetesDisponibles
+        .Select(p => p.CantLeccionesPorUsuario)
+        .Distinct()
+        .OrderBy(x => x)
+        .ToList();
+
     PaqueteUsuario? paqueteActual = null;
     if (grupoActual != null)
     {
@@ -220,30 +235,30 @@
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                            @foreach (var miembro in grupoActual.Miembros)
-                                            {
-                                                <tr>
-                                                    <td>
-                                                        @miembro.NombreCompleto
-                                                        @if (miembro.EsUsuarioActual)
-                                                        {
-                                                            <span class="badge bg-info text-dark ms-1">Actual</span>
-                                                        }
-                                                    </td>
-                                                    <td>@miembro.Cedula</td>
-                                                    <td>@miembro.CantLecciones</td>
-                                                    <td>
-                                                        @if (miembro.SaldoPendiente > 0)
-                                                        {
-                                                            <span class="text-warning fw-semibold">₡@miembro.SaldoPendiente.ToString("N2")</span>
-                                                        }
-                                                        else
-                                                        {
-                                                            <span class="text-success">Pagado</span>
-                                                        }
-                                                    </td>
-                                                </tr>
-                                            }
+                                                @foreach (var miembro in grupoActual.Miembros)
+                                                {
+                                                    <tr>
+                                                        <td>
+                                                            @miembro.NombreCompleto
+                                                            @if (miembro.EsUsuarioActual)
+                                                            {
+                                                                <span class="badge bg-info text-dark ms-1">Actual</span>
+                                                            }
+                                                        </td>
+                                                        <td>@miembro.Cedula</td>
+                                                        <td>@miembro.CantLecciones</td>
+                                                        <td>
+                                                            @if (miembro.SaldoPendiente > 0)
+                                                            {
+                                                                <span class="text-warning fw-semibold">₡@miembro.SaldoPendiente.ToString("N2")</span>
+                                                            }
+                                                            else
+                                                            {
+                                                                <span class="text-success">Pagado</span>
+                                                            }
+                                                        </td>
+                                                    </tr>
+                                                }
                                             </tbody>
                                         </table>
                                     </div>
@@ -364,14 +379,70 @@
                     <div class="modal-body">
                         <p class="text-muted">Seleccioná el paquete para <strong>@nombreCompleto</strong>.</p>
 
+                        @if (paquetesDisponibles.Any())
+                        {
+                            <div class="row g-2 mb-3">
+                                <div class="col-12 col-sm-6 col-lg-3">
+                                    <label for="filtroTipoPlanPaquete" class="form-label text-muted mb-1 small">
+                                        Tipo de plan
+                                    </label>
+                                    <select id="filtroTipoPlanPaquete" class="form-select form-select-sm">
+                                        <option value="">Todos</option>
+                                        @foreach (var plan in tiposPlanFiltro)
+                                        {
+                                            <option value="@plan">@plan</option>
+                                        }
+                                    </select>
+                                </div>
+
+                                <div class="col-12 col-sm-6 col-lg-3">
+                                    <label for="filtroLeccionesPaquete" class="form-label text-muted mb-1 small">
+                                        Lecciones por usuario
+                                    </label>
+                                    <select id="filtroLeccionesPaquete" class="form-select form-select-sm">
+                                        <option value="">Todas</option>
+                                        @foreach (var cant in leccionesFiltro)
+                                        {
+                                            <option value="@cant">@cant</option>
+                                        }
+                                    </select>
+                                </div>
+
+                                <div class="col-12 col-sm-6 col-lg-3">
+                                    <label for="filtroTipoPaquete" class="form-label text-muted mb-1 small">
+                                        Tipo de paquete
+                                    </label>
+                                    <select id="filtroTipoPaquete" class="form-select form-select-sm">
+                                        <option value="">Todos</option>
+                                        <option value="individual">Individual</option>
+                                        <option value="grupal">Grupal</option>
+                                    </select>
+                                </div>
+
+                                <div class="col-12 col-sm-6 col-lg-3 d-flex align-items-end">
+                                    <button type="button"
+                                            class="btn btn-outline-secondary btn-sm w-100"
+                                            id="btnLimpiarFiltrosPaquete">
+                                        Limpiar filtros
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="alert alert-info d-none py-2" id="sinResultadosPaquetes">
+                                No hay paquetes que coincidan con los filtros seleccionados.
+                            </div>
+                        }
+
                         <div class="row g-3" id="contenedorPaquetes">
                             @foreach (var p in paquetesDisponibles)
                             {
-                                <div class="col-12 col-md-6 col-xl-4">
+                                <div class="col-12 col-md-6 col-xl-4 paquete-item">
                                     <div class="cr-card-paquete paquete-select-card h-100"
                                          role="button"
                                          tabindex="0"
                                          data-id="@p.IdPaquete"
+                                         data-plan="@p.CantDias"
+                                         data-lecciones="@p.CantLeccionesPorUsuario"
                                          data-esgrupal="@p.EsGrupal.ToString().ToLowerInvariant()"
                                          data-cantidad="@p.CantidadUsuarios"
                                          data-nombre="@(p.Detalle ?? $"Paquete #{p.IdPaquete}")">
@@ -514,14 +585,20 @@
                             <label class="form-label">Quitar rol</label>
                             <select class="form-select" id="selRolesTiene">
                                 <option value="">-- Ninguno --</option>
-                                @foreach (var r in rolesUsuario) { <option value="@r">@r</option> }
+                                @foreach (var r in rolesUsuario)
+                                {
+                                    <option value="@r">@r</option>
+                                }
                             </select>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Agregar rol</label>
                             <select class="form-select" id="selRolesNoTiene">
                                 <option value="">-- Ninguno --</option>
-                                @foreach (var r in rolesNoTiene) { <option value="@r">@r</option> }
+                                @foreach (var r in rolesNoTiene)
+                                {
+                                    <option value="@r">@r</option>
+                                }
                             </select>
                         </div>
                     </div>
@@ -535,178 +612,293 @@
 }
 
 @section Scripts {
-<script>
-    document.addEventListener('DOMContentLoaded', () => {
-        const buscarUrl = '@Url.Action("BuscarUsuariosGrupo", "ApplicationUser")';
-        const usuarioPrincipalId = '@Model.Id';
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const buscarUrl = '@Url.Action("BuscarUsuariosGrupo", "ApplicationUser")';
+            const usuarioPrincipalId = '@Model.Id';
 
-        // ==============================
-        // Asignación de paquete / grupo
-        // ==============================
-        const cards = document.querySelectorAll('.paquete-select-card');
-        const inputPaquete = document.getElementById('idPaqueteSeleccionado');
-        const wrapGrupo = document.getElementById('grupoSeleccionWrap');
-        const requerimiento = document.getElementById('grupoRequerimiento');
-        const contador = document.getElementById('grupoContador');
-        const hiddenWrap = document.getElementById('usuariosGrupoHidden');
-        const seleccionadosWrap = document.getElementById('usuariosGrupoSeleccionados');
-        const btnGuardar = document.getElementById('btnGuardarPaquete');
-        let requeridosOtros = 0;
-        let seleccionados = [];
+            // ==============================
+            // Asignación de paquete / grupo
+            // ==============================
+            const cards = document.querySelectorAll('.paquete-select-card');
+            const inputPaquete = document.getElementById('idPaqueteSeleccionado');
+            const wrapGrupo = document.getElementById('grupoSeleccionWrap');
 
-        function renderSeleccionados() {
-            if (!seleccionadosWrap || !hiddenWrap) return;
-            seleccionadosWrap.innerHTML = '';
-            hiddenWrap.innerHTML = '';
+            const filtroTipoPlan = document.getElementById('filtroTipoPlanPaquete');
+            const filtroLecciones = document.getElementById('filtroLeccionesPaquete');
+            const filtroTipoPaquete = document.getElementById('filtroTipoPaquete');
+            const btnLimpiarFiltros = document.getElementById('btnLimpiarFiltrosPaquete');
+            const sinResultadosPaquetes = document.getElementById('sinResultadosPaquetes');
+            const requerimiento = document.getElementById('grupoRequerimiento');
+            const contador = document.getElementById('grupoContador');
+            const hiddenWrap = document.getElementById('usuariosGrupoHidden');
+            const seleccionadosWrap = document.getElementById('usuariosGrupoSeleccionados');
+            const btnGuardar = document.getElementById('btnGuardarPaquete');
+            let requeridosOtros = 0;
+            let seleccionados = [];
 
-            seleccionados.forEach(u => {
-                const chip = document.createElement('button');
-                chip.type = 'button';
-                chip.className = 'btn btn-sm btn-outline-info';
-                chip.textContent = `${u.nombre} · ${u.cedula} ×`;
-                chip.addEventListener('click', () => {
-                    seleccionados = seleccionados.filter(x => x.idUsuario !== u.idUsuario);
-                    renderSeleccionados();
+            function renderSeleccionados() {
+                if (!seleccionadosWrap || !hiddenWrap) return;
+                seleccionadosWrap.innerHTML = '';
+                hiddenWrap.innerHTML = '';
+
+                seleccionados.forEach(u => {
+                    const chip = document.createElement('button');
+                    chip.type = 'button';
+                    chip.className = 'btn btn-sm btn-outline-info';
+                    chip.textContent = `${u.nombre} · ${u.cedula} ×`;
+                    chip.addEventListener('click', () => {
+                        seleccionados = seleccionados.filter(x => x.idUsuario !== u.idUsuario);
+                        renderSeleccionados();
+                    });
+                    seleccionadosWrap.appendChild(chip);
+
+                    const h = document.createElement('input');
+                    h.type = 'hidden';
+                    h.name = 'idsUsuariosGrupo';
+                    h.value = u.idUsuario;
+                    hiddenWrap.appendChild(h);
                 });
-                seleccionadosWrap.appendChild(chip);
 
-                const h = document.createElement('input');
-                h.type = 'hidden';
-                h.name = 'idsUsuariosGrupo';
-                h.value = u.idUsuario;
-                hiddenWrap.appendChild(h);
+                if (contador) contador.textContent = `${seleccionados.length} / ${requeridosOtros}`;
+                if (btnGuardar && requeridosOtros > 0) btnGuardar.disabled = seleccionados.length !== requeridosOtros;
+                else if (btnGuardar) btnGuardar.disabled = !inputPaquete?.value;
+            }
+
+            function limpiarSeleccionPaquete() {
+                cards.forEach(c => c.classList.remove('selected'));
+
+                if (inputPaquete) {
+                    inputPaquete.value = '';
+                }
+
+                seleccionados = [];
+                requeridosOtros = 0;
+
+                if (wrapGrupo) {
+                    wrapGrupo.classList.add('d-none');
+                }
+
+                if (requerimiento) {
+                    requerimiento.textContent = '';
+                }
+
+                const resultadosGrupo = document.getElementById('resultadosUsuarioGrupo');
+                if (resultadosGrupo) {
+                    resultadosGrupo.innerHTML = '';
+                }
+
+                renderSeleccionados();
+            }
+
+            function aplicarFiltrosPaquetes() {
+                const plan = filtroTipoPlan?.value || '';
+                const lecciones = filtroLecciones?.value || '';
+                const tipo = filtroTipoPaquete?.value || '';
+
+                let visibles = 0;
+                let seleccionOculta = false;
+
+                cards.forEach(card => {
+                    const item = card.closest('.paquete-item');
+                    if (!item) return;
+
+                    const tipoCard = card.dataset.esgrupal === 'true'
+                        ? 'grupal'
+                        : 'individual';
+
+                    const coincidePlan =
+                        !plan || card.dataset.plan === plan;
+
+                    const coincideLecciones =
+                        !lecciones || card.dataset.lecciones === lecciones;
+
+                    const coincideTipo =
+                        !tipo || tipoCard === tipo;
+
+                    const mostrar =
+                        coincidePlan && coincideLecciones && coincideTipo;
+
+                    item.classList.toggle('d-none', !mostrar);
+
+                    if (mostrar) {
+                        visibles++;
+                    } else if (card.classList.contains('selected')) {
+                        seleccionOculta = true;
+                    }
+                });
+
+                sinResultadosPaquetes?.classList.toggle('d-none', visibles > 0);
+
+                // Si el paquete que estaba seleccionado deja de cumplir los filtros,
+                // se limpia también la selección de integrantes del grupo para evitar
+                // enviar un paquete oculto por error.
+                if (seleccionOculta) {
+                    limpiarSeleccionPaquete();
+                }
+            }
+
+            filtroTipoPlan?.addEventListener('change', aplicarFiltrosPaquetes);
+            filtroLecciones?.addEventListener('change', aplicarFiltrosPaquetes);
+            filtroTipoPaquete?.addEventListener('change', aplicarFiltrosPaquetes);
+
+            btnLimpiarFiltros?.addEventListener('click', () => {
+                if (filtroTipoPlan) filtroTipoPlan.value = '';
+                if (filtroLecciones) filtroLecciones.value = '';
+                if (filtroTipoPaquete) filtroTipoPaquete.value = '';
+
+                aplicarFiltrosPaquetes();
             });
 
-            if (contador) contador.textContent = `${seleccionados.length} / ${requeridosOtros}`;
-            if (btnGuardar && requeridosOtros > 0) btnGuardar.disabled = seleccionados.length !== requeridosOtros;
-            else if (btnGuardar) btnGuardar.disabled = !inputPaquete?.value;
-        }
-
-        cards.forEach(card => {
-            card.addEventListener('click', () => {
+            function seleccionarCardPaquete(card) {
                 cards.forEach(c => c.classList.remove('selected'));
                 card.classList.add('selected');
-                if (inputPaquete) inputPaquete.value = card.dataset.id || '';
+
+                if (inputPaquete) {
+                    inputPaquete.value = card.dataset.id || '';
+                }
 
                 const grupal = card.dataset.esgrupal === 'true';
                 const cantidad = Number(card.dataset.cantidad || '1');
+
                 seleccionados = [];
-                requeridosOtros = grupal ? Math.max(0, cantidad - 1) : 0;
+                requeridosOtros = grupal
+                    ? Math.max(0, cantidad - 1)
+                    : 0;
 
-                if (wrapGrupo) wrapGrupo.classList.toggle('d-none', !grupal);
-                if (requerimiento) requerimiento.textContent = grupal
-                    ? `Este paquete requiere ${cantidad} usuarios en total. Seleccioná ${requeridosOtros} usuario(s) adicional(es).`
-                    : '';
+                if (wrapGrupo) {
+                    wrapGrupo.classList.toggle('d-none', !grupal);
+                }
+
+                if (requerimiento) {
+                    requerimiento.textContent = grupal
+                        ? `Este paquete requiere ${cantidad} usuarios en total. Seleccioná ${requeridosOtros} usuario(s) adicional(es).`
+                        : '';
+                }
+
                 renderSeleccionados();
-            });
-        });
-
-        async function buscarUsuarios(inputId, resultsId, onSelect) {
-            const input = document.getElementById(inputId);
-            const results = document.getElementById(resultsId);
-            if (!input || !results) return;
-            const termino = input.value.trim();
-            if (termino.length < 2) {
-                results.innerHTML = '<div class="text-warning small">Ingresá al menos 2 caracteres.</div>';
-                return;
             }
 
-            results.innerHTML = '<div class="text-muted small">Buscando...</div>';
-            try {
-                const res = await fetch(`${buscarUrl}?termino=${encodeURIComponent(termino)}`);
-                const data = await res.json();
-                if (!res.ok) throw new Error(data.message || 'No se pudo buscar.');
+            cards.forEach(card => {
+                card.addEventListener('click', () => {
+                    seleccionarCardPaquete(card);
+                });
 
-                results.innerHTML = '';
-                if (!data.usuarios?.length) {
-                    results.innerHTML = '<div class="text-muted small">No hay usuarios disponibles.</div>';
+                card.addEventListener('keydown', e => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        seleccionarCardPaquete(card);
+                    }
+                });
+            });
+
+            async function buscarUsuarios(inputId, resultsId, onSelect) {
+                const input = document.getElementById(inputId);
+                const results = document.getElementById(resultsId);
+                if (!input || !results) return;
+                const termino = input.value.trim();
+                if (termino.length < 2) {
+                    results.innerHTML = '<div class="text-warning small">Ingresá al menos 2 caracteres.</div>';
                     return;
                 }
 
-                data.usuarios.forEach(u => {
-                    if (u.idUsuario === usuarioPrincipalId) return;
-                    const btn = document.createElement('button');
-                    btn.type = 'button';
-                    btn.className = 'btn btn-outline-secondary btn-sm me-2 mb-2';
-                    btn.textContent = `${u.nombre} · ${u.cedula}`;
-                    btn.addEventListener('click', () => onSelect(u));
-                    results.appendChild(btn);
+                results.innerHTML = '<div class="text-muted small">Buscando...</div>';
+                try {
+                    const res = await fetch(`${buscarUrl}?termino=${encodeURIComponent(termino)}`);
+                    const data = await res.json();
+                    if (!res.ok) throw new Error(data.message || 'No se pudo buscar.');
+
+                    results.innerHTML = '';
+                    if (!data.usuarios?.length) {
+                        results.innerHTML = '<div class="text-muted small">No hay usuarios disponibles.</div>';
+                        return;
+                    }
+
+                    data.usuarios.forEach(u => {
+                        if (u.idUsuario === usuarioPrincipalId) return;
+                        const btn = document.createElement('button');
+                        btn.type = 'button';
+                        btn.className = 'btn btn-outline-secondary btn-sm me-2 mb-2';
+                        btn.textContent = `${u.nombre} · ${u.cedula}`;
+                        btn.addEventListener('click', () => onSelect(u));
+                        results.appendChild(btn);
+                    });
+                } catch (e) {
+                    results.innerHTML = `<div class="text-danger small">${e.message}</div>`;
+                }
+            }
+
+            document.getElementById('btnBuscarUsuarioGrupo')?.addEventListener('click', () => {
+                buscarUsuarios('buscarUsuarioGrupo', 'resultadosUsuarioGrupo', u => {
+                    if (seleccionados.some(x => x.idUsuario === u.idUsuario)) return;
+                    if (seleccionados.length >= requeridosOtros) return;
+                    seleccionados.push(u);
+                    renderSeleccionados();
                 });
-            } catch (e) {
-                results.innerHTML = `<div class="text-danger small">${e.message}</div>`;
-            }
-        }
-
-        document.getElementById('btnBuscarUsuarioGrupo')?.addEventListener('click', () => {
-            buscarUsuarios('buscarUsuarioGrupo', 'resultadosUsuarioGrupo', u => {
-                if (seleccionados.some(x => x.idUsuario === u.idUsuario)) return;
-                if (seleccionados.length >= requeridosOtros) return;
-                seleccionados.push(u);
-                renderSeleccionados();
             });
-        });
 
-        document.getElementById('formAsignarPaquete')?.addEventListener('submit', e => {
-            if (!inputPaquete?.value) {
-                e.preventDefault();
-                alert('Seleccione un paquete.');
-                return;
-            }
-            if (requeridosOtros > 0 && seleccionados.length !== requeridosOtros) {
-                e.preventDefault();
-                alert(`Debe seleccionar exactamente ${requeridosOtros} usuario(s) adicional(es).`);
-            }
-        });
-
-        // ==============================
-        // Reemplazo de integrante
-        // ==============================
-        const inputEntra = document.getElementById('idUsuarioEntra');
-        const seleccionadoTxt = document.getElementById('reemplazoSeleccionado');
-        document.getElementById('btnBuscarReemplazo')?.addEventListener('click', () => {
-            buscarUsuarios('buscarReemplazo', 'resultadosReemplazo', u => {
-                if (inputEntra) inputEntra.value = u.idUsuario;
-                if (seleccionadoTxt) seleccionadoTxt.textContent = `Nuevo integrante: ${u.nombre} · ${u.cedula}`;
+            document.getElementById('formAsignarPaquete')?.addEventListener('submit', e => {
+                if (!inputPaquete?.value) {
+                    e.preventDefault();
+                    alert('Seleccione un paquete.');
+                    return;
+                }
+                if (requeridosOtros > 0 && seleccionados.length !== requeridosOtros) {
+                    e.preventDefault();
+                    alert(`Debe seleccionar exactamente ${requeridosOtros} usuario(s) adicional(es).`);
+                }
             });
-        });
 
-        document.getElementById('formReemplazarMiembro')?.addEventListener('submit', e => {
-            if (!inputEntra?.value) {
-                e.preventDefault();
-                alert('Seleccione el nuevo integrante.');
+            // ==============================
+            // Reemplazo de integrante
+            // ==============================
+            const inputEntra = document.getElementById('idUsuarioEntra');
+            const seleccionadoTxt = document.getElementById('reemplazoSeleccionado');
+            document.getElementById('btnBuscarReemplazo')?.addEventListener('click', () => {
+                buscarUsuarios('buscarReemplazo', 'resultadosReemplazo', u => {
+                    if (inputEntra) inputEntra.value = u.idUsuario;
+                    if (seleccionadoTxt) seleccionadoTxt.textContent = `Nuevo integrante: ${u.nombre} · ${u.cedula}`;
+                });
+            });
+
+            document.getElementById('formReemplazarMiembro')?.addEventListener('submit', e => {
+                if (!inputEntra?.value) {
+                    e.preventDefault();
+                    alert('Seleccione el nuevo integrante.');
+                }
+            });
+
+            // ==============================
+            // Roles
+            // ==============================
+            const selTiene = document.getElementById('selRolesTiene');
+            const selNoTiene = document.getElementById('selRolesNoTiene');
+            const addRole = document.getElementById('addRole');
+            const removeRole = document.getElementById('removeRole');
+            const btnRol = document.getElementById('btnAplicarRol');
+
+            function actualizarRoles(origen) {
+                if (!addRole || !removeRole || !btnRol) return;
+                if (origen === 'quitar') {
+                    if (selNoTiene) selNoTiene.value = '';
+                    removeRole.value = selTiene?.value || '';
+                    addRole.value = '';
+                } else {
+                    if (selTiene) selTiene.value = '';
+                    addRole.value = selNoTiene?.value || '';
+                    removeRole.value = '';
+                }
+                btnRol.disabled = !addRole.value && !removeRole.value;
             }
+            selTiene?.addEventListener('change', () => actualizarRoles('quitar'));
+            selNoTiene?.addEventListener('change', () => actualizarRoles('agregar'));
         });
-
-        // ==============================
-        // Roles
-        // ==============================
-        const selTiene = document.getElementById('selRolesTiene');
-        const selNoTiene = document.getElementById('selRolesNoTiene');
-        const addRole = document.getElementById('addRole');
-        const removeRole = document.getElementById('removeRole');
-        const btnRol = document.getElementById('btnAplicarRol');
-
-        function actualizarRoles(origen) {
-            if (!addRole || !removeRole || !btnRol) return;
-            if (origen === 'quitar') {
-                if (selNoTiene) selNoTiene.value = '';
-                removeRole.value = selTiene?.value || '';
-                addRole.value = '';
-            } else {
-                if (selTiene) selTiene.value = '';
-                addRole.value = selNoTiene?.value || '';
-                removeRole.value = '';
-            }
-            btnRol.disabled = !addRole.value && !removeRole.value;
-        }
-        selTiene?.addEventListener('change', () => actualizarRoles('quitar'));
-        selNoTiene?.addEventListener('change', () => actualizarRoles('agregar'));
-    });
-</script>
+    </script>
 }
 
 <style>
     .cr-info-grid > div { margin-bottom:.75rem; }
     .cr-info-grid span { display:block; color:var(--muted); font-size:.88rem; }
     .paquete-select-card.selected { outline:2px solid var(--red); box-shadow:0 0 0 3px rgba(254,1,0,.12); }
+    .paquete-select-card:focus-visible { outline:2px solid var(--red); outline-offset:2px; }
 </style>
