@@ -16,6 +16,7 @@ namespace CrStudioFitnes.ViewModels
         public string IdUsuario { get; set; } = string.Empty;
         public string NombreCompleto { get; set; } = string.Empty;
         public string Cedula { get; set; } = string.Empty;
+        public int Cupos { get; set; } = 1;
         public int IdPaqueteUsuario { get; set; }
         public int CantLecciones { get; set; }
         public DateTime? FechaInicio { get; set; }

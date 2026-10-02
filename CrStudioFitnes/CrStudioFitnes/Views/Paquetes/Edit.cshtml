@@ -12,7 +12,7 @@
                     <div class="text-center">
                         <h1 class="h3 mb-1">@ViewData["Title"]</h1>
                         <p class="text-muted mb-4">
-                            Los valores por usuario se recalculan automáticamente. La estructura grupal no puede cambiar mientras existan grupos activos.
+                            Los valores por cupo se recalculan automáticamente. La estructura grupal no puede cambiar mientras existan grupos activos.
                         </p>
                     </div>
 
@@ -49,8 +49,8 @@
 
                             <div class="col-md-6" id="cantidadUsuariosWrap">
                                 <div class="form-floating">
-                                    <input asp-for="CantidadUsuarios" class="form-control" type="number" min="2" max="1000" step="1" placeholder="Cantidad de usuarios" />
-                                    <label asp-for="CantidadUsuarios">Cantidad de usuarios</label>
+                                    <input asp-for="CantidadUsuarios" class="form-control" type="number" min="2" max="1000" step="1" placeholder="Cantidad de cupos" />
+                                    <label asp-for="CantidadUsuarios">Cantidad de cupos</label>
                                     <span asp-validation-for="CantidadUsuarios" class="text-danger"></span>
                                 </div>
                             </div>
@@ -73,14 +73,14 @@
 
                             <div class="col-md-6">
                                 <div class="border rounded p-3 h-100">
-                                    <div class="text-muted small">Lecciones por usuario</div>
+                                    <div class="text-muted small">Lecciones por cupo</div>
                                     <div class="fw-semibold fs-5" id="previewLecciones">—</div>
                                 </div>
                             </div>
 
                             <div class="col-md-6">
                                 <div class="border rounded p-3 h-100">
-                                    <div class="text-muted small">Monto por usuario</div>
+                                    <div class="text-muted small">Monto por cupo</div>
                                     <div class="fw-semibold fs-5" id="previewPago">—</div>
                                 </div>
                             </div>
@@ -94,7 +94,7 @@
 
                             <div class="col-12">
                                 <div class="alert alert-info mb-0">
-                                    <strong>Ejemplo:</strong> 24 lecciones y 3 usuarios = 8 lecciones por usuario. ₡45.000 y 3 usuarios = ₡15.000 por usuario.
+                                    <strong>Ejemplo:</strong> 24 lecciones y 3 cupos = 8 lecciones por cupo. ₡45.000 y 3 cupos = ₡15.000 por cupo.
                                 </div>
                             </div>
 

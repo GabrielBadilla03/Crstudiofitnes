@@ -8,6 +8,11 @@
     var usuarioId = ViewData["UsuarioId"]?.ToString();
     var pagos = Model ?? new List<PagoPaquete>();
     var pagosActivos = pagos.Where(p => p.Activo).ToList();
+    var pagoMasReciente = pagos
+        .OrderByDescending(p => p.Fecha)
+        .ThenByDescending(p => p.IdPagoPaquete)
+        .FirstOrDefault();
+
     var pagoPendiente = pagosActivos
         .Where(p => p.Monto > 0)
         .OrderByDescending(p => p.Fecha)
@@ -195,12 +200,20 @@
                                                 <div class="text-muted">Sin abonos registrados.</div>
                                             }
 
-                                            @if (canGestionarPagos && pago.Activo)
+                                            @if (canGestionarPagos
+                                                && pago.Activo
+                                                && pagoMasReciente?.IdPagoPaquete == pago.IdPagoPaquete)
                                             {
                                                 <div class="mt-3">
                                                     <button type="button" class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#modalAnularPago_@pago.IdPagoPaquete">
                                                         @(esGrupal ? "Anular operación grupal" : "Anular pago")
                                                     </button>
+                                                </div>
+                                            }
+                                            else if (canGestionarPagos && pago.Activo)
+                                            {
+                                                <div class="small text-muted mt-3">
+                                                    Los pagos anteriores son históricos. Solo puede anularse el pago más reciente.
                                                 </div>
                                             }
                                         </div>
@@ -265,7 +278,10 @@
     </div>
 }
 
-@foreach (var pago in pagos.Where(p => p.Activo))
+@foreach (var pago in pagos.Where(p =>
+    p.Activo
+    && pagoMasReciente != null
+    && p.IdPagoPaquete == pagoMasReciente.IdPagoPaquete))
 {
     bool esGrupal = pago.IdGrupoPaquete.HasValue && pago.IdOperacionGrupo.HasValue;
     <div class="modal fade" id="modalAnularPago_@pago.IdPagoPaquete" tabindex="-1" aria-hidden="true">
@@ -280,7 +296,13 @@
                         {
                             <div class="alert alert-danger"><strong>Atención:</strong> se anularán todos los pagos de los integrantes que pertenezcan a esta misma operación grupal.</div>
                         }
-                        <div class="alert alert-warning">Las lecciones no se revierten automáticamente para evitar inconsistencias si ya existieron reservas.</div>
+                        <div class="alert alert-warning">
+                            Al confirmar, las lecciones de la asignación asociada a este pago quedarán en <strong>0</strong>.
+                            @if (esGrupal)
+                            {
+                                <span> Esto se aplicará a todos los integrantes de la operación grupal.</span>
+                            }
+                        </div>
                         <label class="form-label">Motivo</label>
                         <textarea class="form-control" name="motivoAnulacion" maxlength="300" rows="4" required></textarea>
                     </div>

@@ -16,7 +16,7 @@
                     <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
                         <div>
                             <h1 class="h3 mb-1">Paquetes</h1>
-                            <p class="text-muted mb-0">Los montos y lecciones por usuario son los valores operativos.</p>
+                            <p class="text-muted mb-0">Los montos y lecciones por cupo son los valores base para distribuir paquetes grupales.</p>
                         </div>
                         @if (canManage)
                         {
@@ -70,12 +70,12 @@
                                                 <div class="d-flex justify-content-between gap-2 align-items-start">
                                                     <div class="cr-card-title">@nombre</div>
                                                     <span class="badge @(p.EsGrupal ? "bg-info text-dark" : "bg-secondary")">
-                                                        @(p.EsGrupal ? $"Grupal x{p.CantidadUsuarios}" : "Individual")
+                                                        @(p.EsGrupal ? $"Grupal x{p.CantidadUsuarios} cupos" : "Individual")
                                                     </span>
                                                 </div>
                                                 <div class="cr-card-subtitle mt-2">
                                                     <div>@p.CantDias</div>
-                                                    <div>@p.CantLeccionesPorUsuario lecciones por usuario</div>
+                                                    <div>@p.CantLeccionesPorUsuario lecciones por cupo</div>
                                                 </div>
                                                 <div class="cr-card-price">₡@p.PagoPorUsuario.ToString("N2")</div>
                                                 <div class="mt-2">

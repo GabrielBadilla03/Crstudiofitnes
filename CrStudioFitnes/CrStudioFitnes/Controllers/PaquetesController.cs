@@ -1,4 +1,4 @@
-﻿using CrStudioFitnes.Data;
+using CrStudioFitnes.Data;
 using CrStudioFitnes.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -84,9 +84,6 @@ namespace CrStudioFitnes.Controllers
                 .FirstOrDefaultAsync(p => p.IdPaquete == id.Value);
 
             if (paquete == null)
-                return NotFound();
-
-            if (!CanManagePaquetes() && !paquete.Activo)
                 return NotFound();
 
             ViewData["CanManage"] = CanManagePaquetes();
@@ -177,7 +174,7 @@ namespace CrStudioFitnes.Controllers
             {
                 ModelState.AddModelError(
                     string.Empty,
-                    "No se puede cambiar si el paquete es grupal ni su cantidad de usuarios mientras existan grupos activos. Primero edite o deshaga esos grupos.");
+                    "No se puede cambiar si el paquete es grupal ni su cantidad de cupos mientras existan grupos activos. Primero edite o deshaga esos grupos.");
             }
 
             AplicarCalculosPaquete(paquete);
@@ -230,20 +227,12 @@ namespace CrStudioFitnes.Controllers
             if (paquete == null)
                 return NotFound();
 
-            bool grupoActivo = await _context.GruposPaquete
-                .AsNoTracking()
-                .AnyAsync(g => g.IdPaquete == id && g.Activo);
-
-            if (grupoActivo)
-            {
-                TempData["Error"] = "No se puede desactivar el paquete porque todavía tiene grupos activos.";
-                return RedirectToAction(nameof(Index));
-            }
-
+            // Activo controla únicamente si el paquete se muestra al aplicar
+            // el filtro de paquetes activos. No afecta asignaciones, pagos ni grupos.
             paquete.Activo = false;
             await _context.SaveChangesAsync();
 
-            TempData["Ok"] = "Paquete desactivado correctamente. Se conserva su historial.";
+            TempData["Ok"] = "Paquete ocultado del filtro de activos correctamente. Las asignaciones, pagos y grupos existentes continúan funcionando.";
             return RedirectToAction(nameof(Index));
         }
 
@@ -263,7 +252,7 @@ namespace CrStudioFitnes.Controllers
             {
                 ModelState.AddModelError(
                     nameof(Paquete.CantidadUsuarios),
-                    "Un paquete grupal debe tener al menos 2 usuarios.");
+                    "Un paquete grupal debe tener al menos 2 cupos.");
                 return;
             }
 
@@ -276,7 +265,7 @@ namespace CrStudioFitnes.Controllers
                 {
                     ModelState.AddModelError(
                         nameof(Paquete.CantLecciones),
-                        "La cantidad total de lecciones debe poder dividirse exactamente entre la cantidad de usuarios.");
+                        "La cantidad total de lecciones debe poder dividirse exactamente entre la cantidad de cupos.");
                 }
                 else
                 {
@@ -299,7 +288,7 @@ namespace CrStudioFitnes.Controllers
                 {
                     ModelState.AddModelError(
                         nameof(Paquete.Pago),
-                        "El monto total debe poder dividirse exactamente entre la cantidad de usuarios, hasta centavos.");
+                        "El monto total debe poder dividirse exactamente entre la cantidad de cupos, hasta centavos.");
                 }
                 else
                 {

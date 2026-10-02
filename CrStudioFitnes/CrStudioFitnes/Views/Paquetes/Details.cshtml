@@ -28,7 +28,7 @@
                         </div>
                         <div class="col-md-6">
                             <div class="border rounded p-3 h-100">
-                                <div class="text-muted small">Cantidad de usuarios</div>
+                                <div class="text-muted small">Cantidad de cupos</div>
                                 <div class="fw-semibold">@Model.CantidadUsuarios</div>
                             </div>
                         </div>
@@ -52,7 +52,7 @@
                         </div>
                         <div class="col-md-6">
                             <div class="border rounded p-3 h-100">
-                                <div class="text-muted small">Lecciones por usuario (operativo)</div>
+                                <div class="text-muted small">Lecciones por cupo (operativo)</div>
                                 <div class="fw-semibold">@Model.CantLeccionesPorUsuario</div>
                             </div>
                         </div>
@@ -64,7 +64,7 @@
                         </div>
                         <div class="col-md-6">
                             <div class="border rounded p-3 h-100">
-                                <div class="text-muted small">Monto por usuario (operativo)</div>
+                                <div class="text-muted small">Monto por cupo (operativo)</div>
                                 <div class="fw-semibold">₡@Model.PagoPorUsuario.ToString("N2")</div>
                             </div>
                         </div>
@@ -89,7 +89,7 @@
                         {
                             <div class="d-flex gap-2">
                                 <a asp-action="Edit" asp-route-id="@Model.IdPaquete" class="btn btn-primary">Editar</a>
-                                <a asp-action="Delete" asp-route-id="@Model.IdPaquete" class="btn btn-outline-danger">Desactivar</a>
+                                <a asp-action="Delete" asp-route-id="@Model.IdPaquete" class="btn btn-outline-danger">Ocultar</a>
                             </div>
                         }
                     </div>

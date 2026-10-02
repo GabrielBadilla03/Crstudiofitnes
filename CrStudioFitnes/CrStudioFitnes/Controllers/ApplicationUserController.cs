@@ -86,9 +86,10 @@ namespace CrStudioFitnes.Controllers
             if (user == null)
                 return NotFound();
 
+            // "Activo" solo controla la visibilidad en la pantalla/catálogo de paquetes.
+            // Para asignar paquetes se muestran todos, activos e inactivos.
             ViewBag.PaquetesDisponibles = await _db.Paquetes
                 .AsNoTracking()
-                .Where(p => p.Activo)
                 .OrderBy(p => p.EsGrupal)
                 .ThenBy(p => p.CantDias)
                 .ThenBy(p => p.PagoPorUsuario)
@@ -101,8 +102,7 @@ namespace CrStudioFitnes.Controllers
             {
                 ViewBag.PaquetesGrupalesCompatibles = await _db.Paquetes
                     .AsNoTracking()
-                    .Where(p => p.Activo
-                        && p.EsGrupal
+                    .Where(p => p.EsGrupal
                         && p.CantidadUsuarios == grupoActual.CantidadUsuarios)
                     .OrderBy(p => p.Detalle)
                     .ThenBy(p => p.IdPaquete)
@@ -145,23 +145,19 @@ namespace CrStudioFitnes.Controllers
                 .Select(m => m.IdUsuario);
 
             var ahora = DateTimeOffset.UtcNow;
-            var hoy = DateTime.Today;
 
             var usuariosConDeuda = _db.PagosPaquete
                 .AsNoTracking()
                 .Where(p => p.Activo && p.Monto > 0)
                 .Select(p => p.IdUsuario);
 
-            var usuariosConLeccionesVigentes = _db.PaquetesUsuario
-                .AsNoTracking()
-                .Where(pu => pu.Activo && pu.CantLecciones > 0 && pu.FechaFin >= hoy)
-                .Select(pu => pu.IdUsuario);
-
+            // Tener lecciones vigentes NO impide incorporarse a un grupo.
+            // Al crear la nueva asignación grupal, las asignaciones anteriores
+            // se cierran y sus lecciones quedan en 0.
             var usuarios = await _db.Users
                 .AsNoTracking()
                 .Where(u => !usuariosEnGrupo.Contains(u.Id)
                     && !usuariosConDeuda.Contains(u.Id)
-                    && !usuariosConLeccionesVigentes.Contains(u.Id)
                     && (u.LockoutEnd == null || u.LockoutEnd <= ahora)
                     && (u.Cedula.Contains(termino)
                         || (u.Email != null && u.Email.Contains(termino))
@@ -177,7 +173,12 @@ namespace CrStudioFitnes.Controllers
                     idUsuario = u.Id,
                     cedula = u.Cedula,
                     nombre = (u.Nombre + " " + u.Apellidos).Trim(),
-                    email = u.Email ?? string.Empty
+                    email = u.Email ?? string.Empty,
+                    familiar = u.Familiar,
+                    cantidadFamilia = u.CantidadFamilia,
+                    cupos = u.Familiar && u.CantidadFamilia.HasValue && u.CantidadFamilia.Value > 0
+                        ? u.CantidadFamilia.Value
+                        : 1
                 })
                 .ToListAsync();
 
@@ -274,10 +275,10 @@ namespace CrStudioFitnes.Controllers
                     await using var tx = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
 
                     var paquete = await _db.Paquetes
-                        .FirstOrDefaultAsync(p => p.IdPaquete == idPaquete && p.Activo);
+                        .FirstOrDefaultAsync(p => p.IdPaquete == idPaquete);
 
                     if (paquete == null)
-                        throw new InvalidOperationException("El paquete seleccionado no existe o está inactivo.");
+                        throw new InvalidOperationException("El paquete seleccionado no existe.");
 
                     bool usuarioExiste = await _db.Users.AnyAsync(u => u.Id == idUsuario);
                     if (!usuarioExiste)
@@ -354,6 +355,8 @@ namespace CrStudioFitnes.Controllers
                         .Include(g => g.Paquete)
                         .Include(g => g.Miembros)
                             .ThenInclude(m => m.PaqueteUsuario)
+                        .Include(g => g.Miembros)
+                            .ThenInclude(m => m.Usuario)
                         .FirstOrDefaultAsync(g => g.IdGrupoPaquete == idGrupoPaquete && g.Activo);
 
                     if (grupo == null)
@@ -368,8 +371,10 @@ namespace CrStudioFitnes.Controllers
                     if (grupo.Miembros.Any(m => m.Activo && m.IdUsuario == idUsuarioEntra))
                         throw new InvalidOperationException("El nuevo usuario ya pertenece a este grupo.");
 
-                    bool nuevoExiste = await _db.Users.AnyAsync(u => u.Id == idUsuarioEntra);
-                    if (!nuevoExiste)
+                    var nuevoUsuario = await _db.Users
+                        .FirstOrDefaultAsync(u => u.Id == idUsuarioEntra);
+
+                    if (nuevoUsuario == null)
                         throw new InvalidOperationException("No se encontró el nuevo usuario.");
 
                     bool nuevoEnOtroGrupo = await _db.GruposPaqueteUsuario
@@ -379,12 +384,31 @@ namespace CrStudioFitnes.Controllers
 
                     await ValidarUsuarioDisponibleParaGrupoAsync(idUsuarioEntra);
 
+                    var miembrosActivos = grupo.Miembros
+                        .Where(m => m.Activo)
+                        .ToList();
+
+                    var cuposActuales = miembrosActivos.Sum(m => ObtenerCuposGrupo(m.Usuario));
+                    var cuposSale = ObtenerCuposGrupo(sale.Usuario);
+                    var cuposEntra = ObtenerCuposGrupo(nuevoUsuario);
+                    var cuposLuegoDelCambio = cuposActuales - cuposSale + cuposEntra;
+
+                    if (cuposLuegoDelCambio != grupo.Paquete.CantidadUsuarios)
+                    {
+                        throw new InvalidOperationException(
+                            $"No se puede hacer el reemplazo porque el grupo debe completar exactamente {grupo.Paquete.CantidadUsuarios} cupos. " +
+                            $"El integrante que sale ocupa {cuposSale} y el nuevo ocupa {cuposEntra}; el grupo quedaría con {cuposLuegoDelCambio} cupos.");
+                    }
+
                     var asignacionesPreviasNuevo = await _db.PaquetesUsuario
                         .Where(pu => pu.IdUsuario == idUsuarioEntra && pu.Activo)
                         .ToListAsync();
 
                     foreach (var asignacionPrevia in asignacionesPreviasNuevo)
+                    {
+                        asignacionPrevia.CantLecciones = 0;
                         asignacionPrevia.Activo = false;
+                    }
 
                     sale.Activo = false;
                     sale.FechaSalida = DateTime.Now;
@@ -449,22 +473,29 @@ namespace CrStudioFitnes.Controllers
                     var grupo = await _db.GruposPaquete
                         .Include(g => g.Miembros)
                             .ThenInclude(m => m.PaqueteUsuario)
+                        .Include(g => g.Miembros)
+                            .ThenInclude(m => m.Usuario)
                         .FirstOrDefaultAsync(g => g.IdGrupoPaquete == idGrupoPaquete && g.Activo);
 
                     if (grupo == null)
                         throw new InvalidOperationException("El grupo ya no está activo.");
 
                     var nuevoPaquete = await _db.Paquetes
-                        .FirstOrDefaultAsync(p => p.IdPaquete == idPaqueteNuevo && p.Activo);
+                        .FirstOrDefaultAsync(p => p.IdPaquete == idPaqueteNuevo);
 
                     if (nuevoPaquete == null || !nuevoPaquete.EsGrupal)
-                        throw new InvalidOperationException("Debe seleccionar un paquete grupal activo.");
+                        throw new InvalidOperationException("Debe seleccionar un paquete grupal.");
 
-                    int miembrosActivos = grupo.Miembros.Count(m => m.Activo);
-                    if (nuevoPaquete.CantidadUsuarios != miembrosActivos)
+                    var miembrosActivos = grupo.Miembros
+                        .Where(m => m.Activo)
+                        .ToList();
+
+                    var cuposGrupo = miembrosActivos.Sum(m => ObtenerCuposGrupo(m.Usuario));
+
+                    if (nuevoPaquete.CantidadUsuarios != cuposGrupo)
                     {
                         throw new InvalidOperationException(
-                            $"El nuevo paquete requiere {nuevoPaquete.CantidadUsuarios} usuarios y el grupo actualmente tiene {miembrosActivos}.");
+                            $"El nuevo paquete requiere {nuevoPaquete.CantidadUsuarios} cupos y el grupo actualmente ocupa {cuposGrupo}.");
                     }
 
                     await ValidarGrupoSinDeudaAsync(grupo.IdGrupoPaquete);
@@ -667,9 +698,6 @@ namespace CrStudioFitnes.Controllers
             if (pu == null || pu.Paquete == null)
                 throw new InvalidOperationException("El usuario no tiene un paquete activo asignado.");
 
-            if (!pu.Paquete.Activo)
-                throw new InvalidOperationException("El paquete asignado está inactivo. Seleccione otro paquete antes de pagar.");
-
             if (pu.Paquete.EsGrupal)
                 throw new InvalidOperationException("Este paquete es grupal pero el usuario no tiene una membresía grupal válida. Revise la asignación antes de pagar.");
 
@@ -696,14 +724,14 @@ namespace CrStudioFitnes.Controllers
             if (grupo == null || !grupo.Paquete.EsGrupal)
                 throw new InvalidOperationException("No se encontró un grupo válido para realizar el pago.");
 
-            if (!grupo.Paquete.Activo)
-                throw new InvalidOperationException("El paquete asignado al grupo está inactivo. Cambie el paquete del grupo antes de renovar.");
-
             var miembros = grupo.Miembros.Where(m => m.Activo).ToList();
-            if (miembros.Count != grupo.Paquete.CantidadUsuarios)
+            var cuposGrupo = miembros.Sum(m => ObtenerCuposGrupo(m.Usuario));
+
+            if (cuposGrupo != grupo.Paquete.CantidadUsuarios)
             {
                 throw new InvalidOperationException(
-                    $"El grupo debe tener {grupo.Paquete.CantidadUsuarios} integrantes y actualmente tiene {miembros.Count}. Complete el grupo antes de pagar.");
+                    $"El grupo debe completar exactamente {grupo.Paquete.CantidadUsuarios} cupos y actualmente ocupa {cuposGrupo}. " +
+                    "Deshaga o corrija el grupo antes de pagar.");
             }
 
             var ids = miembros.Select(m => m.IdUsuario).ToList();
@@ -753,7 +781,8 @@ namespace CrStudioFitnes.Controllers
                     tipoPago,
                     fecha,
                     grupo.IdGrupoPaquete,
-                    idOperacion);
+                    idOperacion,
+                    ObtenerCuposGrupo(miembro.Usuario));
             }
 
             return miembros.Count;
@@ -766,18 +795,25 @@ namespace CrStudioFitnes.Controllers
             string tipoPago,
             DateTime fecha,
             int? idGrupoPaquete,
-            Guid? idOperacionGrupo)
+            Guid? idOperacionGrupo,
+            int cantidadCupos = 1)
         {
-            decimal montoUsuario = paquete.PagoPorUsuario > 0
+            if (cantidadCupos <= 0)
+                throw new InvalidOperationException("La cantidad de cupos del usuario es inválida.");
+
+            decimal montoPorCupo = paquete.PagoPorUsuario > 0
                 ? paquete.PagoPorUsuario
                 : paquete.Pago;
 
-            int leccionesUsuario = paquete.CantLeccionesPorUsuario > 0
+            int leccionesPorCupo = paquete.CantLeccionesPorUsuario > 0
                 ? paquete.CantLeccionesPorUsuario
                 : paquete.CantLecciones;
 
+            decimal montoUsuario = montoPorCupo * cantidadCupos;
+            int leccionesUsuario = leccionesPorCupo * cantidadCupos;
+
             if (montoUsuario <= 0 || leccionesUsuario <= 0)
-                throw new InvalidOperationException("El paquete tiene valores por usuario inválidos.");
+                throw new InvalidOperationException("El paquete tiene valores por cupo inválidos.");
 
             bool contado = tipoPago == "CONTADO";
 
@@ -1076,6 +1112,7 @@ namespace CrStudioFitnes.Controllers
                 return NotFound();
 
             motivoAnulacion = motivoAnulacion?.Trim();
+
             var pagoBase = await _db.PagosPaquete
                 .AsNoTracking()
                 .FirstOrDefaultAsync(p => p.IdPagoPaquete == idPagoPaquete);
@@ -1097,6 +1134,31 @@ namespace CrStudioFitnes.Controllers
                 return RedirectToAction(nameof(HistorialPagos), new { id = idUsuarioPago });
             }
 
+            var ultimoPagoUsuario = await _db.PagosPaquete
+                .AsNoTracking()
+                .Where(p => p.IdUsuario == idUsuarioPago)
+                .OrderByDescending(p => p.Fecha)
+                .ThenByDescending(p => p.IdPagoPaquete)
+                .Select(p => new
+                {
+                    p.IdPagoPaquete,
+                    p.Activo
+                })
+                .FirstOrDefaultAsync();
+
+            if (ultimoPagoUsuario == null || ultimoPagoUsuario.IdPagoPaquete != idPagoPaquete)
+            {
+                TempData["ErrorAnulacion"] =
+                    "Solo se puede anular el pago más reciente del usuario. Los pagos anteriores son históricos y no se pueden anular.";
+                return RedirectToAction(nameof(HistorialPagos), new { id = idUsuarioPago });
+            }
+
+            if (!pagoBase.Activo)
+            {
+                TempData["ErrorAnulacion"] = "El pago más reciente ya se encuentra anulado.";
+                return RedirectToAction(nameof(HistorialPagos), new { id = idUsuarioPago });
+            }
+
             bool anulacionGrupal = pagoBase.IdOperacionGrupo.HasValue;
             var strategy = _db.Database.CreateExecutionStrategy();
 
@@ -1110,9 +1172,39 @@ namespace CrStudioFitnes.Controllers
                     if (pagoBase.IdOperacionGrupo.HasValue)
                     {
                         var op = pagoBase.IdOperacionGrupo.Value;
+
                         pagos = await _db.PagosPaquete
                             .Where(p => p.IdOperacionGrupo == op)
                             .ToListAsync();
+
+                        if (pagos.Count == 0)
+                            throw new InvalidOperationException("No se encontraron los pagos de la operación grupal.");
+
+                        var usuariosOperacion = pagos
+                            .Select(p => p.IdUsuario)
+                            .Distinct()
+                            .ToList();
+
+                        foreach (var idUsuario in usuariosOperacion)
+                        {
+                            var ultimo = await _db.PagosPaquete
+                                .AsNoTracking()
+                                .Where(p => p.IdUsuario == idUsuario)
+                                .OrderByDescending(p => p.Fecha)
+                                .ThenByDescending(p => p.IdPagoPaquete)
+                                .Select(p => new
+                                {
+                                    p.IdOperacionGrupo,
+                                    p.IdPagoPaquete
+                                })
+                                .FirstOrDefaultAsync();
+
+                            if (ultimo == null || ultimo.IdOperacionGrupo != op)
+                            {
+                                throw new InvalidOperationException(
+                                    "No se puede anular esta operación grupal porque al menos uno de sus integrantes ya tiene un pago posterior.");
+                            }
+                        }
                     }
                     else
                     {
@@ -1130,9 +1222,22 @@ namespace CrStudioFitnes.Controllers
                         pago.MotivoAnulacion = motivoAnulacion;
                     }
 
-                    // No se modifican lecciones automáticamente: los pagos pueden
-                    // anularse después de que ya existan reservas. La anulación
-                    // financiera sí se aplica a toda la operación grupal.
+                    var idsPaqueteUsuario = pagos
+                        .Where(p => p.IdPaqueteUsuario.HasValue)
+                        .Select(p => p.IdPaqueteUsuario!.Value)
+                        .Distinct()
+                        .ToList();
+
+                    if (idsPaqueteUsuario.Count > 0)
+                    {
+                        var asignaciones = await _db.PaquetesUsuario
+                            .Where(pu => idsPaqueteUsuario.Contains(pu.IdPaqueteUsuario))
+                            .ToListAsync();
+
+                        foreach (var asignacion in asignaciones)
+                            asignacion.CantLecciones = 0;
+                    }
+
                     await _db.SaveChangesAsync();
                     await tx.CommitAsync();
                 });
@@ -1144,8 +1249,8 @@ namespace CrStudioFitnes.Controllers
             }
 
             TempData["OkAnulacion"] = anulacionGrupal
-                ? "La operación grupal fue anulada para todos sus integrantes. Las lecciones no se modificaron automáticamente."
-                : "Pago anulado correctamente. Las lecciones no se modificaron automáticamente.";
+                ? "La operación grupal más reciente fue anulada para todos sus integrantes y sus lecciones quedaron en 0."
+                : "El pago más reciente fue anulado correctamente y las lecciones quedaron en 0.";
 
             return RedirectToAction(nameof(HistorialPagos), new { id = idUsuarioPago });
         }
@@ -1287,6 +1392,7 @@ namespace CrStudioFitnes.Controllers
             if (user == null)
                 return NotFound();
 
+            int cuposNuevos;
             if (familiar)
             {
                 if (!cantidadFamilia.HasValue || cantidadFamilia.Value < 2 || cantidadFamilia.Value > 6)
@@ -1295,8 +1401,32 @@ namespace CrStudioFitnes.Controllers
                     return RedirectToAction(nameof(Details), new { id = idUsuario });
                 }
 
+                cuposNuevos = cantidadFamilia.Value;
+            }
+            else
+            {
+                cuposNuevos = 1;
+            }
+
+            var perteneceGrupoActivo = await _db.GruposPaqueteUsuario
+                .AsNoTracking()
+                .AnyAsync(m => m.IdUsuario == idUsuario
+                    && m.Activo
+                    && m.GrupoPaquete.Activo);
+
+            var cuposActuales = ObtenerCuposGrupo(user);
+
+            if (perteneceGrupoActivo && cuposNuevos != cuposActuales)
+            {
+                TempData["ErrorFamiliar"] =
+                    "No se puede cambiar la cantidad de familiares mientras el usuario pertenezca a un grupo activo. Primero debe deshacer el grupo y luego volver a armarlo con la nueva cantidad.";
+                return RedirectToAction(nameof(Details), new { id = idUsuario });
+            }
+
+            if (familiar)
+            {
                 user.Familiar = true;
-                user.CantidadFamilia = cantidadFamilia.Value;
+                user.CantidadFamilia = cantidadFamilia!.Value;
             }
             else
             {
@@ -1409,15 +1539,20 @@ namespace CrStudioFitnes.Controllers
             var ids = new List<string> { idUsuarioPrincipal };
             ids.AddRange(otros);
 
-            if (ids.Count != paquete.CantidadUsuarios)
+            var usuarios = await _db.Users
+                .Where(u => ids.Contains(u.Id))
+                .ToListAsync();
+
+            if (usuarios.Count != ids.Count)
+                throw new InvalidOperationException("Uno o más usuarios seleccionados ya no existen.");
+
+            var cuposSeleccionados = usuarios.Sum(ObtenerCuposGrupo);
+            if (cuposSeleccionados != paquete.CantidadUsuarios)
             {
                 throw new InvalidOperationException(
-                    $"Este paquete requiere exactamente {paquete.CantidadUsuarios} usuarios. Debe seleccionar {paquete.CantidadUsuarios - 1} usuario(s) adicional(es).");
+                    $"Este paquete requiere exactamente {paquete.CantidadUsuarios} cupos y la selección actual suma {cuposSeleccionados}. " +
+                    "Los usuarios familiares cuentan según su cantidad de familiares.");
             }
-
-            int existentes = await _db.Users.CountAsync(u => ids.Contains(u.Id));
-            if (existentes != ids.Count)
-                throw new InvalidOperationException("Uno o más usuarios seleccionados ya no existen.");
 
             var ocupados = await _db.GruposPaqueteUsuario
                 .AsNoTracking()
@@ -1447,7 +1582,10 @@ namespace CrStudioFitnes.Controllers
                     .ToListAsync();
 
                 foreach (var anterior in anteriores)
+                {
+                    anterior.CantLecciones = 0;
                     anterior.Activo = false;
+                }
 
                 var pu = new PaqueteUsuario
                 {
@@ -1494,15 +1632,6 @@ namespace CrStudioFitnes.Controllers
             if (deuda)
                 throw new InvalidOperationException("Uno de los usuarios seleccionados tiene una deuda pendiente y no puede incorporarse al grupo todavía.");
 
-            bool paqueteConSaldo = await _db.PaquetesUsuario
-                .AsNoTracking()
-                .AnyAsync(pu => pu.IdUsuario == idUsuario
-                    && pu.Activo
-                    && pu.CantLecciones > 0
-                    && pu.FechaFin >= DateTime.Today);
-
-            if (paqueteConSaldo)
-                throw new InvalidOperationException("Uno de los usuarios seleccionados todavía tiene lecciones disponibles en otro paquete.");
         }
 
         private async Task ValidarGrupoSinDeudaAsync(int idGrupoPaquete)
@@ -1559,6 +1688,8 @@ namespace CrStudioFitnes.Controllers
                     m.IdUsuario,
                     Nombre = (m.Usuario.Nombre + " " + m.Usuario.Apellidos).Trim(),
                     m.Usuario.Cedula,
+                    m.Usuario.Familiar,
+                    m.Usuario.CantidadFamilia,
                     m.IdPaqueteUsuario,
                     CantLecciones = m.PaqueteUsuario.CantLecciones,
                     FechaInicio = (DateTime?)m.PaqueteUsuario.FechaInicio,
@@ -1589,6 +1720,9 @@ namespace CrStudioFitnes.Controllers
                     IdUsuario = m.IdUsuario,
                     NombreCompleto = string.IsNullOrWhiteSpace(m.Nombre) ? "Usuario" : m.Nombre,
                     Cedula = m.Cedula,
+                    Cupos = m.Familiar && m.CantidadFamilia.HasValue && m.CantidadFamilia.Value > 0
+                        ? m.CantidadFamilia.Value
+                        : 1,
                     IdPaqueteUsuario = m.IdPaqueteUsuario,
                     CantLecciones = m.CantLecciones,
                     FechaInicio = m.FechaInicio,
@@ -1597,6 +1731,18 @@ namespace CrStudioFitnes.Controllers
                     EsUsuarioActual = m.IdUsuario == idUsuario
                 }).ToList()
             };
+        }
+
+        private static int ObtenerCuposGrupo(ApplicationUser usuario)
+        {
+            if (usuario.Familiar
+                && usuario.CantidadFamilia.HasValue
+                && usuario.CantidadFamilia.Value > 0)
+            {
+                return usuario.CantidadFamilia.Value;
+            }
+
+            return 1;
         }
 
         private static string? LimpiarOpcional(string? value)

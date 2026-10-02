@@ -1,7 +1,7 @@
 @model CrStudioFitnes.Models.Paquete
 
 @{
-    ViewData["Title"] = "Desactivar paquete";
+    ViewData["Title"] = "Ocultar paquete";
 
     string nombre =
         !string.IsNullOrWhiteSpace(Model.Detalle)
@@ -21,8 +21,8 @@
                         </h1>
 
                         <p class="text-muted mb-4">
-                            El paquete dejará de estar disponible para nuevas asignaciones,
-                            pero se conservará su historial y las referencias existentes.
+                            El paquete dejará de aparecer cuando se use el filtro de paquetes visibles.
+                            Aun así podrá seguir asignándose, pagándose y utilizándose en grupos.
                         </p>
                     </div>
 
@@ -38,14 +38,14 @@
                         <dd class="col-sm-7">@Model.CantDias</dd>
 
                         <dt class="col-sm-5 fw-bold">
-                            Lecciones por usuario:
+                            Lecciones por cupo:
                         </dt>
                         <dd class="col-sm-7">
                             @Model.CantLeccionesPorUsuario
                         </dd>
 
                         <dt class="col-sm-5 fw-bold">
-                            Monto por usuario:
+                            Monto por cupo:
                         </dt>
                         <dd class="col-sm-7">
                             ₡@Model.PagoPorUsuario.ToString("N2")
@@ -82,7 +82,7 @@
                                 class="btn btn-danger"
                                 data-bs-toggle="modal"
                                 data-bs-target="#confirmDeleteModal">
-                            Desactivar
+                            Ocultar
                         </button>
                     </form>
 
@@ -96,7 +96,7 @@
                                 <div class="modal-header bg-danger text-white">
                                     <h5 class="modal-title"
                                         id="confirmDeleteLabel">
-                                        Confirmar desactivación
+                                        Confirmar cambio de visibilidad
                                     </h5>
 
                                     <button type="button"
@@ -106,11 +106,11 @@
                                 </div>
 
                                 <div class="modal-body">
-                                    ¿Seguro que desea desactivar el paquete
+                                    ¿Seguro que desea ocultar el paquete
                                     <strong>@nombre</strong>?
 
                                     <div class="small text-muted mt-2">
-                                        El registro no se eliminará de la base de datos.
+                                        El registro no se eliminará y seguirá disponible para asignaciones y pagos.
                                     </div>
                                 </div>
 
@@ -124,7 +124,7 @@
                                     <button type="button"
                                             id="confirmDeleteBtn"
                                             class="btn btn-danger">
-                                        Sí, desactivar
+                                        Sí, ocultar
                                     </button>
                                 </div>
                             </div>

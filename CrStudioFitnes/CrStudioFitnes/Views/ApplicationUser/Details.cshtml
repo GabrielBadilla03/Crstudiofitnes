@@ -16,6 +16,12 @@
     var paquetesDisponibles = ViewBag.PaquetesDisponibles as List<Paquete> ?? new List<Paquete>();
     var paquetesGrupoCompatibles = ViewBag.PaquetesGrupalesCompatibles as List<Paquete> ?? new List<Paquete>();
 
+    var cuposUsuarioPrincipal = Model.Familiar
+        && Model.CantidadFamilia.HasValue
+        && Model.CantidadFamilia.Value > 0
+            ? Model.CantidadFamilia.Value
+            : 1;
+
     // Filtros del selector de paquetes.
     // En paquetes grupales se filtra por las lecciones OPERATIVAS de cada usuario,
     // no por el total de referencia del grupo.
@@ -108,6 +114,15 @@
                             {
                                 <form asp-action="ActualizarFamiliar" method="post" class="border rounded p-3 mt-3">
                                     @Html.AntiForgeryToken()
+
+                                    @if (grupoActual != null)
+                                    {
+                                        <div class="alert alert-warning py-2 small">
+                                            Este usuario pertenece a un grupo activo. Para cambiar la cantidad familiar primero debe
+                                            <strong>deshacer el grupo</strong> y luego volver a armarlo con la nueva cantidad de cupos.
+                                        </div>
+                                    }
+
                                     <input type="hidden" name="idUsuario" value="@Model.Id" />
                                     <div class="form-check form-switch mb-3">
                                         <input class="form-check-input" type="checkbox" id="familiar" name="familiar" value="true" @(Model.Familiar ? "checked" : "") />
@@ -180,7 +195,7 @@
                                             <div>
                                                 @if (grupoActual != null)
                                                 {
-                                                    <span class="badge bg-info text-dark">Grupal · @grupoActual.CantidadUsuarios usuarios</span>
+                                                    <span class="badge bg-info text-dark">Grupal · @grupoActual.CantidadUsuarios cupos</span>
                                                 }
                                                 else
                                                 {
@@ -190,8 +205,8 @@
                                         </div>
 
                                         <div class="row g-2 mt-2">
-                                            <div class="col-6"><span class="text-muted">Lecciones por usuario:</span><div class="fw-semibold">@(p?.CantLeccionesPorUsuario ?? 0)</div></div>
-                                            <div class="col-6"><span class="text-muted">Monto por usuario:</span><div class="fw-semibold">₡@((p?.PagoPorUsuario ?? 0).ToString("N2"))</div></div>
+                                            <div class="col-6"><span class="text-muted">@(p?.EsGrupal == true ? "Lecciones por cupo:" : "Lecciones del paquete:")</span><div class="fw-semibold">@(p?.CantLeccionesPorUsuario ?? 0)</div></div>
+                                            <div class="col-6"><span class="text-muted">@(p?.EsGrupal == true ? "Monto por cupo:" : "Monto del paquete:")</span><div class="fw-semibold">₡@((p?.PagoPorUsuario ?? 0).ToString("N2"))</div></div>
                                             <div class="col-6"><span class="text-muted">Lecciones disponibles:</span><div class="fw-semibold">@paqueteActual.CantLecciones</div></div>
                                             <div class="col-6"><span class="text-muted">Estado:</span><div class="fw-semibold">@(vigente ? "Vigente" : "Pendiente / vencido")</div></div>
                                             <div class="col-6"><span class="text-muted">Inicio:</span><div class="fw-semibold">@paqueteActual.FechaInicio.ToString("dd/MM/yyyy")</div></div>
@@ -230,35 +245,37 @@
                                                 <tr>
                                                     <th>Integrante</th>
                                                     <th>Cédula</th>
+                                                    <th>Cupos</th>
                                                     <th>Lecciones</th>
                                                     <th>Deuda</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                @foreach (var miembro in grupoActual.Miembros)
-                                                {
-                                                    <tr>
-                                                        <td>
-                                                            @miembro.NombreCompleto
-                                                            @if (miembro.EsUsuarioActual)
-                                                            {
-                                                                <span class="badge bg-info text-dark ms-1">Actual</span>
-                                                            }
-                                                        </td>
-                                                        <td>@miembro.Cedula</td>
-                                                        <td>@miembro.CantLecciones</td>
-                                                        <td>
-                                                            @if (miembro.SaldoPendiente > 0)
-                                                            {
-                                                                <span class="text-warning fw-semibold">₡@miembro.SaldoPendiente.ToString("N2")</span>
-                                                            }
-                                                            else
-                                                            {
-                                                                <span class="text-success">Pagado</span>
-                                                            }
-                                                        </td>
-                                                    </tr>
-                                                }
+                                            @foreach (var miembro in grupoActual.Miembros)
+                                            {
+                                                <tr>
+                                                    <td>
+                                                        @miembro.NombreCompleto
+                                                        @if (miembro.EsUsuarioActual)
+                                                        {
+                                                            <span class="badge bg-info text-dark ms-1">Actual</span>
+                                                        }
+                                                    </td>
+                                                    <td>@miembro.Cedula</td>
+                                                    <td>@miembro.Cupos</td>
+                                                    <td>@miembro.CantLecciones</td>
+                                                    <td>
+                                                        @if (miembro.SaldoPendiente > 0)
+                                                        {
+                                                            <span class="text-warning fw-semibold">₡@miembro.SaldoPendiente.ToString("N2")</span>
+                                                        }
+                                                        else
+                                                        {
+                                                            <span class="text-success">Pagado</span>
+                                                        }
+                                                    </td>
+                                                </tr>
+                                            }
                                             </tbody>
                                         </table>
                                     </div>
@@ -300,9 +317,11 @@
 @if (canPagarPaquete && paqueteActual != null)
 {
     var p = paqueteActual.Paquete;
-    decimal montoUsuario = p?.PagoPorUsuario ?? 0;
-    int leccionesUsuario = p?.CantLeccionesPorUsuario ?? 0;
-    decimal totalGrupo = grupoActual != null ? montoUsuario * grupoActual.CantidadUsuarios : montoUsuario;
+    decimal montoPorCupo = p?.PagoPorUsuario ?? 0;
+    int leccionesPorCupo = p?.CantLeccionesPorUsuario ?? 0;
+    decimal totalGrupo = grupoActual != null
+        ? montoPorCupo * grupoActual.CantidadUsuarios
+        : montoPorCupo;
 
     <div class="modal fade" id="modalPagarPaquete" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
@@ -318,10 +337,37 @@
                         @if (grupoActual != null)
                         {
                             <div class="alert alert-info">
-                                Esta operación se aplicará a los <strong>@grupoActual.CantidadUsuarios integrantes</strong> del grupo.
-                                Cada uno recibirá <strong>@leccionesUsuario lecciones</strong> y tendrá un pago individual de
-                                <strong>₡@montoUsuario.ToString("N2")</strong>.
+                                El paquete cubre <strong>@grupoActual.CantidadUsuarios cupos</strong>.
+                                Cada cupo equivale a <strong>@leccionesPorCupo lecciones</strong> y
+                                <strong>₡@montoPorCupo.ToString("N2")</strong>.
+                                Los usuarios familiares reciben y pagan según la cantidad de cupos que representan.
                                 <div class="mt-1">Referencia total: <strong>₡@totalGrupo.ToString("N2")</strong>.</div>
+                            </div>
+
+                            <div class="table-responsive mb-3">
+                                <table class="table table-sm align-middle mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>Integrante</th>
+                                            <th>Cupos</th>
+                                            <th>Lecciones</th>
+                                            <th>Monto</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var miembro in grupoActual.Miembros)
+                                        {
+                                            var leccionesMiembro = leccionesPorCupo * miembro.Cupos;
+                                            var montoMiembro = montoPorCupo * miembro.Cupos;
+                                            <tr>
+                                                <td>@miembro.NombreCompleto</td>
+                                                <td>@miembro.Cupos</td>
+                                                <td>@leccionesMiembro</td>
+                                                <td>₡@montoMiembro.ToString("N2")</td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
                             </div>
 
                             @if (grupoActual.TieneSaldoPendiente)
@@ -333,7 +379,7 @@
                         }
                         else
                         {
-                            <div class="alert alert-info">Se asignarán @leccionesUsuario lecciones por ₡@montoUsuario.ToString("N2").</div>
+                            <div class="alert alert-info">Se asignarán @leccionesPorCupo lecciones por ₡@montoPorCupo.ToString("N2").</div>
                         }
 
                         <div class="mb-3">
@@ -397,7 +443,7 @@
 
                                 <div class="col-12 col-sm-6 col-lg-3">
                                     <label for="filtroLeccionesPaquete" class="form-label text-muted mb-1 small">
-                                        Lecciones por usuario
+                                        Lecciones por cupo
                                     </label>
                                     <select id="filtroLeccionesPaquete" class="form-select form-select-sm">
                                         <option value="">Todas</option>
@@ -453,8 +499,8 @@
                                             </div>
                                             <div class="cr-card-subtitle mt-2">
                                                 <div>@p.CantDias</div>
-                                                <div>@p.CantLeccionesPorUsuario lecciones por usuario</div>
-                                                <div>₡@p.PagoPorUsuario.ToString("N2") por usuario</div>
+                                                <div>@p.CantLeccionesPorUsuario lecciones por cupo</div>
+                                                <div>₡@p.PagoPorUsuario.ToString("N2") por cupo</div>
                                             </div>
                                         </div>
                                     </div>
@@ -543,7 +589,7 @@
                                 @foreach (var p in paquetesGrupoCompatibles)
                                 {
                                     <option value="@p.IdPaquete" selected="@(p.IdPaquete == grupoActual.IdPaquete ? "selected" : null)">
-                                        @(p.Detalle ?? $"Paquete #{p.IdPaquete}") · @p.CantLeccionesPorUsuario lecciones · ₡@p.PagoPorUsuario.ToString("N2")
+                                        @(p.Detalle ?? $"Paquete #{p.IdPaquete}") · @p.CantLeccionesPorUsuario lecciones/cupo · ₡@p.PagoPorUsuario.ToString("N2") por cupo
                                     </option>
                                 }
                             </select>
@@ -585,20 +631,14 @@
                             <label class="form-label">Quitar rol</label>
                             <select class="form-select" id="selRolesTiene">
                                 <option value="">-- Ninguno --</option>
-                                @foreach (var r in rolesUsuario)
-                                {
-                                    <option value="@r">@r</option>
-                                }
+                                @foreach (var r in rolesUsuario) { <option value="@r">@r</option> }
                             </select>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Agregar rol</label>
                             <select class="form-select" id="selRolesNoTiene">
                                 <option value="">-- Ninguno --</option>
-                                @foreach (var r in rolesNoTiene)
-                                {
-                                    <option value="@r">@r</option>
-                                }
+                                @foreach (var r in rolesNoTiene) { <option value="@r">@r</option> }
                             </select>
                         </div>
                     </div>
@@ -612,288 +652,342 @@
 }
 
 @section Scripts {
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const buscarUrl = '@Url.Action("BuscarUsuariosGrupo", "ApplicationUser")';
-            const usuarioPrincipalId = '@Model.Id';
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const buscarUrl = '@Url.Action("BuscarUsuariosGrupo", "ApplicationUser")';
+        const usuarioPrincipalId = '@Model.Id';
+        const cuposUsuarioPrincipal = @cuposUsuarioPrincipal;
 
-            // ==============================
-            // Asignación de paquete / grupo
-            // ==============================
-            const cards = document.querySelectorAll('.paquete-select-card');
-            const inputPaquete = document.getElementById('idPaqueteSeleccionado');
-            const wrapGrupo = document.getElementById('grupoSeleccionWrap');
+        // ==============================
+        // Asignación de paquete / grupo
+        // ==============================
+        const cards = document.querySelectorAll('.paquete-select-card');
+        const inputPaquete = document.getElementById('idPaqueteSeleccionado');
+        const wrapGrupo = document.getElementById('grupoSeleccionWrap');
 
-            const filtroTipoPlan = document.getElementById('filtroTipoPlanPaquete');
-            const filtroLecciones = document.getElementById('filtroLeccionesPaquete');
-            const filtroTipoPaquete = document.getElementById('filtroTipoPaquete');
-            const btnLimpiarFiltros = document.getElementById('btnLimpiarFiltrosPaquete');
-            const sinResultadosPaquetes = document.getElementById('sinResultadosPaquetes');
-            const requerimiento = document.getElementById('grupoRequerimiento');
-            const contador = document.getElementById('grupoContador');
-            const hiddenWrap = document.getElementById('usuariosGrupoHidden');
-            const seleccionadosWrap = document.getElementById('usuariosGrupoSeleccionados');
-            const btnGuardar = document.getElementById('btnGuardarPaquete');
-            let requeridosOtros = 0;
-            let seleccionados = [];
+        const filtroTipoPlan = document.getElementById('filtroTipoPlanPaquete');
+        const filtroLecciones = document.getElementById('filtroLeccionesPaquete');
+        const filtroTipoPaquete = document.getElementById('filtroTipoPaquete');
+        const btnLimpiarFiltros = document.getElementById('btnLimpiarFiltrosPaquete');
+        const sinResultadosPaquetes = document.getElementById('sinResultadosPaquetes');
+        const requerimiento = document.getElementById('grupoRequerimiento');
+        const contador = document.getElementById('grupoContador');
+        const hiddenWrap = document.getElementById('usuariosGrupoHidden');
+        const seleccionadosWrap = document.getElementById('usuariosGrupoSeleccionados');
+        const btnGuardar = document.getElementById('btnGuardarPaquete');
+        let capacidadGrupo = 0;
+        let seleccionados = [];
 
-            function renderSeleccionados() {
-                if (!seleccionadosWrap || !hiddenWrap) return;
-                seleccionadosWrap.innerHTML = '';
-                hiddenWrap.innerHTML = '';
+        function cuposSeleccionadosAdicionales() {
+            return seleccionados.reduce((total, u) => total + Number(u.cupos || 1), 0);
+        }
 
-                seleccionados.forEach(u => {
-                    const chip = document.createElement('button');
-                    chip.type = 'button';
-                    chip.className = 'btn btn-sm btn-outline-info';
-                    chip.textContent = `${u.nombre} · ${u.cedula} ×`;
-                    chip.addEventListener('click', () => {
-                        seleccionados = seleccionados.filter(x => x.idUsuario !== u.idUsuario);
-                        renderSeleccionados();
-                    });
-                    seleccionadosWrap.appendChild(chip);
+        function cuposTotalesSeleccionados() {
+            return capacidadGrupo > 0
+                ? cuposUsuarioPrincipal + cuposSeleccionadosAdicionales()
+                : 0;
+        }
 
-                    const h = document.createElement('input');
-                    h.type = 'hidden';
-                    h.name = 'idsUsuariosGrupo';
-                    h.value = u.idUsuario;
-                    hiddenWrap.appendChild(h);
-                });
+        function renderSeleccionados() {
+            if (!seleccionadosWrap || !hiddenWrap) return;
+            seleccionadosWrap.innerHTML = '';
+            hiddenWrap.innerHTML = '';
 
-                if (contador) contador.textContent = `${seleccionados.length} / ${requeridosOtros}`;
-                if (btnGuardar && requeridosOtros > 0) btnGuardar.disabled = seleccionados.length !== requeridosOtros;
-                else if (btnGuardar) btnGuardar.disabled = !inputPaquete?.value;
-            }
-
-            function limpiarSeleccionPaquete() {
-                cards.forEach(c => c.classList.remove('selected'));
-
-                if (inputPaquete) {
-                    inputPaquete.value = '';
-                }
-
-                seleccionados = [];
-                requeridosOtros = 0;
-
-                if (wrapGrupo) {
-                    wrapGrupo.classList.add('d-none');
-                }
-
-                if (requerimiento) {
-                    requerimiento.textContent = '';
-                }
-
-                const resultadosGrupo = document.getElementById('resultadosUsuarioGrupo');
-                if (resultadosGrupo) {
-                    resultadosGrupo.innerHTML = '';
-                }
-
-                renderSeleccionados();
-            }
-
-            function aplicarFiltrosPaquetes() {
-                const plan = filtroTipoPlan?.value || '';
-                const lecciones = filtroLecciones?.value || '';
-                const tipo = filtroTipoPaquete?.value || '';
-
-                let visibles = 0;
-                let seleccionOculta = false;
-
-                cards.forEach(card => {
-                    const item = card.closest('.paquete-item');
-                    if (!item) return;
-
-                    const tipoCard = card.dataset.esgrupal === 'true'
-                        ? 'grupal'
-                        : 'individual';
-
-                    const coincidePlan =
-                        !plan || card.dataset.plan === plan;
-
-                    const coincideLecciones =
-                        !lecciones || card.dataset.lecciones === lecciones;
-
-                    const coincideTipo =
-                        !tipo || tipoCard === tipo;
-
-                    const mostrar =
-                        coincidePlan && coincideLecciones && coincideTipo;
-
-                    item.classList.toggle('d-none', !mostrar);
-
-                    if (mostrar) {
-                        visibles++;
-                    } else if (card.classList.contains('selected')) {
-                        seleccionOculta = true;
-                    }
-                });
-
-                sinResultadosPaquetes?.classList.toggle('d-none', visibles > 0);
-
-                // Si el paquete que estaba seleccionado deja de cumplir los filtros,
-                // se limpia también la selección de integrantes del grupo para evitar
-                // enviar un paquete oculto por error.
-                if (seleccionOculta) {
-                    limpiarSeleccionPaquete();
-                }
-            }
-
-            filtroTipoPlan?.addEventListener('change', aplicarFiltrosPaquetes);
-            filtroLecciones?.addEventListener('change', aplicarFiltrosPaquetes);
-            filtroTipoPaquete?.addEventListener('change', aplicarFiltrosPaquetes);
-
-            btnLimpiarFiltros?.addEventListener('click', () => {
-                if (filtroTipoPlan) filtroTipoPlan.value = '';
-                if (filtroLecciones) filtroLecciones.value = '';
-                if (filtroTipoPaquete) filtroTipoPaquete.value = '';
-
-                aplicarFiltrosPaquetes();
-            });
-
-            function seleccionarCardPaquete(card) {
-                cards.forEach(c => c.classList.remove('selected'));
-                card.classList.add('selected');
-
-                if (inputPaquete) {
-                    inputPaquete.value = card.dataset.id || '';
-                }
-
-                const grupal = card.dataset.esgrupal === 'true';
-                const cantidad = Number(card.dataset.cantidad || '1');
-
-                seleccionados = [];
-                requeridosOtros = grupal
-                    ? Math.max(0, cantidad - 1)
-                    : 0;
-
-                if (wrapGrupo) {
-                    wrapGrupo.classList.toggle('d-none', !grupal);
-                }
-
-                if (requerimiento) {
-                    requerimiento.textContent = grupal
-                        ? `Este paquete requiere ${cantidad} usuarios en total. Seleccioná ${requeridosOtros} usuario(s) adicional(es).`
-                        : '';
-                }
-
-                renderSeleccionados();
-            }
-
-            cards.forEach(card => {
-                card.addEventListener('click', () => {
-                    seleccionarCardPaquete(card);
-                });
-
-                card.addEventListener('keydown', e => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        seleccionarCardPaquete(card);
-                    }
-                });
-            });
-
-            async function buscarUsuarios(inputId, resultsId, onSelect) {
-                const input = document.getElementById(inputId);
-                const results = document.getElementById(resultsId);
-                if (!input || !results) return;
-                const termino = input.value.trim();
-                if (termino.length < 2) {
-                    results.innerHTML = '<div class="text-warning small">Ingresá al menos 2 caracteres.</div>';
-                    return;
-                }
-
-                results.innerHTML = '<div class="text-muted small">Buscando...</div>';
-                try {
-                    const res = await fetch(`${buscarUrl}?termino=${encodeURIComponent(termino)}`);
-                    const data = await res.json();
-                    if (!res.ok) throw new Error(data.message || 'No se pudo buscar.');
-
-                    results.innerHTML = '';
-                    if (!data.usuarios?.length) {
-                        results.innerHTML = '<div class="text-muted small">No hay usuarios disponibles.</div>';
-                        return;
-                    }
-
-                    data.usuarios.forEach(u => {
-                        if (u.idUsuario === usuarioPrincipalId) return;
-                        const btn = document.createElement('button');
-                        btn.type = 'button';
-                        btn.className = 'btn btn-outline-secondary btn-sm me-2 mb-2';
-                        btn.textContent = `${u.nombre} · ${u.cedula}`;
-                        btn.addEventListener('click', () => onSelect(u));
-                        results.appendChild(btn);
-                    });
-                } catch (e) {
-                    results.innerHTML = `<div class="text-danger small">${e.message}</div>`;
-                }
-            }
-
-            document.getElementById('btnBuscarUsuarioGrupo')?.addEventListener('click', () => {
-                buscarUsuarios('buscarUsuarioGrupo', 'resultadosUsuarioGrupo', u => {
-                    if (seleccionados.some(x => x.idUsuario === u.idUsuario)) return;
-                    if (seleccionados.length >= requeridosOtros) return;
-                    seleccionados.push(u);
+            seleccionados.forEach(u => {
+                const cupos = Number(u.cupos || 1);
+                const chip = document.createElement('button');
+                chip.type = 'button';
+                chip.className = 'btn btn-sm btn-outline-info';
+                chip.textContent = `${u.nombre} · ${u.cedula} · ${cupos} cupo${cupos === 1 ? '' : 's'} ×`;
+                chip.addEventListener('click', () => {
+                    seleccionados = seleccionados.filter(x => x.idUsuario !== u.idUsuario);
                     renderSeleccionados();
                 });
+                seleccionadosWrap.appendChild(chip);
+
+                const h = document.createElement('input');
+                h.type = 'hidden';
+                h.name = 'idsUsuariosGrupo';
+                h.value = u.idUsuario;
+                hiddenWrap.appendChild(h);
             });
 
-            document.getElementById('formAsignarPaquete')?.addEventListener('submit', e => {
+            const totalCupos = cuposTotalesSeleccionados();
+
+            if (contador) {
+                contador.textContent = capacidadGrupo > 0
+                    ? `${totalCupos} / ${capacidadGrupo} cupos`
+                    : '0 / 0';
+            }
+
+            if (btnGuardar) {
                 if (!inputPaquete?.value) {
+                    btnGuardar.disabled = true;
+                } else if (capacidadGrupo > 0) {
+                    btnGuardar.disabled = totalCupos !== capacidadGrupo;
+                } else {
+                    btnGuardar.disabled = false;
+                }
+            }
+        }
+
+        function limpiarSeleccionPaquete() {
+            cards.forEach(c => c.classList.remove('selected'));
+
+            if (inputPaquete) {
+                inputPaquete.value = '';
+            }
+
+            seleccionados = [];
+            capacidadGrupo = 0;
+
+            if (wrapGrupo) {
+                wrapGrupo.classList.add('d-none');
+            }
+
+            if (requerimiento) {
+                requerimiento.textContent = '';
+            }
+
+            const resultadosGrupo = document.getElementById('resultadosUsuarioGrupo');
+            if (resultadosGrupo) {
+                resultadosGrupo.innerHTML = '';
+            }
+
+            renderSeleccionados();
+        }
+
+        function aplicarFiltrosPaquetes() {
+            const plan = filtroTipoPlan?.value || '';
+            const lecciones = filtroLecciones?.value || '';
+            const tipo = filtroTipoPaquete?.value || '';
+
+            let visibles = 0;
+            let seleccionOculta = false;
+
+            cards.forEach(card => {
+                const item = card.closest('.paquete-item');
+                if (!item) return;
+
+                const tipoCard = card.dataset.esgrupal === 'true'
+                    ? 'grupal'
+                    : 'individual';
+
+                const coincidePlan =
+                    !plan || card.dataset.plan === plan;
+
+                const coincideLecciones =
+                    !lecciones || card.dataset.lecciones === lecciones;
+
+                const coincideTipo =
+                    !tipo || tipoCard === tipo;
+
+                const mostrar =
+                    coincidePlan && coincideLecciones && coincideTipo;
+
+                item.classList.toggle('d-none', !mostrar);
+
+                if (mostrar) {
+                    visibles++;
+                } else if (card.classList.contains('selected')) {
+                    seleccionOculta = true;
+                }
+            });
+
+            sinResultadosPaquetes?.classList.toggle('d-none', visibles > 0);
+
+            // Si el paquete que estaba seleccionado deja de cumplir los filtros,
+            // se limpia también la selección de integrantes del grupo para evitar
+            // enviar un paquete oculto por error.
+            if (seleccionOculta) {
+                limpiarSeleccionPaquete();
+            }
+        }
+
+        filtroTipoPlan?.addEventListener('change', aplicarFiltrosPaquetes);
+        filtroLecciones?.addEventListener('change', aplicarFiltrosPaquetes);
+        filtroTipoPaquete?.addEventListener('change', aplicarFiltrosPaquetes);
+
+        btnLimpiarFiltros?.addEventListener('click', () => {
+            if (filtroTipoPlan) filtroTipoPlan.value = '';
+            if (filtroLecciones) filtroLecciones.value = '';
+            if (filtroTipoPaquete) filtroTipoPaquete.value = '';
+
+            aplicarFiltrosPaquetes();
+        });
+
+        function seleccionarCardPaquete(card) {
+            cards.forEach(c => c.classList.remove('selected'));
+            card.classList.add('selected');
+
+            if (inputPaquete) {
+                inputPaquete.value = card.dataset.id || '';
+            }
+
+            const grupal = card.dataset.esgrupal === 'true';
+            const cantidad = Number(card.dataset.cantidad || '1');
+
+            seleccionados = [];
+            capacidadGrupo = grupal ? cantidad : 0;
+
+            if (wrapGrupo) {
+                wrapGrupo.classList.toggle('d-none', !grupal);
+            }
+
+            if (requerimiento) {
+                if (!grupal) {
+                    requerimiento.textContent = '';
+                } else if (cuposUsuarioPrincipal > cantidad) {
+                    requerimiento.textContent =
+                        `Este usuario representa ${cuposUsuarioPrincipal} cupos, pero el paquete solo permite ${cantidad}. No se puede formar este grupo.`;
+                } else {
+                    const faltantes = cantidad - cuposUsuarioPrincipal;
+                    requerimiento.textContent =
+                        `Este paquete requiere ${cantidad} cupos. El usuario principal representa ${cuposUsuarioPrincipal}. ` +
+                        `Seleccioná usuarios para completar los ${faltantes} cupo(s) restantes.`;
+                }
+            }
+
+            renderSeleccionados();
+        }
+
+        cards.forEach(card => {
+            card.addEventListener('click', () => {
+                seleccionarCardPaquete(card);
+            });
+
+            card.addEventListener('keydown', e => {
+                if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();
-                    alert('Seleccione un paquete.');
+                    seleccionarCardPaquete(card);
+                }
+            });
+        });
+
+        async function buscarUsuarios(inputId, resultsId, onSelect) {
+            const input = document.getElementById(inputId);
+            const results = document.getElementById(resultsId);
+            if (!input || !results) return;
+            const termino = input.value.trim();
+            if (termino.length < 2) {
+                results.innerHTML = '<div class="text-warning small">Ingresá al menos 2 caracteres.</div>';
+                return;
+            }
+
+            results.innerHTML = '<div class="text-muted small">Buscando...</div>';
+            try {
+                const res = await fetch(`${buscarUrl}?termino=${encodeURIComponent(termino)}`);
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.message || 'No se pudo buscar.');
+
+                results.innerHTML = '';
+                if (!data.usuarios?.length) {
+                    results.innerHTML = '<div class="text-muted small">No hay usuarios disponibles.</div>';
                     return;
                 }
-                if (requeridosOtros > 0 && seleccionados.length !== requeridosOtros) {
-                    e.preventDefault();
-                    alert(`Debe seleccionar exactamente ${requeridosOtros} usuario(s) adicional(es).`);
-                }
-            });
 
-            // ==============================
-            // Reemplazo de integrante
-            // ==============================
-            const inputEntra = document.getElementById('idUsuarioEntra');
-            const seleccionadoTxt = document.getElementById('reemplazoSeleccionado');
-            document.getElementById('btnBuscarReemplazo')?.addEventListener('click', () => {
-                buscarUsuarios('buscarReemplazo', 'resultadosReemplazo', u => {
-                    if (inputEntra) inputEntra.value = u.idUsuario;
-                    if (seleccionadoTxt) seleccionadoTxt.textContent = `Nuevo integrante: ${u.nombre} · ${u.cedula}`;
+                data.usuarios.forEach(u => {
+                    if (u.idUsuario === usuarioPrincipalId) return;
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'btn btn-outline-secondary btn-sm me-2 mb-2';
+                    const cupos = Number(u.cupos || 1);
+                    btn.textContent = `${u.nombre} · ${u.cedula} · ${cupos} cupo${cupos === 1 ? '' : 's'}`;
+                    btn.addEventListener('click', () => onSelect(u));
+                    results.appendChild(btn);
                 });
-            });
-
-            document.getElementById('formReemplazarMiembro')?.addEventListener('submit', e => {
-                if (!inputEntra?.value) {
-                    e.preventDefault();
-                    alert('Seleccione el nuevo integrante.');
-                }
-            });
-
-            // ==============================
-            // Roles
-            // ==============================
-            const selTiene = document.getElementById('selRolesTiene');
-            const selNoTiene = document.getElementById('selRolesNoTiene');
-            const addRole = document.getElementById('addRole');
-            const removeRole = document.getElementById('removeRole');
-            const btnRol = document.getElementById('btnAplicarRol');
-
-            function actualizarRoles(origen) {
-                if (!addRole || !removeRole || !btnRol) return;
-                if (origen === 'quitar') {
-                    if (selNoTiene) selNoTiene.value = '';
-                    removeRole.value = selTiene?.value || '';
-                    addRole.value = '';
-                } else {
-                    if (selTiene) selTiene.value = '';
-                    addRole.value = selNoTiene?.value || '';
-                    removeRole.value = '';
-                }
-                btnRol.disabled = !addRole.value && !removeRole.value;
+            } catch (e) {
+                results.innerHTML = `<div class="text-danger small">${e.message}</div>`;
             }
-            selTiene?.addEventListener('change', () => actualizarRoles('quitar'));
-            selNoTiene?.addEventListener('change', () => actualizarRoles('agregar'));
+        }
+
+        document.getElementById('btnBuscarUsuarioGrupo')?.addEventListener('click', () => {
+            buscarUsuarios('buscarUsuarioGrupo', 'resultadosUsuarioGrupo', u => {
+                if (seleccionados.some(x => x.idUsuario === u.idUsuario)) return;
+
+                const cuposUsuario = Number(u.cupos || 1);
+                const nuevoTotal = cuposUsuarioPrincipal
+                    + cuposSeleccionadosAdicionales()
+                    + cuposUsuario;
+
+                if (capacidadGrupo <= 0) return;
+
+                if (nuevoTotal > capacidadGrupo) {
+                    alert(
+                        `${u.nombre} representa ${cuposUsuario} cupo(s). ` +
+                        `Al agregarlo el grupo tendría ${nuevoTotal} de ${capacidadGrupo} cupos.`
+                    );
+                    return;
+                }
+
+                seleccionados.push(u);
+                renderSeleccionados();
+            });
         });
-    </script>
+
+        document.getElementById('formAsignarPaquete')?.addEventListener('submit', e => {
+            if (!inputPaquete?.value) {
+                e.preventDefault();
+                alert('Seleccione un paquete.');
+                return;
+            }
+            if (capacidadGrupo > 0) {
+                const totalCupos = cuposTotalesSeleccionados();
+                if (totalCupos !== capacidadGrupo) {
+                    e.preventDefault();
+                    alert(`El grupo debe completar exactamente ${capacidadGrupo} cupos y actualmente suma ${totalCupos}.`);
+                }
+            }
+        });
+
+        // ==============================
+        // Reemplazo de integrante
+        // ==============================
+        const inputEntra = document.getElementById('idUsuarioEntra');
+        const seleccionadoTxt = document.getElementById('reemplazoSeleccionado');
+        document.getElementById('btnBuscarReemplazo')?.addEventListener('click', () => {
+            buscarUsuarios('buscarReemplazo', 'resultadosReemplazo', u => {
+                if (inputEntra) inputEntra.value = u.idUsuario;
+                if (seleccionadoTxt) {
+                    const cupos = Number(u.cupos || 1);
+                    seleccionadoTxt.textContent = `Nuevo integrante: ${u.nombre} · ${u.cedula} · ${cupos} cupo${cupos === 1 ? '' : 's'}`;
+                }
+            });
+        });
+
+        document.getElementById('formReemplazarMiembro')?.addEventListener('submit', e => {
+            if (!inputEntra?.value) {
+                e.preventDefault();
+                alert('Seleccione el nuevo integrante.');
+            }
+        });
+
+        // ==============================
+        // Roles
+        // ==============================
+        const selTiene = document.getElementById('selRolesTiene');
+        const selNoTiene = document.getElementById('selRolesNoTiene');
+        const addRole = document.getElementById('addRole');
+        const removeRole = document.getElementById('removeRole');
+        const btnRol = document.getElementById('btnAplicarRol');
+
+        function actualizarRoles(origen) {
+            if (!addRole || !removeRole || !btnRol) return;
+            if (origen === 'quitar') {
+                if (selNoTiene) selNoTiene.value = '';
+                removeRole.value = selTiene?.value || '';
+                addRole.value = '';
+            } else {
+                if (selTiene) selTiene.value = '';
+                addRole.value = selNoTiene?.value || '';
+                removeRole.value = '';
+            }
+            btnRol.disabled = !addRole.value && !removeRole.value;
+        }
+        selTiene?.addEventListener('change', () => actualizarRoles('quitar'));
+        selNoTiene?.addEventListener('change', () => actualizarRoles('agregar'));
+    });
+</script>
 }
 
 <style>

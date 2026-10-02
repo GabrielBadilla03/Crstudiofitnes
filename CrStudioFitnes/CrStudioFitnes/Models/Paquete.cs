@@ -23,14 +23,14 @@ namespace CrStudioFitnes.Models
         public decimal Pago { get; set; }
 
         [Required]
-        [Range(1, 1000, ErrorMessage = "La cantidad de lecciones por usuario debe ser mayor que cero.")]
-        [Display(Name = "Lecciones por usuario")]
+        [Range(1, 1000, ErrorMessage = "La cantidad de lecciones por cupo debe ser mayor que cero.")]
+        [Display(Name = "Lecciones por cupo")]
         public int CantLeccionesPorUsuario { get; set; }
 
         [Required]
         [Column(TypeName = "decimal(10,2)")]
-        [Range(0.01, 1000000, ErrorMessage = "El monto por usuario debe ser mayor que cero.")]
-        [Display(Name = "Monto por usuario")]
+        [Range(0.01, 1000000, ErrorMessage = "El monto por cupo debe ser mayor que cero.")]
+        [Display(Name = "Monto por cupo")]
         public decimal PagoPorUsuario { get; set; }
 
         [StringLength(200)]
@@ -43,8 +43,8 @@ namespace CrStudioFitnes.Models
         [Display(Name = "Paquete grupal")]
         public bool EsGrupal { get; set; } = false;
 
-        [Range(1, 1000, ErrorMessage = "La cantidad de usuarios debe ser mayor que cero.")]
-        [Display(Name = "Cantidad de usuarios")]
+        [Range(1, 1000, ErrorMessage = "La cantidad de cupos debe ser mayor que cero.")]
+        [Display(Name = "Cantidad de cupos")]
         public int CantidadUsuarios { get; set; } = 1;
 
         public ICollection<PaqueteUsuario> PaquetesUsuario { get; set; }
