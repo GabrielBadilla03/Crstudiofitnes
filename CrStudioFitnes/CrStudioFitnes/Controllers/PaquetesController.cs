@@ -248,11 +248,12 @@ namespace CrStudioFitnes.Controllers
             if (!paquete.EsGrupal)
                 paquete.CantidadUsuarios = 1;
 
-            if (paquete.EsGrupal && paquete.CantidadUsuarios < 2)
+            if (paquete.EsGrupal
+                && (paquete.CantidadUsuarios < 2 || paquete.CantidadUsuarios > 1000))
             {
                 ModelState.AddModelError(
                     nameof(Paquete.CantidadUsuarios),
-                    "Un paquete grupal debe tener al menos 2 cupos.");
+                    "Un paquete grupal debe tener entre 2 y 1000 cupos.");
                 return;
             }
 
