@@ -1,6 +1,7 @@
 using CrStudioFitnes.Data;
 using CrStudioFitnes.EmailSender;
 using CrStudioFitnes.Models;
+using CrStudioFitnes.Services;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI.Services;
@@ -30,7 +31,7 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 
 // =============================================
 // DATA PROTECTION
-// Una sola configuraci髇 estable para cookies y antiforgery.
+// Una sola configuraci贸n estable para cookies y antiforgery.
 // =============================================
 var dataProtectionBuilder = builder.Services
     .AddDataProtection()
@@ -45,8 +46,8 @@ if (OperatingSystem.IsWindows())
 
 // =============================================
 // Identity
-// El registro actual inicia sesi髇 directamente y no usa un flujo
-// real de confirmaci髇 de correo, por lo que se deja expl韈ito.
+// El registro actual inicia sesi贸n directamente y no usa un flujo
+// real de confirmaci贸n de correo, por lo que se deja expl铆cito.
 // =============================================
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
@@ -64,13 +65,16 @@ builder.Services
         options.Password.RequiredLength = 6;
         options.Password.RequiredUniqueChars = 1;
 
-        // Protecci髇 b醩ica contra intentos repetidos de contrase馻.
+        // Protecci贸n b谩sica contra intentos repetidos de contrase帽a.
         options.Lockout.AllowedForNewUsers = true;
         options.Lockout.MaxFailedAccessAttempts = 5;
         options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
     })
     .AddRoles<IdentityRole>()
     .AddEntityFrameworkStores<ApplicationDbContext>();
+
+builder.Services.Configure<WhatsAppSettings>(builder.Configuration.GetSection("WhatsApp"));
+builder.Services.AddHttpClient();
 
 builder.Services.AddControllersWithViews();
 builder.Services.AddRazorPages();
