@@ -17,6 +17,7 @@ namespace CrStudioFitnes.Data
         public DbSet<GrupoPaqueteUsuario> GruposPaqueteUsuario => Set<GrupoPaqueteUsuario>();
         public DbSet<Historial> Historiales => Set<Historial>();
         public DbSet<HoraReserva> HorasReserva => Set<HoraReserva>();
+        public DbSet<MovimientoReserva> MovimientosReservas => Set<MovimientoReserva>();
         public DbSet<PagoPaquete> PagosPaquete => Set<PagoPaquete>();
         public DbSet<PagoPaqueteDetalle> PagosPaqueteDetalle => Set<PagoPaqueteDetalle>();
         public DbSet<Paquete> Paquetes => Set<Paquete>();
@@ -136,6 +137,17 @@ namespace CrStudioFitnes.Data
                     .HasFilter("[Activo] = 1");
 
                 entity.HasIndex(m => new { m.IdGrupoPaquete, m.Activo });
+            });
+
+            // =====================================================
+            // MovimientoReserva
+            // =====================================================
+            modelBuilder.Entity<MovimientoReserva>(entity =>
+            {
+                entity.ToTable("movimientosreservas");
+                entity.Property(m => m.Fecha).HasColumnType("datetime2");
+                entity.HasIndex(m => new { m.IdUsuario, m.Fecha });
+                entity.HasIndex(m => m.IdUsuarioEjecutor);
             });
 
             // =====================================================
