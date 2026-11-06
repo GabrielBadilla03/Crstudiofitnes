@@ -128,23 +128,32 @@
                     wrap.classList.add('d-none');
                 } else {
                     wrap.classList.remove('d-none');
-                    if (Number(cantUsuarios.value) < 2) cantUsuarios.value = '2';
                 }
 
-                const usuarios = Math.max(1, Number(cantUsuarios.value) || 1);
+                const valorUsuarios = Number(cantUsuarios.value);
+                const usuarios = grupal
+                    ? (Number.isInteger(valorUsuarios) && valorUsuarios >= 2 ? valorUsuarios : 0)
+                    : 1;
                 const lecciones = Number(cantLecciones.value) || 0;
                 const monto = Number(pago.value) || 0;
 
-                prevL.textContent = lecciones > 0
+                prevL.textContent = lecciones > 0 && usuarios >= 1
                     ? (lecciones % usuarios === 0 ? (lecciones / usuarios).toString() : 'No divide exacto')
                     : '—';
 
-                prevP.textContent = monto > 0
+                prevP.textContent = monto > 0 && usuarios >= 1
                     ? '₡' + (monto / usuarios).toLocaleString('es-CR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
                     : '—';
             }
 
-            [esGrupal, cantUsuarios, cantLecciones, pago].forEach(el => el?.addEventListener('input', actualizar));
+            esGrupal?.addEventListener('change', () => {
+                if (esGrupal.checked && (!cantUsuarios.value || Number(cantUsuarios.value) < 2)) {
+                    cantUsuarios.value = '2';
+                }
+                actualizar();
+            });
+
+            [cantUsuarios, cantLecciones, pago].forEach(el => el?.addEventListener('input', actualizar));
             actualizar();
         });
     </script>
