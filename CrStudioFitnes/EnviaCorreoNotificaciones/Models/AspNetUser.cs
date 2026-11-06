@@ -13,6 +13,7 @@ namespace EnviaCorreoNotificaciones.Models
         public string Id { get; set; } = null!;
 
         public string? Email { get; set; }
+        public string? TelefonoPersonal { get; set; }
 
         public string? Nombre { get; set; }
         public string? Apellidos { get; set; }
