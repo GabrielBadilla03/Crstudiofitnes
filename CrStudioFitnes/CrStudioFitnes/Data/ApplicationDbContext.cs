@@ -25,6 +25,7 @@ namespace CrStudioFitnes.Data
         public DbSet<Pesaje> Pesajes => Set<Pesaje>();
         public DbSet<PesajeCuerpo> PesajesCuerpo => Set<PesajeCuerpo>();
         public DbSet<Reserva> Reservas => Set<Reserva>();
+        public DbSet<ReservaWhatsAppReminder> ReservaWhatsAppReminders => Set<ReservaWhatsAppReminder>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -251,6 +252,16 @@ namespace CrStudioFitnes.Data
 
             modelBuilder.Entity<Reserva>()
                 .HasIndex(r => new { r.Fecha, r.IdHora });
+
+            // =====================================================
+            // ReservaWhatsAppReminder
+            // =====================================================
+            modelBuilder.Entity<ReservaWhatsAppReminder>(entity =>
+            {
+                entity.ToTable("ReservaWhatsAppReminder");
+                entity.HasIndex(x => new { x.ReservaId, x.Kind }).IsUnique();
+                entity.HasIndex(x => x.Wamid);
+            });
 
             // =====================================================
             // HoraReserva
