@@ -970,7 +970,17 @@ namespace CrStudioFitnes.Controllers
 
                     reserva.Activa = false;
                     reserva.MotivoCancelacion = motivoCancelacion;
+
+                    var leccionesAntes = paquete.CantLecciones;
                     paquete.CantLecciones += 1;
+
+                    RegistrarMovimientoReserva(
+                        reserva.IdUsuario,
+                        leccionesAntes,
+                        paquete.CantLecciones,
+                        "Reserva cancelada",
+                        $"Reserva del {reserva.Fecha:dd/MM/yyyy} a las {reserva.HoraReserva.Hora:hh\\:mm}. Motivo: {motivoCancelacion}",
+                        usuarioActualId);
 
                     await _context.SaveChangesAsync();
                     await tx.CommitAsync();
@@ -1282,7 +1292,16 @@ namespace CrStudioFitnes.Controllers
                     MotivoCancelacion = null
                 });
 
+                var leccionesAntes = paqueteActivo.CantLecciones;
                 paqueteActivo.CantLecciones -= 1;
+
+                RegistrarMovimientoReserva(
+                    idUsuarioObjetivo,
+                    leccionesAntes,
+                    paqueteActivo.CantLecciones,
+                    "Reserva creada",
+                    $"Reserva para el {fecha:dd/MM/yyyy} a las {hora.Hora:hh\\:mm}.",
+                    idUsuarioCreador);
 
                 await _context.SaveChangesAsync();
                 await tx.CommitAsync();
@@ -1297,6 +1316,27 @@ namespace CrStudioFitnes.Controllers
             });
 
             return resultado;
+        }
+
+        private void RegistrarMovimientoReserva(
+            string idUsuario,
+            int leccionesAntes,
+            int leccionesDespues,
+            string tipoMovimiento,
+            string motivo,
+            string idUsuarioEjecutor)
+        {
+            _context.MovimientosReservas.Add(new MovimientoReserva
+            {
+                IdUsuario = idUsuario,
+                Fecha = DateTime.Now,
+                TipoMovimiento = tipoMovimiento,
+                LeccionesAntes = leccionesAntes,
+                CantidadMovimiento = leccionesDespues - leccionesAntes,
+                LeccionesDespues = leccionesDespues,
+                Motivo = motivo,
+                IdUsuarioEjecutor = idUsuarioEjecutor
+            });
         }
 
         private static bool TryParseFecha(
