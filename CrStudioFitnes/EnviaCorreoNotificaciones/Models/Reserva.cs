@@ -19,5 +19,7 @@ namespace EnviaCorreoNotificaciones.Models
         public DateTime Fecha { get; set; }
 
         public int IdHora { get; set; }
+
+        public bool Activa { get; set; } = true;
     }
 }
