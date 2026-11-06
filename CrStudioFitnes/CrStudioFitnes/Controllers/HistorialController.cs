@@ -36,7 +36,7 @@ namespace CrStudioFitnes.Controllers
             ViewBag.Frecuencias = Enum
                 .GetValues(typeof(TipoPlanDias))
                 .Cast<TipoPlanDias>()
-                .Where(v => v != TipoPlanDias.ClasesExtra)
+                .Where(v => v != TipoPlanDias.ClasesExtra && v != TipoPlanDias.Anual)
                 .Select(v => new SelectListItem
                 {
                     Value = v.ToString(),
