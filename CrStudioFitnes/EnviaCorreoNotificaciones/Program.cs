@@ -25,14 +25,16 @@ try
 
     // Settings
     builder.Services.Configure<SchedulerSettings>(builder.Configuration.GetSection("Scheduler"));
+    builder.Services.Configure<WhatsAppSettings>(builder.Configuration.GetSection("WhatsApp"));
 
     // ? Serilog en HostApplicationBuilder (NO existe builder.Host.UseSerilog)
     builder.Logging.ClearProviders();
     builder.Logging.AddSerilog(Log.Logger, dispose: true);
 
-    // ? Evitar duplicados: dej· UN solo registro del sender (recomiendo Singleton por el cache)
+    // ? Evitar duplicados: dej√° UN solo registro del sender (recomiendo Singleton por el cache)
     builder.Services.AddSingleton<IEmailConfigProvider, EmailConfigProvider>();
     builder.Services.AddSingleton<IEmailSender, DbEmailSender>();
+    builder.Services.AddHttpClient<IWhatsAppSender, MetaWhatsAppSender>();
 
     // Workers
     builder.Services.AddHostedService<Worker>();
@@ -48,7 +50,7 @@ try
 }
 catch (Exception ex)
 {
-    Log.Fatal(ex, "El servicio fallÛ al iniciar");
+    Log.Fatal(ex, "El servicio fall√≥ al iniciar");
     Log.CloseAndFlush();
     throw;
 }
