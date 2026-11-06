@@ -65,6 +65,8 @@
     bool canCambiarPaquete = User.IsInRole("Gestor de Pagos") || isAdmin || User.IsInRole("Entrenador");
     bool canPagarPaquete = User.IsInRole("Gestor de Pagos") || isAdmin;
     bool canVerHistorialPagos = User.IsInRole("Gestor de Pagos") || isAdmin;
+    bool canVerHistorialReservas = User.IsInRole("Gestor de Pagos") || isAdmin;
+    bool canAjustarLecciones = isAdmin;
     bool canConfigurarFamiliar = isAdmin;
 
     var rolesUsuario = ViewBag.RolesUsuario as List<string> ?? new List<string>();
@@ -74,14 +76,14 @@
 <div class="container py-4">
     <div class="row justify-content-center">
         <div class="col-lg-11">
-            @foreach (var key in new[] { "OkEstado", "OkRoles", "OkFamiliar", "OkPago", "OkPaquete", "OkGrupo" })
+            @foreach (var key in new[] { "OkEstado", "OkRoles", "OkFamiliar", "OkPago", "OkPaquete", "OkGrupo", "OkAjusteLecciones" })
             {
                 if (TempData[key] != null)
                 {
                     <div class="alert alert-success">@TempData[key]</div>
                 }
             }
-            @foreach (var key in new[] { "ErrorEstado", "ErrorRoles", "ErrorFamiliar", "ErrorPago", "ErrorPaquete", "ErrorGrupo" })
+            @foreach (var key in new[] { "ErrorEstado", "ErrorRoles", "ErrorFamiliar", "ErrorPago", "ErrorPaquete", "ErrorGrupo", "ErrorAjusteLecciones" })
             {
                 if (TempData[key] != null)
                 {
@@ -301,6 +303,18 @@
                                 {
                                     <a asp-action="HistorialPagos" asp-route-id="@Model.Id" class="btn btn-outline-secondary">Historial de pagos</a>
                                 }
+
+                                @if (canVerHistorialReservas)
+                                {
+                                    <a asp-action="HistorialReservas" asp-route-id="@Model.Id" class="btn btn-outline-secondary">Historial de reservas</a>
+                                }
+
+                                @if (canAjustarLecciones && paqueteActual != null)
+                                {
+                                    <button type="button" class="btn btn-outline-warning" data-bs-toggle="modal" data-bs-target="#modalAjustarLecciones">
+                                        Ajustar lecciones manualmente
+                                    </button>
+                                }
                             </div>
                         </div>
                     </div>
@@ -313,6 +327,48 @@
         </div>
     </div>
 </div>
+
+@if (canAjustarLecciones && paqueteActual != null)
+{
+    <div class="modal fade" id="modalAjustarLecciones" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content cr-card">
+                <div class="modal-header">
+                    <h5 class="modal-title">Ajustar lecciones manualmente</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <form asp-action="AjustarLeccionesManual" method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="idUsuario" value="@Model.Id" />
+                    <div class="modal-body">
+                        <div class="alert alert-info">
+                            Lecciones disponibles actualmente: <strong>@paqueteActual.CantLecciones</strong>.
+                            Todo ajuste quedará registrado en el historial de reservas.
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Operación</label>
+                            <select class="form-select" name="operacion" required>
+                                <option value="AGREGAR">Agregar lecciones</option>
+                                <option value="QUITAR">Quitar lecciones</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Cantidad</label>
+                            <input class="form-control" type="number" name="cantidad" min="1" max="1000" required />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Razón</label>
+                            <textarea class="form-control" name="motivo" maxlength="500" rows="4" required></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-warning w-100" type="submit">Guardar ajuste</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+}
 
 @if (canPagarPaquete && paqueteActual != null)
 {
@@ -595,7 +651,7 @@
                             </select>
                             <button class="btn btn-outline-primary" type="submit">Cambiar</button>
                         </div>
-                        <div class="form-text">Solo se permite si nadie tiene deuda ni lecciones disponibles.</div>
+                        <div class="form-text">Solo se permite si nadie tiene deuda y los cupos coinciden con el nuevo paquete.</div>
                     </form>
 
                     <h6 class="text-danger">Deshacer grupo</h6>
