@@ -14,6 +14,7 @@ namespace EnviaCorreoNotificaciones.Data
 
         public DbSet<EmailConfiguracion> EmailConfiguraciones => Set<EmailConfiguracion>();
         public DbSet<ReservaEmailReminder> ReservaEmailReminders => Set<ReservaEmailReminder>();
+        public DbSet<ReservaWhatsAppReminder> ReservaWhatsAppReminders => Set<ReservaWhatsAppReminder>();
 
         // ✅ NUEVO: para recordatorio de pesajes
         public DbSet<Historial> Historiales => Set<Historial>();
@@ -36,6 +37,17 @@ namespace EnviaCorreoNotificaciones.Data
             modelBuilder.Entity<ReservaEmailReminder>()
                 .HasIndex(x => new { x.ReservaId, x.Kind })
                 .IsUnique();
+
+            modelBuilder.Entity<ReservaWhatsAppReminder>().ToTable("ReservaWhatsAppReminder");
+            modelBuilder.Entity<ReservaWhatsAppReminder>()
+                .Property(x => x.Kind).HasConversion<byte>();
+            modelBuilder.Entity<ReservaWhatsAppReminder>()
+                .Property(x => x.Status).HasConversion<byte>();
+            modelBuilder.Entity<ReservaWhatsAppReminder>()
+                .HasIndex(x => new { x.ReservaId, x.Kind })
+                .IsUnique();
+            modelBuilder.Entity<ReservaWhatsAppReminder>()
+                .HasIndex(x => x.Wamid);
 
             // ============================
             // ✅ NUEVO: Historial / Pesaje
