@@ -317,6 +317,55 @@ namespace CrStudioFitnes.Data.Migrations
                     b.ToTable("Historiales");
                 });
 
+            modelBuilder.Entity("CrStudioFitnes.Models.MovimientoReserva", b =>
+                {
+                    b.Property<int>("IdMovimientoReserva")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("IdMovimientoReserva"));
+
+                    b.Property<int>("CantidadMovimiento")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("Fecha")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("IdUsuario")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("IdUsuarioEjecutor")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<int>("LeccionesAntes")
+                        .HasColumnType("int");
+
+                    b.Property<int>("LeccionesDespues")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Motivo")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("TipoMovimiento")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)");
+
+                    b.HasKey("IdMovimientoReserva");
+
+                    b.HasIndex("IdUsuarioEjecutor");
+
+                    b.HasIndex("IdUsuario", "Fecha");
+
+                    b.ToTable("movimientosreservas", (string)null);
+                });
+
             modelBuilder.Entity("CrStudioFitnes.Models.HoraReserva", b =>
                 {
                     b.Property<int>("IdHora")
