@@ -15,7 +15,9 @@ namespace EnviaCorreoNotificaciones.Workers
     {
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly IEmailSender _email;
+        private readonly IWhatsAppSender _whatsApp;
         private readonly SchedulerSettings _sched;
+        private readonly WhatsAppSettings _whatsAppSettings;
         private readonly TimeZoneInfo _tz;
         private readonly ILogger<ReservationReminderWorker> _logger;
         private DateTime? _lastPesajeRunDate;
@@ -23,12 +25,16 @@ namespace EnviaCorreoNotificaciones.Workers
         public ReservationReminderWorker(
             IServiceScopeFactory scopeFactory,
             IEmailSender email,
+            IWhatsAppSender whatsApp,
             IOptions<SchedulerSettings> schedOpt,
+            IOptions<WhatsAppSettings> whatsAppOpt,
             ILogger<ReservationReminderWorker> logger)
         {
             _scopeFactory = scopeFactory;
             _email = email;
+            _whatsApp = whatsApp;
             _sched = schedOpt.Value;
+            _whatsAppSettings = whatsAppOpt.Value;
             _logger = logger;
             _tz = TimeZoneInfo.FindSystemTimeZoneById(_sched.TimeZoneId);
         }
@@ -80,13 +86,15 @@ namespace EnviaCorreoNotificaciones.Workers
                 from r in db.Reservas
                 join h in db.HorasReserva on r.IdHora equals h.IdHora
                 join u in db.AspNetUsers on r.IdUsuario equals u.Id
-                where r.Fecha == targetDate
+                where r.Activa
+                      && r.Fecha == targetDate
                       && h.Hora == targetTime
-                      && u.Email != null
+                      && (u.Email != null || u.TelefonoPersonal != null)
                 select new
                 {
                     r.IdReserva,
-                    Email = u.Email!,
+                    Email = u.Email,
+                    Telefono = u.TelefonoPersonal,
                     Nombre = ((u.Nombre ?? "") + " " + (u.Apellidos ?? "")).Trim(),
                     r.Fecha,
                     Hora = h.Hora
@@ -94,7 +102,21 @@ namespace EnviaCorreoNotificaciones.Workers
             ).ToListAsync(ct);
 
             foreach (var x in reservas)
-                await TrySendReminderAsync(db, x.IdReserva, ReminderKind.NextHour, x.Email, x.Nombre, x.Fecha, x.Hora, ct);
+            {
+                if (!string.IsNullOrWhiteSpace(x.Email))
+                {
+                    await TrySendReminderAsync(
+                        db, x.IdReserva, ReminderKind.NextHour,
+                        x.Email!, x.Nombre, x.Fecha, x.Hora, ct);
+                }
+
+                if (_whatsAppSettings.Enabled && !string.IsNullOrWhiteSpace(x.Telefono))
+                {
+                    await TrySendWhatsAppReminderAsync(
+                        db, x.IdReserva, ReminderKind.NextHour,
+                        x.Telefono!, x.Nombre, x.Fecha, x.Hora, ct);
+                }
+            }
         }
 
         private async Task ProcessNextDayAsync(DateTime nowLocal, CancellationToken ct)
@@ -108,12 +130,14 @@ namespace EnviaCorreoNotificaciones.Workers
                 from r in db.Reservas
                 join h in db.HorasReserva on r.IdHora equals h.IdHora
                 join u in db.AspNetUsers on r.IdUsuario equals u.Id
-                where r.Fecha == tomorrow
-                      && u.Email != null
+                where r.Activa
+                      && r.Fecha == tomorrow
+                      && (u.Email != null || u.TelefonoPersonal != null)
                 select new
                 {
                     r.IdReserva,
-                    Email = u.Email!,
+                    Email = u.Email,
+                    Telefono = u.TelefonoPersonal,
                     Nombre = ((u.Nombre ?? "") + " " + (u.Apellidos ?? "")).Trim(),
                     r.Fecha,
                     Hora = h.Hora
@@ -121,7 +145,21 @@ namespace EnviaCorreoNotificaciones.Workers
             ).ToListAsync(ct);
 
             foreach (var x in reservas)
-                await TrySendReminderAsync(db, x.IdReserva, ReminderKind.NextDay, x.Email, x.Nombre, x.Fecha, x.Hora, ct);
+            {
+                if (!string.IsNullOrWhiteSpace(x.Email))
+                {
+                    await TrySendReminderAsync(
+                        db, x.IdReserva, ReminderKind.NextDay,
+                        x.Email!, x.Nombre, x.Fecha, x.Hora, ct);
+                }
+
+                if (_whatsAppSettings.Enabled && !string.IsNullOrWhiteSpace(x.Telefono))
+                {
+                    await TrySendWhatsAppReminderAsync(
+                        db, x.IdReserva, ReminderKind.NextDay,
+                        x.Telefono!, x.Nombre, x.Fecha, x.Hora, ct);
+                }
+            }
         }
 
         private async Task TrySendReminderAsync(
@@ -206,6 +244,109 @@ namespace EnviaCorreoNotificaciones.Workers
                 reminder.NextAttemptAt = nowUtc.AddMinutes(minutes);
 
                 await db.SaveChangesAsync(ct);
+            }
+        }
+
+        private async Task TrySendWhatsAppReminderAsync(
+            WorkerDbContext db,
+            int reservaId,
+            ReminderKind kind,
+            string telefono,
+            string nombre,
+            DateTime fecha,
+            TimeSpan hora,
+            CancellationToken ct)
+        {
+            var nowUtc = DateTime.UtcNow;
+
+            var reminder = await db.ReservaWhatsAppReminders
+                .FirstOrDefaultAsync(
+                    x => x.ReservaId == reservaId && x.Kind == kind,
+                    ct);
+
+            if (reminder is { Status: ReminderStatus.Sent })
+                return;
+
+            if (reminder is { Status: ReminderStatus.Failed }
+                && reminder.NextAttemptAt.HasValue
+                && reminder.NextAttemptAt > nowUtc)
+            {
+                return;
+            }
+
+            if (reminder is null)
+            {
+                reminder = new ReservaWhatsAppReminder
+                {
+                    ReservaId = reservaId,
+                    Kind = kind,
+                    Status = ReminderStatus.Pending,
+                    Attempts = 0,
+                    CreatedAtUtc = nowUtc
+                };
+
+                db.ReservaWhatsAppReminders.Add(reminder);
+
+                try
+                {
+                    await db.SaveChangesAsync(ct);
+                }
+                catch
+                {
+                    return;
+                }
+            }
+
+            if (reminder.Attempts >= _sched.MaxAttempts)
+                return;
+
+            try
+            {
+                var phone = MetaWhatsAppSender.NormalizarTelefonoCostaRica(telefono);
+                var wamid = await _whatsApp.SendReservationReminderAsync(
+                    phone,
+                    nombre,
+                    fecha,
+                    hora,
+                    kind,
+                    reservaId,
+                    ct);
+
+                reminder.Phone = phone;
+                reminder.Wamid = wamid;
+                reminder.Status = ReminderStatus.Sent;
+                reminder.SentAtUtc = nowUtc;
+                reminder.DeliveryStatus = "sent";
+                reminder.DeliveryStatusAtUtc = nowUtc;
+                reminder.LastError = null;
+                reminder.NextAttemptAt = null;
+
+                await db.SaveChangesAsync(ct);
+            }
+            catch (Exception ex)
+            {
+                reminder.Status = ReminderStatus.Failed;
+                reminder.Attempts += 1;
+                reminder.LastError = ex.Message.Length > 1000
+                    ? ex.Message[..1000]
+                    : ex.Message;
+
+                var minutes = reminder.Attempts switch
+                {
+                    1 => 1,
+                    2 => 5,
+                    3 => 15,
+                    _ => 60
+                };
+
+                reminder.NextAttemptAt = nowUtc.AddMinutes(minutes);
+                await db.SaveChangesAsync(ct);
+
+                _logger.LogWarning(
+                    ex,
+                    "Falló WhatsApp para reserva {ReservaId}, tipo {Kind}",
+                    reservaId,
+                    kind);
             }
         }
 
