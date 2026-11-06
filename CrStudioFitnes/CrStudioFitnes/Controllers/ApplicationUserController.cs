@@ -266,6 +266,10 @@ namespace CrStudioFitnes.Controllers
             if (string.IsNullOrWhiteSpace(idUsuario) || idPaquete <= 0)
                 return NotFound();
 
+            var idUsuarioEjecutor = _userManager.GetUserId(User);
+            if (string.IsNullOrWhiteSpace(idUsuarioEjecutor))
+                return Challenge();
+
             var strategy = _db.Database.CreateExecutionStrategy();
 
             try
@@ -296,11 +300,11 @@ namespace CrStudioFitnes.Controllers
 
                     if (!paquete.EsGrupal)
                     {
-                        await AsignarPaqueteIndividualPendienteAsync(idUsuario, paquete.IdPaquete);
+                        await AsignarPaqueteIndividualPendienteAsync(idUsuario, paquete.IdPaquete, idUsuarioEjecutor);
                     }
                     else
                     {
-                        await CrearGrupoYAsignarPaqueteAsync(idUsuario, paquete, idsUsuariosGrupo);
+                        await CrearGrupoYAsignarPaqueteAsync(idUsuario, paquete, idsUsuariosGrupo, idUsuarioEjecutor);
                     }
 
                     await _db.SaveChangesAsync();
@@ -342,6 +346,10 @@ namespace CrStudioFitnes.Controllers
                 TempData["ErrorGrupo"] = "Debe seleccionar el integrante que sale y el nuevo integrante.";
                 return RedirectToAction(nameof(Details), new { id = idUsuarioRetorno });
             }
+
+            var idUsuarioEjecutor = _userManager.GetUserId(User);
+            if (string.IsNullOrWhiteSpace(idUsuarioEjecutor))
+                return Challenge();
 
             var strategy = _db.Database.CreateExecutionStrategy();
 
@@ -404,19 +412,37 @@ namespace CrStudioFitnes.Controllers
                         .Where(pu => pu.IdUsuario == idUsuarioEntra && pu.Activo)
                         .ToListAsync();
 
+                    var leccionesPreviasNuevo = asignacionesPreviasNuevo.Sum(x => x.CantLecciones);
                     foreach (var asignacionPrevia in asignacionesPreviasNuevo)
                     {
                         asignacionPrevia.CantLecciones = 0;
                         asignacionPrevia.Activo = false;
                     }
 
+                    RegistrarMovimientoReserva(
+                        idUsuarioEntra,
+                        leccionesPreviasNuevo,
+                        0,
+                        "Ingreso a grupo",
+                        "Las lecciones anteriores se pusieron en 0 al ingresar como reemplazo a un grupo.",
+                        idUsuarioEjecutor);
+
                     sale.Activo = false;
                     sale.FechaSalida = DateTime.Now;
 
                     if (sale.PaqueteUsuario != null)
                     {
+                        var leccionesAntesSale = sale.PaqueteUsuario.CantLecciones;
                         sale.PaqueteUsuario.Activo = false;
                         sale.PaqueteUsuario.CantLecciones = 0;
+
+                        RegistrarMovimientoReserva(
+                            sale.IdUsuario,
+                            leccionesAntesSale,
+                            0,
+                            "Salida de grupo",
+                            "Las lecciones se pusieron en 0 al reemplazar al integrante del grupo.",
+                            idUsuarioEjecutor);
                     }
 
                     var nuevoPu = new PaqueteUsuario
@@ -462,6 +488,10 @@ namespace CrStudioFitnes.Controllers
             int idPaqueteNuevo,
             string idUsuarioRetorno)
         {
+            var idUsuarioEjecutor = _userManager.GetUserId(User);
+            if (string.IsNullOrWhiteSpace(idUsuarioEjecutor))
+                return Challenge();
+
             var strategy = _db.Database.CreateExecutionStrategy();
 
             try
@@ -500,24 +530,24 @@ namespace CrStudioFitnes.Controllers
 
                     await ValidarGrupoSinDeudaAsync(grupo.IdGrupoPaquete);
 
-                    bool hayLecciones = grupo.Miembros
-                        .Where(m => m.Activo && m.PaqueteUsuario != null)
-                        .Any(m => m.PaqueteUsuario!.Activo && m.PaqueteUsuario.CantLecciones > 0);
-
-                    if (hayLecciones)
-                    {
-                        throw new InvalidOperationException(
-                            "No se puede cambiar el paquete del grupo mientras alguno de sus integrantes todavía tenga lecciones disponibles.");
-                    }
-
                     grupo.IdPaquete = nuevoPaquete.IdPaquete;
                     foreach (var miembro in grupo.Miembros.Where(m => m.Activo))
                     {
+                        var leccionesAntes = miembro.PaqueteUsuario.CantLecciones;
+
                         miembro.PaqueteUsuario.IdPaquete = nuevoPaquete.IdPaquete;
                         miembro.PaqueteUsuario.CantLecciones = 0;
                         miembro.PaqueteUsuario.FechaInicio = DateTime.Today;
                         miembro.PaqueteUsuario.FechaFin = DateTime.Today;
                         miembro.PaqueteUsuario.Activo = true;
+
+                        RegistrarMovimientoReserva(
+                            miembro.IdUsuario,
+                            leccionesAntes,
+                            0,
+                            "Cambio de paquete grupal",
+                            $"Cambio al paquete {(string.IsNullOrWhiteSpace(nuevoPaquete.Detalle) ? $"#{nuevoPaquete.IdPaquete}" : nuevoPaquete.Detalle)}. Las lecciones anteriores se pusieron en 0.",
+                            idUsuarioEjecutor);
                     }
 
                     await _db.SaveChangesAsync();
@@ -541,6 +571,10 @@ namespace CrStudioFitnes.Controllers
             int idGrupoPaquete,
             string idUsuarioRetorno)
         {
+            var idUsuarioEjecutor = _userManager.GetUserId(User);
+            if (string.IsNullOrWhiteSpace(idUsuarioEjecutor))
+                return Challenge();
+
             var strategy = _db.Database.CreateExecutionStrategy();
 
             try
@@ -570,8 +604,17 @@ namespace CrStudioFitnes.Controllers
 
                         if (miembro.PaqueteUsuario != null)
                         {
+                            var leccionesAntes = miembro.PaqueteUsuario.CantLecciones;
                             miembro.PaqueteUsuario.Activo = false;
                             miembro.PaqueteUsuario.CantLecciones = 0;
+
+                            RegistrarMovimientoReserva(
+                                miembro.IdUsuario,
+                                leccionesAntes,
+                                0,
+                                "Grupo deshecho",
+                                "Las lecciones se pusieron en 0 al deshacer el grupo.",
+                                idUsuarioEjecutor);
                         }
                     }
 
@@ -614,6 +657,10 @@ namespace CrStudioFitnes.Controllers
             }
 
             var fecha = fechaPago.Value.Date;
+            var idUsuarioEjecutor = _userManager.GetUserId(User);
+            if (string.IsNullOrWhiteSpace(idUsuarioEjecutor))
+                return Challenge();
+
             var strategy = _db.Database.CreateExecutionStrategy();
             bool fueGrupal = false;
             int integrantes = 1;
@@ -637,12 +684,12 @@ namespace CrStudioFitnes.Controllers
 
                     if (membresia == null)
                     {
-                        await RegistrarPagoIndividualAsync(idUsuario, tipoPago, fecha);
+                        await RegistrarPagoIndividualAsync(idUsuario, tipoPago, fecha, idUsuarioEjecutor);
                     }
                     else
                     {
                         fueGrupal = true;
-                        integrantes = await RegistrarPagoGrupoAsync(membresia.IdGrupoPaquete, tipoPago, fecha);
+                        integrantes = await RegistrarPagoGrupoAsync(membresia.IdGrupoPaquete, tipoPago, fecha, idUsuarioEjecutor);
                     }
 
                     await _db.SaveChangesAsync();
@@ -680,7 +727,7 @@ namespace CrStudioFitnes.Controllers
             return RedirectToAction(nameof(Details), new { id = idUsuario });
         }
 
-        private async Task RegistrarPagoIndividualAsync(string idUsuario, string tipoPago, DateTime fecha)
+        private async Task RegistrarPagoIndividualAsync(string idUsuario, string tipoPago, DateTime fecha, string idUsuarioEjecutor)
         {
             var pagoPendiente = await _db.PagosPaquete
                 .AsNoTracking()
@@ -708,10 +755,11 @@ namespace CrStudioFitnes.Controllers
                 tipoPago,
                 fecha,
                 idGrupoPaquete: null,
-                idOperacionGrupo: null);
+                idOperacionGrupo: null,
+                idUsuarioEjecutor: idUsuarioEjecutor);
         }
 
-        private async Task<int> RegistrarPagoGrupoAsync(int idGrupoPaquete, string tipoPago, DateTime fecha)
+        private async Task<int> RegistrarPagoGrupoAsync(int idGrupoPaquete, string tipoPago, DateTime fecha, string idUsuarioEjecutor)
         {
             var grupo = await _db.GruposPaquete
                 .Include(g => g.Paquete)
@@ -782,6 +830,7 @@ namespace CrStudioFitnes.Controllers
                     fecha,
                     grupo.IdGrupoPaquete,
                     idOperacion,
+                    idUsuarioEjecutor,
                     ObtenerCuposGrupo(miembro.Usuario));
             }
 
@@ -796,6 +845,7 @@ namespace CrStudioFitnes.Controllers
             DateTime fecha,
             int? idGrupoPaquete,
             Guid? idOperacionGrupo,
+            string idUsuarioEjecutor,
             int cantidadCupos = 1)
         {
             if (cantidadCupos <= 0)
@@ -849,10 +899,19 @@ namespace CrStudioFitnes.Controllers
 
             _db.PagosPaquete.Add(pago);
 
+            var leccionesAntes = pu.CantLecciones;
             pu.CantLecciones = leccionesUsuario;
             pu.FechaInicio = fecha;
             pu.FechaFin = CalcularFechaFin(fecha, paquete.CantDias);
             pu.Activo = true;
+
+            RegistrarMovimientoReserva(
+                idUsuario,
+                leccionesAntes,
+                leccionesUsuario,
+                idGrupoPaquete.HasValue ? "Pago de paquete grupal" : "Pago de paquete",
+                $"Pago {tipoPago} del paquete {(string.IsNullOrWhiteSpace(paquete.Detalle) ? $"#{paquete.IdPaquete}" : paquete.Detalle)}.",
+                idUsuarioEjecutor);
         }
 
         private static DateTime CalcularFechaFin(DateTime fechaPago, TipoPlanDias tipo)
@@ -864,6 +923,7 @@ namespace CrStudioFitnes.Controllers
                 TipoPlanDias.Semanal => fechaPago.AddDays(7),
                 TipoPlanDias.Quincenal => SumarDiasSinContarDia31(fechaPago, 15),
                 TipoPlanDias.Mensual => fechaPago.AddMonths(1),
+                TipoPlanDias.Anual => fechaPago.AddYears(1),
                 _ => fechaPago
             };
         }
@@ -920,6 +980,45 @@ namespace CrStudioFitnes.Controllers
                 .ToListAsync();
 
             return View(pagos);
+        }
+
+        [Authorize(Roles = ROL_GESTOR_PAGOS + "," + ROL_ADMIN)]
+        public async Task<IActionResult> HistorialReservas(string id)
+        {
+            if (string.IsNullOrWhiteSpace(id))
+                return NotFound();
+
+            var user = await _userManager.Users
+                .AsNoTracking()
+                .FirstOrDefaultAsync(u => u.Id == id);
+
+            if (user == null)
+                return NotFound();
+
+            var movimientos = await _db.MovimientosReservas
+                .AsNoTracking()
+                .Where(m => m.IdUsuario == id)
+                .OrderByDescending(m => m.Fecha)
+                .ThenByDescending(m => m.IdMovimientoReserva)
+                .ToListAsync();
+
+            var idsEjecutores = movimientos
+                .Select(m => m.IdUsuarioEjecutor)
+                .Distinct()
+                .ToList();
+
+            var nombresEjecutores = await _db.Users
+                .AsNoTracking()
+                .Where(u => idsEjecutores.Contains(u.Id))
+                .ToDictionaryAsync(
+                    u => u.Id,
+                    u => (u.Nombre + " " + u.Apellidos).Trim());
+
+            ViewData["UsuarioNombre"] = $"{user.Nombre} {user.Apellidos}".Trim();
+            ViewData["UsuarioId"] = user.Id;
+            ViewBag.NombresEjecutores = nombresEjecutores;
+
+            return View(movimientos);
         }
 
         [HttpPost]
@@ -1034,6 +1133,10 @@ namespace CrStudioFitnes.Controllers
             if (!await _db.Users.AsNoTracking().AnyAsync(u => u.Id == idUsuario))
                 return NotFound();
 
+            var idUsuarioEjecutor = _userManager.GetUserId(User);
+            if (string.IsNullOrWhiteSpace(idUsuarioEjecutor))
+                return Challenge();
+
             var strategy = _db.Database.CreateExecutionStrategy();
 
             try
@@ -1079,8 +1182,17 @@ namespace CrStudioFitnes.Controllers
                         Monto = monto
                     });
 
+                    var leccionesAntes = paqueteUsuario.CantLecciones;
                     paqueteUsuario.CantLecciones += cantLecciones;
                     _db.PagosPaquete.Add(pago);
+
+                    RegistrarMovimientoReserva(
+                        idUsuario,
+                        leccionesAntes,
+                        paqueteUsuario.CantLecciones,
+                        "Clases extra",
+                        $"Se agregaron {cantLecciones} lección(es) extra mediante pago por ₡{monto:N2}.",
+                        idUsuarioEjecutor);
 
                     await _db.SaveChangesAsync();
                     await tx.CommitAsync();
@@ -1099,6 +1211,110 @@ namespace CrStudioFitnes.Controllers
 
             TempData["OkLecciones"] = $"Se agregaron {cantLecciones} lección(es) y se registró el pago correctamente.";
             return RedirectToAction(nameof(HistorialPagos), new { id = idUsuario });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize(Roles = ROL_ADMIN)]
+        public async Task<IActionResult> AjustarLeccionesManual(
+            string idUsuario,
+            string operacion,
+            int cantidad,
+            string motivo)
+        {
+            if (string.IsNullOrWhiteSpace(idUsuario))
+                return NotFound();
+
+            operacion = (operacion ?? string.Empty).Trim().ToUpperInvariant();
+            motivo = (motivo ?? string.Empty).Trim();
+
+            if (operacion != "AGREGAR" && operacion != "QUITAR")
+            {
+                TempData["ErrorAjusteLecciones"] = "Debe seleccionar si desea agregar o quitar lecciones.";
+                return RedirectToAction(nameof(Details), new { id = idUsuario });
+            }
+
+            if (cantidad <= 0 || cantidad > 1000)
+            {
+                TempData["ErrorAjusteLecciones"] = "La cantidad debe estar entre 1 y 1000.";
+                return RedirectToAction(nameof(Details), new { id = idUsuario });
+            }
+
+            if (string.IsNullOrWhiteSpace(motivo))
+            {
+                TempData["ErrorAjusteLecciones"] = "Debe indicar el motivo del ajuste manual.";
+                return RedirectToAction(nameof(Details), new { id = idUsuario });
+            }
+
+            if (motivo.Length > 500)
+            {
+                TempData["ErrorAjusteLecciones"] = "El motivo no puede superar los 500 caracteres.";
+                return RedirectToAction(nameof(Details), new { id = idUsuario });
+            }
+
+            var idUsuarioEjecutor = _userManager.GetUserId(User);
+            if (string.IsNullOrWhiteSpace(idUsuarioEjecutor))
+                return Challenge();
+
+            var strategy = _db.Database.CreateExecutionStrategy();
+
+            try
+            {
+                await strategy.ExecuteAsync(async () =>
+                {
+                    await using var tx = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+
+                    var paqueteUsuario = await _db.PaquetesUsuario
+                        .Where(pu => pu.IdUsuario == idUsuario && pu.Activo)
+                        .OrderByDescending(pu => pu.IdPaqueteUsuario)
+                        .FirstOrDefaultAsync();
+
+                    if (paqueteUsuario == null)
+                        throw new InvalidOperationException("El usuario no tiene un paquete activo para ajustar lecciones.");
+
+                    var leccionesAntes = paqueteUsuario.CantLecciones;
+                    int leccionesDespues;
+
+                    if (operacion == "AGREGAR")
+                    {
+                        if (leccionesAntes + cantidad > 1000)
+                            throw new InvalidOperationException("El ajuste haría que el usuario supere el máximo de 1000 lecciones.");
+
+                        leccionesDespues = leccionesAntes + cantidad;
+                    }
+                    else
+                    {
+                        if (cantidad > leccionesAntes)
+                            throw new InvalidOperationException($"No se pueden quitar {cantidad} lecciones porque el usuario solo tiene {leccionesAntes} disponibles.");
+
+                        leccionesDespues = leccionesAntes - cantidad;
+                    }
+
+                    paqueteUsuario.CantLecciones = leccionesDespues;
+
+                    RegistrarMovimientoReserva(
+                        idUsuario,
+                        leccionesAntes,
+                        leccionesDespues,
+                        operacion == "AGREGAR" ? "Ajuste manual - agregar" : "Ajuste manual - quitar",
+                        motivo,
+                        idUsuarioEjecutor);
+
+                    await _db.SaveChangesAsync();
+                    await tx.CommitAsync();
+                });
+            }
+            catch (InvalidOperationException ex)
+            {
+                TempData["ErrorAjusteLecciones"] = ex.Message;
+                return RedirectToAction(nameof(Details), new { id = idUsuario });
+            }
+
+            TempData["OkAjusteLecciones"] = operacion == "AGREGAR"
+                ? $"Se agregaron {cantidad} lección(es) manualmente."
+                : $"Se quitaron {cantidad} lección(es) manualmente.";
+
+            return RedirectToAction(nameof(Details), new { id = idUsuario });
         }
 
         [HttpPost]
@@ -1160,6 +1376,11 @@ namespace CrStudioFitnes.Controllers
             }
 
             bool anulacionGrupal = pagoBase.IdOperacionGrupo.HasValue;
+
+            var idUsuarioEjecutor = _userManager.GetUserId(User);
+            if (string.IsNullOrWhiteSpace(idUsuarioEjecutor))
+                return Challenge();
+
             var strategy = _db.Database.CreateExecutionStrategy();
 
             try
@@ -1235,7 +1456,18 @@ namespace CrStudioFitnes.Controllers
                             .ToListAsync();
 
                         foreach (var asignacion in asignaciones)
+                        {
+                            var leccionesAntes = asignacion.CantLecciones;
                             asignacion.CantLecciones = 0;
+
+                            RegistrarMovimientoReserva(
+                                asignacion.IdUsuario,
+                                leccionesAntes,
+                                0,
+                                "Anulación de pago",
+                                motivoAnulacion!,
+                                idUsuarioEjecutor);
+                        }
                     }
 
                     await _db.SaveChangesAsync();
@@ -1482,22 +1714,21 @@ namespace CrStudioFitnes.Controllers
             return PartialView("_MiHistorialPesajePartial", pesajes);
         }
 
-        private async Task AsignarPaqueteIndividualPendienteAsync(string idUsuario, int idPaquete)
+        private async Task AsignarPaqueteIndividualPendienteAsync(
+            string idUsuario,
+            int idPaquete,
+            string idUsuarioEjecutor)
         {
             var actuales = await _db.PaquetesUsuario
                 .Where(pu => pu.IdUsuario == idUsuario && pu.Activo)
                 .OrderByDescending(pu => pu.IdPaqueteUsuario)
                 .ToListAsync();
 
+            var leccionesAntes = actuales.Sum(pu => pu.CantLecciones);
             var actual = actuales.FirstOrDefault();
-            if (actual != null
-                && actual.IdPaquete != idPaquete
-                && actual.CantLecciones > 0
-                && actual.FechaFin.Date >= DateTime.Today)
-            {
-                throw new InvalidOperationException(
-                    "El usuario todavía tiene lecciones disponibles en su paquete actual. Debe agotarlas antes de cambiar a otro paquete.");
-            }
+
+            foreach (var asignacion in actuales)
+                asignacion.CantLecciones = 0;
 
             foreach (var viejo in actuales.Skip(1))
                 viejo.Activo = false;
@@ -1522,12 +1753,21 @@ namespace CrStudioFitnes.Controllers
                 actual.FechaFin = DateTime.Today;
                 actual.Activo = true;
             }
+
+            RegistrarMovimientoReserva(
+                idUsuario,
+                leccionesAntes,
+                0,
+                "Asignación de paquete",
+                $"Se asignó el paquete #{idPaquete}. Las lecciones anteriores se pusieron en 0.",
+                idUsuarioEjecutor);
         }
 
         private async Task CrearGrupoYAsignarPaqueteAsync(
             string idUsuarioPrincipal,
             Paquete paquete,
-            List<string>? idsUsuariosGrupo)
+            List<string>? idsUsuariosGrupo,
+            string idUsuarioEjecutor)
         {
             var otros = (idsUsuariosGrupo ?? new List<string>())
                 .Where(x => !string.IsNullOrWhiteSpace(x))
@@ -1581,11 +1821,20 @@ namespace CrStudioFitnes.Controllers
                     .Where(pu => pu.IdUsuario == id && pu.Activo)
                     .ToListAsync();
 
+                var leccionesAntes = anteriores.Sum(x => x.CantLecciones);
                 foreach (var anterior in anteriores)
                 {
                     anterior.CantLecciones = 0;
                     anterior.Activo = false;
                 }
+
+                RegistrarMovimientoReserva(
+                    id,
+                    leccionesAntes,
+                    0,
+                    "Asignación de paquete grupal",
+                    $"Se creó una nueva asignación grupal con el paquete {(string.IsNullOrWhiteSpace(paquete.Detalle) ? $"#{paquete.IdPaquete}" : paquete.Detalle)}. Las lecciones anteriores se pusieron en 0.",
+                    idUsuarioEjecutor);
 
                 var pu = new PaqueteUsuario
                 {
@@ -1743,6 +1992,27 @@ namespace CrStudioFitnes.Controllers
             }
 
             return 1;
+        }
+
+        private void RegistrarMovimientoReserva(
+            string idUsuario,
+            int leccionesAntes,
+            int leccionesDespues,
+            string tipoMovimiento,
+            string motivo,
+            string idUsuarioEjecutor)
+        {
+            _db.MovimientosReservas.Add(new MovimientoReserva
+            {
+                IdUsuario = idUsuario,
+                Fecha = DateTime.Now,
+                TipoMovimiento = tipoMovimiento,
+                LeccionesAntes = leccionesAntes,
+                CantidadMovimiento = leccionesDespues - leccionesAntes,
+                LeccionesDespues = leccionesDespues,
+                Motivo = motivo,
+                IdUsuarioEjecutor = idUsuarioEjecutor
+            });
         }
 
         private static string? LimpiarOpcional(string? value)
