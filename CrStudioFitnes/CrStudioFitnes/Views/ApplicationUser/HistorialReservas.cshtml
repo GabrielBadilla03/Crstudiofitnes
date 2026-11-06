@@ -1,0 +1,81 @@
+@model List<CrStudioFitnes.Models.MovimientoReserva>
+
+@{
+    ViewData["Title"] = "Historial de reservas";
+    var usuarioNombre = ViewData["UsuarioNombre"]?.ToString() ?? "Usuario";
+    var usuarioId = ViewData["UsuarioId"]?.ToString();
+    var nombresEjecutores = ViewBag.NombresEjecutores as Dictionary<string, string>
+        ?? new Dictionary<string, string>();
+}
+
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-11">
+            <div class="card shadow-sm cr-card">
+                <div class="card-body p-4 p-md-5">
+                    <div class="d-flex justify-content-between align-items-center gap-2 flex-wrap mb-4">
+                        <div>
+                            <h1 class="h3 mb-1">@ViewData["Title"]</h1>
+                            <p class="text-muted mb-0">Movimientos de lecciones de @usuarioNombre.</p>
+                        </div>
+                        <a asp-action="Details" asp-route-id="@usuarioId" class="btn btn-outline-secondary">Volver al usuario</a>
+                    </div>
+
+                    @if (Model == null || Model.Count == 0)
+                    {
+                        <div class="alert alert-info mb-0">Este usuario todavía no tiene movimientos registrados.</div>
+                    }
+                    else
+                    {
+                        <div class="table-responsive">
+                            <table class="table align-middle">
+                                <thead>
+                                    <tr>
+                                        <th>Fecha</th>
+                                        <th>Movimiento</th>
+                                        <th>Antes</th>
+                                        <th>Cambio</th>
+                                        <th>Después</th>
+                                        <th>Razón / detalle</th>
+                                        <th>Realizado por</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var movimiento in Model)
+                                    {
+                                        var nombreEjecutor = nombresEjecutores.TryGetValue(movimiento.IdUsuarioEjecutor, out var nombre)
+                                            && !string.IsNullOrWhiteSpace(nombre)
+                                                ? nombre
+                                                : movimiento.IdUsuarioEjecutor;
+                                        <tr>
+                                            <td class="text-nowrap">@movimiento.Fecha.ToString("dd/MM/yyyy HH:mm:ss")</td>
+                                            <td><strong>@movimiento.TipoMovimiento</strong></td>
+                                            <td>@movimiento.LeccionesAntes</td>
+                                            <td>
+                                                @if (movimiento.CantidadMovimiento > 0)
+                                                {
+                                                    <span class="text-success fw-semibold">+@movimiento.CantidadMovimiento</span>
+                                                }
+                                                else if (movimiento.CantidadMovimiento < 0)
+                                                {
+                                                    <span class="text-danger fw-semibold">@movimiento.CantidadMovimiento</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted">0</span>
+                                                }
+                                            </td>
+                                            <td>@movimiento.LeccionesDespues</td>
+                                            <td>@movimiento.Motivo</td>
+                                            <td>@nombreEjecutor</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
