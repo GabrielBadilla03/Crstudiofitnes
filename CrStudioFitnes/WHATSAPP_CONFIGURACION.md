@@ -46,12 +46,12 @@ Esta plantilla no necesita botones porque se envía aproximadamente una hora ant
 
 ## Variables de configuración
 
-No guardar tokens reales en GitHub.
+No guardar tokens reales en GitHub. En el repositorio, Enabled debe permanecer en false y PhoneNumberId/AccessToken deben permanecer vacíos. Para desarrollo usar User Secrets; para producción usar variables de entorno del servidor.
 
 Configurar en el servidor, tanto para el Windows Service EnviaCorreoNotificaciones como para el sitio IIS cuando corresponda:
 
 WhatsApp__Enabled=true
-WhatsApp__GraphApiVersion=v27.0
+WhatsApp__GraphApiVersion=v25.0
 WhatsApp__PhoneNumberId=<PHONE_NUMBER_ID>
 WhatsApp__AccessToken=<TOKEN_PERMANENTE>
 WhatsApp__TemplateNextDay=recordatorio_reserva_confirmacion
@@ -62,6 +62,28 @@ WhatsApp__AppSecret=<APP_SECRET_DE_META>
 
 El worker necesita principalmente Enabled, GraphApiVersion, PhoneNumberId, AccessToken y las plantillas.
 El sitio web necesita VerifyToken y AppSecret para validar el webhook, y PhoneNumberId/AccessToken para responder al usuario después de Confirmar/Cancelar.
+
+Si la plantilla se creó con una variante regional de español, ajustar WhatsApp__LanguageCode al código exacto que muestre Meta para esa plantilla.
+
+## Desarrollo local
+
+En EnviaCorreoNotificaciones usar Manage User Secrets / Administrar secretos de usuario:
+
+{
+  "WhatsApp": {
+    "Enabled": true,
+    "GraphApiVersion": "v25.0",
+    "PhoneNumberId": "<PHONE_NUMBER_ID>",
+    "AccessToken": "<ACCESS_TOKEN>",
+    "TemplateNextDay": "recordatorio_reserva_confirmacion",
+    "TemplateNextHour": "recordatorio_reserva_proxima",
+    "LanguageCode": "es"
+  }
+}
+
+Para probar únicamente el envío desde localhost no se necesita webhook, VerifyToken ni AppSecret.
+
+Los logs del Worker se guardan por defecto en la carpeta logs junto al ejecutable. Se puede cambiar la carpeta definiendo la variable de entorno CRSTUDIO_LOG_DIR.
 
 ## Suscripción del webhook
 
