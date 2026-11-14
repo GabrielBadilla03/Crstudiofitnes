@@ -62,30 +62,29 @@ namespace EnviaCorreoNotificaciones.Services
                 }
             };
 
-            if (kind == ReminderKind.NextDay)
+            // Ambos recordatorios (1 día antes y 1 hora antes) permiten
+            // confirmar asistencia o cancelar la reserva.
+            components.Add(new
             {
-                components.Add(new
+                type = "button",
+                sub_type = "quick_reply",
+                index = "0",
+                parameters = new object[]
                 {
-                    type = "button",
-                    sub_type = "quick_reply",
-                    index = "0",
-                    parameters = new object[]
-                    {
-                        new { type = "payload", payload = $"CONFIRMAR_{reservaId}" }
-                    }
-                });
+                    new { type = "payload", payload = $"CONFIRMAR_{reservaId}" }
+                }
+            });
 
-                components.Add(new
+            components.Add(new
+            {
+                type = "button",
+                sub_type = "quick_reply",
+                index = "1",
+                parameters = new object[]
                 {
-                    type = "button",
-                    sub_type = "quick_reply",
-                    index = "1",
-                    parameters = new object[]
-                    {
-                        new { type = "payload", payload = $"CANCELAR_{reservaId}" }
-                    }
-                });
-            }
+                    new { type = "payload", payload = $"CANCELAR_{reservaId}" }
+                }
+            });
 
             var payload = new
             {
