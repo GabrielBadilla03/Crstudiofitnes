@@ -17,5 +17,6 @@ namespace EnviaCorreoNotificaciones.Models
 
         public string? Nombre { get; set; }
         public string? Apellidos { get; set; }
+        public string? Cedula { get; set; }
     }
 }
