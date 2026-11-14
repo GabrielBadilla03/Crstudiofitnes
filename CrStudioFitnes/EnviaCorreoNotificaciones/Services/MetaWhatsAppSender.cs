@@ -62,8 +62,8 @@ namespace EnviaCorreoNotificaciones.Services
                 }
             };
 
-            // Ambos recordatorios (1 día antes y 1 hora antes) permiten
-            // confirmar asistencia o cancelar la reserva.
+            // Ambos recordatorios (1 día antes y 1 hora y 30 minutos antes)
+            // permiten confirmar asistencia o cancelar la reserva.
             components.Add(new
             {
                 type = "button",
@@ -114,6 +114,84 @@ namespace EnviaCorreoNotificaciones.Services
 
             if (!response.IsSuccessStatusCode)
                 throw new InvalidOperationException($"Meta WhatsApp respondió {(int)response.StatusCode}: {body}");
+
+            using var json = JsonDocument.Parse(body);
+            var wamid = json.RootElement
+                .GetProperty("messages")[0]
+                .GetProperty("id")
+                .GetString();
+
+            if (string.IsNullOrWhiteSpace(wamid))
+                throw new InvalidOperationException("Meta no devolvió el identificador wamid.");
+
+            return wamid;
+        }
+
+        public async Task<string> SendStaffUpcomingReservationsAsync(
+            string telefono,
+            TimeSpan hora,
+            string detalleReservas,
+            CancellationToken ct)
+        {
+            if (!_settings.Enabled)
+                throw new InvalidOperationException("WhatsApp está deshabilitado.");
+
+            if (string.IsNullOrWhiteSpace(_settings.PhoneNumberId)
+                || string.IsNullOrWhiteSpace(_settings.AccessToken)
+                || string.IsNullOrWhiteSpace(_settings.GraphApiVersion)
+                || string.IsNullOrWhiteSpace(_settings.TemplateStaffUpcoming))
+            {
+                throw new InvalidOperationException("La configuración de WhatsApp para personal está incompleta.");
+            }
+
+            var phone = NormalizarTelefonoCostaRica(telefono);
+            var horaStr = DateTime.Today.Add(hora).ToString("hh:mm tt");
+            var detalle = string.IsNullOrWhiteSpace(detalleReservas)
+                ? "No hay reservas"
+                : detalleReservas.Trim();
+
+            var payload = new
+            {
+                messaging_product = "whatsapp",
+                to = phone,
+                type = "template",
+                template = new
+                {
+                    name = _settings.TemplateStaffUpcoming,
+                    language = new { code = _settings.LanguageCode },
+                    components = new object[]
+                    {
+                        new
+                        {
+                            type = "body",
+                            parameters = new object[]
+                            {
+                                new { type = "text", text = horaStr },
+                                new { type = "text", text = detalle }
+                            }
+                        }
+                    }
+                }
+            };
+
+            using var request = new HttpRequestMessage(
+                HttpMethod.Post,
+                $"https://graph.facebook.com/{_settings.GraphApiVersion}/{_settings.PhoneNumberId}/messages");
+
+            request.Headers.Authorization =
+                new AuthenticationHeaderValue("Bearer", _settings.AccessToken);
+
+            request.Content = new StringContent(
+                JsonSerializer.Serialize(payload),
+                Encoding.UTF8,
+                "application/json");
+
+            using var response = await _http.SendAsync(request, ct);
+            var body = await response.Content.ReadAsStringAsync(ct);
+
+            if (!response.IsSuccessStatusCode)
+                throw new InvalidOperationException(
+                    $"Meta WhatsApp respondió {(int)response.StatusCode}: {body}");
 
             using var json = JsonDocument.Parse(body);
             var wamid = json.RootElement
