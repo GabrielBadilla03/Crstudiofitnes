@@ -12,5 +12,11 @@ namespace EnviaCorreoNotificaciones.Services
             ReminderKind kind,
             int reservaId,
             CancellationToken ct);
+
+        Task<string> SendStaffUpcomingReservationsAsync(
+            string telefono,
+            TimeSpan hora,
+            string detalleReservas,
+            CancellationToken ct);
     }
 }
