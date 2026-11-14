@@ -73,11 +73,21 @@ namespace EnviaCorreoNotificaciones.Workers
 
         private async Task ProcessNextHourAsync(DateTime nowLocal, CancellationToken ct)
         {
-            var baseHour = new DateTime(nowLocal.Year, nowLocal.Month, nowLocal.Day, nowLocal.Hour, 0, 0);
-            var target = baseHour.AddHours(1);
+            // El segundo recordatorio se envía 1 hora y 30 minutos antes.
+            // Se truncan los segundos para que una ejecución en 05:30:xx
+            // busque correctamente una reserva de las 07:00.
+            var currentMinute = new DateTime(
+                nowLocal.Year,
+                nowLocal.Month,
+                nowLocal.Day,
+                nowLocal.Hour,
+                nowLocal.Minute,
+                0);
+
+            var target = currentMinute.AddMinutes(90);
 
             var targetDate = target.Date;
-            var targetTime = target.TimeOfDay; // 08:00
+            var targetTime = target.TimeOfDay;
 
             using var scope = _scopeFactory.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<WorkerDbContext>();
