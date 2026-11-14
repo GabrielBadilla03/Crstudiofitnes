@@ -325,15 +325,18 @@ namespace CrStudioFitnes.Controllers
 
                 var fechaHoraReserva = reserva.Fecha.Date.Add(reserva.HoraReserva.Hora);
 
-                if (fechaHoraReserva < DateTime.Now.AddHours(1))
+                // La cancelación por WhatsApp es válida tanto desde el recordatorio
+                // de 1 día antes como desde el de 1 hora antes. Solo se rechaza si
+                // la reserva ya inició o quedó en el pasado.
+                if (fechaHoraReserva <= DateTime.Now)
                 {
                     trackedReminder.Response = "CANCELACION_RECHAZADA";
                     trackedReminder.RespondedAtUtc = DateTime.UtcNow;
                     trackedReminder.ResponseMessageId = responseMessageId;
                     trackedReminder.LastError =
-                        "La cancelación llegó con menos de una hora de anticipación.";
+                        "La reserva ya inició o se encuentra en el pasado.";
                     mensajeRespuesta =
-                        "No fue posible cancelar porque faltan menos de 1 hora para la reserva.";
+                        "No fue posible cancelar porque la hora de la reserva ya llegó.";
                     await _db.SaveChangesAsync(ct);
                     await tx.CommitAsync(ct);
                     return;
