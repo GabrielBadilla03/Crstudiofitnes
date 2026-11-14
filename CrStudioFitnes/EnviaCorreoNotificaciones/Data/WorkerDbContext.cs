@@ -11,10 +11,13 @@ namespace EnviaCorreoNotificaciones.Data
         public DbSet<Reserva> Reservas => Set<Reserva>();
         public DbSet<HoraReserva> HorasReserva => Set<HoraReserva>();
         public DbSet<AspNetUser> AspNetUsers => Set<AspNetUser>();
+        public DbSet<AspNetRole> AspNetRoles => Set<AspNetRole>();
+        public DbSet<AspNetUserRole> AspNetUserRoles => Set<AspNetUserRole>();
 
         public DbSet<EmailConfiguracion> EmailConfiguraciones => Set<EmailConfiguracion>();
         public DbSet<ReservaEmailReminder> ReservaEmailReminders => Set<ReservaEmailReminder>();
         public DbSet<ReservaWhatsAppReminder> ReservaWhatsAppReminders => Set<ReservaWhatsAppReminder>();
+        public DbSet<StaffWhatsAppReminder> StaffWhatsAppReminders => Set<StaffWhatsAppReminder>();
 
         // ✅ NUEVO: para recordatorio de pesajes
         public DbSet<Historial> Historiales => Set<Historial>();
@@ -29,6 +32,10 @@ namespace EnviaCorreoNotificaciones.Data
             modelBuilder.Entity<Reserva>().ToTable("Reservas");
             modelBuilder.Entity<HoraReserva>().ToTable("HorasReserva");
             modelBuilder.Entity<AspNetUser>().ToTable("AspNetUsers");
+            modelBuilder.Entity<AspNetRole>().ToTable("AspNetRoles");
+            modelBuilder.Entity<AspNetUserRole>().ToTable("AspNetUserRoles");
+            modelBuilder.Entity<AspNetUserRole>()
+                .HasKey(x => new { x.UserId, x.RoleId });
 
             // Tablas del worker
             modelBuilder.Entity<EmailConfiguracion>().ToTable("EmailConfiguracion");
@@ -48,6 +55,17 @@ namespace EnviaCorreoNotificaciones.Data
                 .IsUnique();
             modelBuilder.Entity<ReservaWhatsAppReminder>()
                 .HasIndex(x => x.Wamid);
+
+            modelBuilder.Entity<StaffWhatsAppReminder>().ToTable("StaffWhatsAppReminder");
+            modelBuilder.Entity<StaffWhatsAppReminder>()
+                .Property(x => x.Status).HasConversion<byte>();
+            modelBuilder.Entity<StaffWhatsAppReminder>()
+                .Property(x => x.Fecha).HasColumnType("date");
+            modelBuilder.Entity<StaffWhatsAppReminder>()
+                .Property(x => x.Hora).HasColumnType("time(0)");
+            modelBuilder.Entity<StaffWhatsAppReminder>()
+                .HasIndex(x => new { x.StaffUserId, x.Fecha, x.Hora })
+                .IsUnique();
 
             // ============================
             // ✅ NUEVO: Historial / Pesaje
