@@ -17,5 +17,7 @@ namespace EnviaCorreoNotificaciones.Models
         public TimeSpan Hora { get; set; }
 
         public string? Etiqueta { get; set; }
+
+        public bool Activo { get; set; }
     }
 }
