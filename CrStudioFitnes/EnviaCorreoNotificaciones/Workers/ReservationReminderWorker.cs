@@ -152,6 +152,13 @@ namespace EnviaCorreoNotificaciones.Workers
             using var scope = _scopeFactory.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<WorkerDbContext>();
 
+            var horaActiva = await db.HorasReserva
+                .AsNoTracking()
+                .AnyAsync(h => h.Activo && h.Hora == targetTime, ct);
+
+            if (!horaActiva)
+                return;
+
             var reservas = await (
                 from r in db.Reservas.AsNoTracking()
                 join h in db.HorasReserva.AsNoTracking() on r.IdHora equals h.IdHora
