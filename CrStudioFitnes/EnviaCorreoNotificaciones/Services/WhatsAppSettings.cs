@@ -8,6 +8,7 @@ namespace EnviaCorreoNotificaciones.Services
         public string AccessToken { get; set; } = string.Empty;
         public string TemplateNextDay { get; set; } = "recordatorio_reserva_confirmacion";
         public string TemplateNextHour { get; set; } = "recordatorio_reserva_proxima";
+        public string TemplateStaffUpcoming { get; set; } = "recordatorio_reservas_personal";
         public string LanguageCode { get; set; } = "es";
         public string VerifyToken { get; set; } = string.Empty;
         public string AppSecret { get; set; } = string.Empty;
