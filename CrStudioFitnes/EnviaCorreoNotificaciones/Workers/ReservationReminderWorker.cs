@@ -50,6 +50,7 @@ namespace EnviaCorreoNotificaciones.Workers
                     var nowLocal = TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, _tz).DateTime;
 
                     await ProcessNextHourAsync(nowLocal, stoppingToken);
+                    await ProcessStaffUpcomingAsync(nowLocal, stoppingToken);
 
                     if (nowLocal.TimeOfDay >= _sched.NextDayTime)
                     {
@@ -126,6 +127,186 @@ namespace EnviaCorreoNotificaciones.Workers
                         db, x.IdReserva, ReminderKind.NextHour,
                         x.Telefono!, x.Nombre, x.Fecha, x.Hora, ct);
                 }
+            }
+        }
+
+        private async Task ProcessStaffUpcomingAsync(DateTime nowLocal, CancellationToken ct)
+        {
+            if (!_whatsAppSettings.Enabled || nowLocal.Minute < 40)
+                return;
+
+            // Desde :40 hasta :59 se apunta a la hora siguiente.
+            // El tracking en BD garantiza que normalmente se envíe una sola vez a :40,
+            // pero permite recuperar el envío si el servicio estaba detenido a esa hora.
+            var target = new DateTime(
+                nowLocal.Year,
+                nowLocal.Month,
+                nowLocal.Day,
+                nowLocal.Hour,
+                0,
+                0).AddHours(1);
+
+            var targetDate = target.Date;
+            var targetTime = target.TimeOfDay;
+
+            using var scope = _scopeFactory.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<WorkerDbContext>();
+
+            var reservas = await (
+                from r in db.Reservas.AsNoTracking()
+                join h in db.HorasReserva.AsNoTracking() on r.IdHora equals h.IdHora
+                join u in db.AspNetUsers.AsNoTracking() on r.IdUsuario equals u.Id
+                where r.Activa
+                      && r.Fecha == targetDate
+                      && h.Hora == targetTime
+                orderby u.Nombre, u.Apellidos
+                select new
+                {
+                    Nombre = ((u.Nombre ?? "") + " " + (u.Apellidos ?? "")).Trim(),
+                    Cedula = u.Cedula ?? ""
+                }
+            ).ToListAsync(ct);
+
+            var detalleReservas = reservas.Count == 0
+                ? "No hay reservas"
+                : string.Join(
+                    "\n",
+                    reservas.Select(x => $"{x.Nombre} - {x.Cedula}"));
+
+            var personal = await (
+                from ur in db.AspNetUserRoles.AsNoTracking()
+                join role in db.AspNetRoles.AsNoTracking() on ur.RoleId equals role.Id
+                join u in db.AspNetUsers.AsNoTracking() on ur.UserId equals u.Id
+                where (role.NormalizedName == "ADMINISTRADOR"
+                       || role.NormalizedName == "ENTRENADOR")
+                      && u.TelefonoPersonal != null
+                      && u.TelefonoPersonal != ""
+                select new
+                {
+                    u.Id,
+                    Telefono = u.TelefonoPersonal!
+                }
+            )
+            .Distinct()
+            .ToListAsync(ct);
+
+            foreach (var staff in personal)
+            {
+                await TrySendStaffWhatsAppReminderAsync(
+                    db,
+                    staff.Id,
+                    staff.Telefono,
+                    targetDate,
+                    targetTime,
+                    detalleReservas,
+                    ct);
+            }
+        }
+
+        private async Task TrySendStaffWhatsAppReminderAsync(
+            WorkerDbContext db,
+            string staffUserId,
+            string telefono,
+            DateTime fecha,
+            TimeSpan hora,
+            string detalleReservas,
+            CancellationToken ct)
+        {
+            var nowUtc = DateTime.UtcNow;
+
+            var reminder = await db.StaffWhatsAppReminders
+                .FirstOrDefaultAsync(
+                    x => x.StaffUserId == staffUserId
+                         && x.Fecha == fecha
+                         && x.Hora == hora,
+                    ct);
+
+            if (reminder is { Status: ReminderStatus.Sent })
+                return;
+
+            if (reminder is { Status: ReminderStatus.Failed }
+                && reminder.NextAttemptAt.HasValue
+                && reminder.NextAttemptAt > nowUtc)
+            {
+                return;
+            }
+
+            if (reminder is null)
+            {
+                reminder = new StaffWhatsAppReminder
+                {
+                    StaffUserId = staffUserId,
+                    Fecha = fecha,
+                    Hora = hora,
+                    Status = ReminderStatus.Pending,
+                    Attempts = 0,
+                    CreatedAtUtc = nowUtc
+                };
+
+                db.StaffWhatsAppReminders.Add(reminder);
+
+                try
+                {
+                    await db.SaveChangesAsync(ct);
+                }
+                catch
+                {
+                    return;
+                }
+            }
+
+            if (reminder.Attempts >= _sched.MaxAttempts)
+                return;
+
+            try
+            {
+                var phone = MetaWhatsAppSender.NormalizarTelefonoCostaRica(telefono);
+                var wamid = await _whatsApp.SendStaffUpcomingReservationsAsync(
+                    phone,
+                    hora,
+                    detalleReservas,
+                    ct);
+
+                reminder.Phone = phone;
+                reminder.Wamid = wamid;
+                reminder.Status = ReminderStatus.Sent;
+                reminder.SentAtUtc = nowUtc;
+                reminder.LastError = null;
+                reminder.NextAttemptAt = null;
+
+                await db.SaveChangesAsync(ct);
+
+                _logger.LogInformation(
+                    "Resumen WhatsApp enviado a personal {StaffUserId} para {Fecha} {Hora}.",
+                    staffUserId,
+                    fecha.ToString("yyyy-MM-dd"),
+                    hora);
+            }
+            catch (Exception ex)
+            {
+                reminder.Status = ReminderStatus.Failed;
+                reminder.Attempts += 1;
+                reminder.LastError = ex.Message.Length > 1000
+                    ? ex.Message[..1000]
+                    : ex.Message;
+
+                var minutes = reminder.Attempts switch
+                {
+                    1 => 1,
+                    2 => 5,
+                    3 => 10,
+                    _ => 15
+                };
+
+                reminder.NextAttemptAt = nowUtc.AddMinutes(minutes);
+                await db.SaveChangesAsync(ct);
+
+                _logger.LogWarning(
+                    ex,
+                    "Falló resumen WhatsApp para personal {StaffUserId}, fecha {Fecha}, hora {Hora}.",
+                    staffUserId,
+                    fecha.ToString("yyyy-MM-dd"),
+                    hora);
             }
         }
 
